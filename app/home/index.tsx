@@ -1,0 +1,316 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import {
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from "react-native";
+
+/**
+ * Dashboard/Home Principal
+ * Pantalla principal de la aplicación que muestra:
+ * - Header con perfil de usuario
+ * - Buscador de clientes
+ * - Banner de promociones
+ * - Resumen de totales (préstamos y abonos)
+ * - Historial de operaciones recientes
+ * - Bottom navigation bar
+ */
+
+interface Operation {
+  id: string;
+  amount: string;
+  clientName: string;
+  time: string;
+  type: "prestamo" | "abono";
+}
+
+export default function HomeScreen() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Datos de ejemplo - en producción vendrían del backend
+  const userData = {
+    name: "Imer Alejandro",
+    role: "Gestor operador",
+  };
+
+  const operations: Operation[] = [
+    {
+      id: "1",
+      amount: "1,350.80",
+      clientName: "Nombre del cliente",
+      time: "3:00 am",
+      type: "prestamo",
+    },
+    {
+      id: "2",
+      amount: "1,350.80",
+      clientName: "Nombre del cliente",
+      time: "3:00 am",
+      type: "abono",
+    },
+    {
+      id: "3",
+      amount: "1,350.80",
+      clientName: "Nombre del cliente",
+      time: "3:00 am",
+      type: "prestamo",
+    },
+    {
+      id: "4",
+      amount: "1,350.80",
+      clientName: "Nombre del cliente",
+      time: "3:00 am",
+      type: "abono",
+    },
+  ];
+
+  // Maneja la búsqueda de clientes
+  const handleSearch = () => {
+    console.log("Buscando:", searchQuery);
+    // TODO: Implementar búsqueda
+  };
+
+  // Navega al detalle de una operación
+  const handleOperationPress = (operationId: string) => {
+    console.log("Ver operación:", operationId);
+    // TODO: Navegar al detalle
+  };
+
+  return (
+    <View className="flex-1 bg-gray-50">
+      {/* Header con perfil */}
+      <View className="bg-[#13678A] px-6 pt-16 pb-6 rounded-b-3xl shadow-lg">
+        <View className="flex-row items-center justify-between mb-6">
+          {/* Perfil de usuario */}
+          <View className="flex-row items-center">
+            {/* Avatar con iniciales */}
+            <View className="w-12 h-12 bg-white/20 rounded-full items-center justify-center border-2 border-white/30 mr-3">
+              <Text className="text-white text-lg font-bold">IA</Text>
+            </View>
+            {/* Nombre y rol */}
+            <View>
+              <Text className="text-white text-base font-semibold">
+                Hola, {userData.name}
+              </Text>
+              <Text className="text-white/70 text-xs">
+                {userData.role}
+              </Text>
+            </View>
+          </View>
+
+          {/* Iconos de notificación y menú */}
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              className="w-10 h-10 bg-white/10 rounded-full items-center justify-center"
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications-outline" size={22} color="#ffffff" />
+              {/* Badge de notificaciones */}
+              <View className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border border-[#13678A]" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="w-10 h-10 bg-white/10 rounded-full items-center justify-center"
+              activeOpacity={0.7}
+            >
+              <Ionicons name="menu" size={26} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Buscador */}
+        <View className="flex-row items-center gap-3">
+          <View className="flex-1 bg-white/95 rounded-xl px-4 py-3 flex-row items-center">
+            <Ionicons name="search" size={20} color="#999" />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Buscar clientes..."
+              placeholderTextColor="#999"
+              className="flex-1 ml-2 text-gray-800 text-sm"
+              onSubmitEditing={handleSearch}
+            />
+          </View>
+          <TouchableOpacity
+            onPress={handleSearch}
+            className="bg-[#0D4D68] rounded-xl px-5 py-3.5"
+            activeOpacity={0.8}
+          >
+            <Ionicons name="search" size={22} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Banner de Promociones */}
+        <View className="px-6 pt-6 pb-4">
+          <Text className="text-gray-800 text-base font-semibold mb-3">
+            Promociones
+          </Text>
+          <View className="bg-white rounded-2xl p-4 shadow-sm">
+            {/* Ilustración de promociones */}
+            <View className="items-center py-6">
+              <View className="bg-[#13678A]/10 rounded-full p-6 mb-3">
+                <Ionicons name="megaphone" size={48} color="#13678A" />
+              </View>
+              <Text className="text-gray-600 text-xs text-center">
+                Aquí aparecerán las promociones activas
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Estado de hoy - Totales */}
+        <View className="px-6 pb-4">
+          <Text className="text-gray-800 text-base font-semibold mb-3">
+            Estado de hoy
+          </Text>
+          <View className="flex-row gap-3">
+            {/* Card Total de préstamos */}
+            <View className="flex-1 bg-[#13678A] rounded-2xl p-5 shadow-md">
+              <Text className="text-white/80 text-xs mb-2">
+                Total de préstamos
+              </Text>
+              <Text className="text-white text-3xl font-bold">
+                5,700.00
+              </Text>
+            </View>
+
+            {/* Card Total de abonos */}
+            <View className="flex-1 bg-[#0D8A7A] rounded-2xl p-5 shadow-md">
+              <Text className="text-white/80 text-xs mb-2">
+                Total de abonos
+              </Text>
+              <Text className="text-white text-3xl font-bold">
+                5,700.00
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Historial de operaciones */}
+        <View className="px-6 pb-24">
+          <Text className="text-gray-800 text-base font-semibold mb-3">
+            Historial de operaciones
+          </Text>
+          <View className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            {operations.map((operation, index) => (
+              <TouchableOpacity
+                key={operation.id}
+                onPress={() => handleOperationPress(operation.id)}
+                className={`flex-row items-center px-4 py-4 ${
+                  index !== operations.length - 1
+                    ? "border-b border-gray-100"
+                    : ""
+                }`}
+                activeOpacity={0.7}
+              >
+                {/* Icono de operación */}
+                <View
+                  className={`w-12 h-12 rounded-full items-center justify-center mr-3 ${
+                    operation.type === "prestamo"
+                      ? "bg-[#13678A]"
+                      : "bg-[#0D8A7A]"
+                  }`}
+                >
+                  <Ionicons
+                    name={
+                      operation.type === "prestamo"
+                        ? "arrow-up"
+                        : "arrow-down"
+                    }
+                    size={24}
+                    color="#ffffff"
+                  />
+                </View>
+
+                {/* Información de la operación */}
+                <View className="flex-1">
+                  <Text className="text-gray-900 text-base font-bold mb-0.5">
+                    {operation.amount}
+                  </Text>
+                  <Text className="text-gray-500 text-xs">
+                    {operation.clientName}
+                  </Text>
+                </View>
+
+                {/* Hora */}
+                <Text className="text-gray-400 text-xs">
+                  {operation.time}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Botón flotante de agregar */}
+      <TouchableOpacity
+        onPress={() => console.log("Agregar nueva operación")}
+        className="absolute bottom-24 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
+        activeOpacity={0.8}
+        style={{
+          shadowColor: "#13678A",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+      >
+        <Ionicons name="add" size={32} color="#ffffff" />
+      </TouchableOpacity>
+
+      {/* Bottom Navigation Bar */}
+      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+        <View className="flex-row items-center justify-around px-6 py-3">
+          {/* Home */}
+          <TouchableOpacity
+            onPress={() => router.push("/home")}
+            className="items-center py-2 flex-1"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="home" size={24} color="#13678A" />
+            <Text className="text-[#13678A] text-xs font-medium mt-1">
+              home
+            </Text>
+          </TouchableOpacity>
+
+          {/* Clientes */}
+          <TouchableOpacity
+            onPress={() => router.push("/clientes")}
+            className="items-center py-2 flex-1"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="people-outline" size={24} color="#6B7280" />
+            <Text className="text-gray-500 text-xs mt-1">clientes</Text>
+          </TouchableOpacity>
+
+          {/* Préstamos */}
+          <TouchableOpacity
+            onPress={() => router.push("/prestamos_abonos")}
+            className="items-center py-2 flex-1"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="cash-outline" size={24} color="#6B7280" />
+            <Text className="text-gray-500 text-xs mt-1">préstamos</Text>
+          </TouchableOpacity>
+
+          {/* Reportes */}
+          <TouchableOpacity
+            onPress={() => router.push("/reportes")}
+            className="items-center py-2 flex-1"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="bar-chart-outline" size={24} color="#6B7280" />
+            <Text className="text-gray-500 text-xs mt-1">reportes</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}

@@ -109,22 +109,22 @@ export default function ValidarCorreoScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#13678A] px-8 pt-16 pb-10">
+    <View className="flex-1 bg-[#13678A] justify-center px-8 py-10">
       {/* Botón de volver */}
       <TouchableOpacity
         onPress={() => router.back()}
-        className="mb-8"
+        className="absolute top-12 left-8"
         activeOpacity={0.7}
       >
         <Ionicons name="arrow-back" size={28} color="#ffffff" />
       </TouchableOpacity>
 
       {/* Header */}
-      <View className="mb-12">
-        <Text className="text-white text-3xl font-bold mb-3">
+      <View className="mb-10">
+        <Text className="text-white text-4xl font-bold mb-4">
           Validar correo
         </Text>
-        <Text className="text-white/80 text-base leading-relaxed">
+        <Text className="text-white/80 text-lg leading-relaxed">
           Ingrese el código que enviamos{"\n"}a tu correo
         </Text>
       </View>
@@ -143,15 +143,15 @@ export default function ValidarCorreoScreen() {
             keyboardType="number-pad"
             maxLength={1}
             selectTextOnFocus
-            className="w-12 h-14 bg-white/10 border-2 border-white/30 rounded-lg text-white text-2xl font-bold text-center"
-            style={{ fontSize: 24 }}
+            className="w-14 h-16 bg-white/10 border-2 border-white/30 rounded-lg text-white text-3xl font-bold text-center"
+            style={{ fontSize: 28 }}
           />
         ))}
       </View>
 
       {/* Temporizador */}
       <View className="items-center mb-10">
-        <Text className="text-white/60 text-sm mb-1">
+        <Text className="text-white/60 text-base mb-2">
           Reenviar el código en: {formatTime(timer)}
         </Text>
         <TouchableOpacity
@@ -160,7 +160,7 @@ export default function ValidarCorreoScreen() {
           activeOpacity={0.7}
         >
           <Text
-            className={`text-sm underline ${
+            className={`text-base underline ${
               timer > 0 ? "text-white/40" : "text-white"
             }`}
           >
@@ -181,7 +181,7 @@ export default function ValidarCorreoScreen() {
         activeOpacity={0.8}
       >
         <Text
-          className={`font-semibold text-base ${
+          className={`font-semibold text-lg ${
             code.some((digit) => digit === "")
               ? "text-white/50"
               : "text-[#13678A]"

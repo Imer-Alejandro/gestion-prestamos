@@ -41,28 +41,28 @@ export default function FirmaDigitalScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#13678A] px-8 pt-16 pb-10">
+    <View className="flex-1 bg-[#13678A] justify-center px-8 py-10">
       {/* Botón de volver */}
       <TouchableOpacity
         onPress={() => router.back()}
-        className="mb-8"
+        className="absolute top-12 left-8"
         activeOpacity={0.7}
       >
         <Ionicons name="arrow-back" size={28} color="#ffffff" />
       </TouchableOpacity>
 
       {/* Header */}
-      <View className="mb-8 items-center">
+      <View className="mb-10 items-center">
         <Ionicons
           name="information-circle-outline"
-          size={32}
+          size={40}
           color="#ffffff"
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: 16 }}
         />
-        <Text className="text-white text-2xl font-bold mb-3 text-center">
+        <Text className="text-white text-3xl font-bold mb-4 text-center">
           Ingrese una firma
         </Text>
-        <Text className="text-white/80 text-sm text-center">
+        <Text className="text-white/80 text-lg text-center">
           con la firma digital de tu{"\n"}organización!
         </Text>
       </View>
@@ -96,8 +96,8 @@ export default function FirmaDigitalScreen() {
         className="flex-row items-center justify-center mb-6 py-3"
         activeOpacity={0.7}
       >
-        <Ionicons name="trash-outline" size={20} color="#ffffff90" />
-        <Text className="text-white/70 text-sm ml-2">Limpiar firma</Text>
+        <Ionicons name="trash-outline" size={22} color="#ffffff90" />
+        <Text className="text-white/70 text-base ml-2">Limpiar firma</Text>
       </TouchableOpacity>
 
       {/* Botón de guardar firma */}
@@ -106,7 +106,7 @@ export default function FirmaDigitalScreen() {
         className="bg-white/90 rounded-lg py-4 items-center"
         activeOpacity={0.8}
       >
-        <Text className="text-[#13678A] font-semibold text-base">
+        <Text className="text-[#13678A] font-semibold text-lg">
           guardar firma
         </Text>
       </TouchableOpacity>

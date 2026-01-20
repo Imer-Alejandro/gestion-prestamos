@@ -10,15 +10,15 @@ export default function RecuperarContrasenaScreen() {
   const router = useRouter();
 
   return (
-    <View className="flex-1 bg-[#13678A] px-8 pt-20 pb-10">
-      <View className="mb-10">
-        <Text className="text-white text-3xl font-bold">
+    <View className="flex-1 bg-[#13678A] justify-center px-8 py-10">
+      <View className="mb-8">
+        <Text className="text-white text-4xl font-bold">
           Recuperar contraseña
         </Text>
       </View>
 
       {/* TODO: Implementar formulario de recuperación */}
-      <Text className="text-white/80 text-base mb-6">
+      <Text className="text-white/80 text-lg mb-8">
         Funcionalidad en desarrollo...
       </Text>
 
@@ -27,8 +27,8 @@ export default function RecuperarContrasenaScreen() {
         className="flex-row items-center justify-center py-3"
         activeOpacity={0.7}
       >
-        <Ionicons name="arrow-back" size={20} color="#ffffff90" />
-        <Text className="text-white/70 text-sm ml-2">Volver</Text>
+        <Ionicons name="arrow-back" size={22} color="#ffffff90" />
+        <Text className="text-white/70 text-base ml-2">Volver</Text>
       </TouchableOpacity>
     </View>
   );

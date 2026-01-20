@@ -2,12 +2,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    Alert,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 /**
@@ -73,14 +73,19 @@ export default function RegistroOrganizacionScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-[#13678A]">
-      <View className="px-8 pt-16 pb-10">
+    <ScrollView 
+      className="flex-1 bg-[#13678A]"
+      contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View className="px-8 py-10">
         {/* Header */}
-        <View className="mb-10">
-          <Text className="text-white text-3xl font-bold mb-1">
+        <View className="mb-8">
+          <Text className="text-white text-4xl font-bold mb-2">
             Comience a registrar
           </Text>
-          <Text className="text-white text-3xl font-bold">
+          <Text className="text-white text-4xl font-bold">
             su organización
           </Text>
         </View>
@@ -89,7 +94,7 @@ export default function RegistroOrganizacionScreen() {
         <View className="mb-6">
           {/* Campo: Nombre de la organización */}
           <View className="mb-5">
-            <Text className="text-white/80 text-sm mb-2">
+            <Text className="text-white/80 text-base mb-2">
               Nombre organización
             </Text>
             <TextInput
@@ -99,7 +104,7 @@ export default function RegistroOrganizacionScreen() {
               }
               placeholder=""
               placeholderTextColor="#ffffff40"
-              className="bg-white/10 border border-white/30 rounded-lg px-4 py-3.5 text-white text-base"
+              className="bg-white/10 border border-white/30 rounded-lg px-4 py-4 text-white text-lg"
             />
           </View>
 

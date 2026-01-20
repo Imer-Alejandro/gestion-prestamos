@@ -1,13 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
+import AppHeader from "../../components/shared/AppHeader";
+import DrawerMenu from "../../components/home/DrawerMenu";
+import NotificationModal from "../../components/home/NotificationModal";
+import {
+  mockDailyTotals,
+  mockNotifications,
+  mockOperations,
+  mockUserData
+} from "../../data/homeData";
 
 /**
  * Dashboard/Home Principal
@@ -20,54 +28,18 @@ import {
  * - Bottom navigation bar
  */
 
-interface Operation {
-  id: string;
-  amount: string;
-  clientName: string;
-  time: string;
-  type: "prestamo" | "abono";
-}
-
 export default function HomeScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   // Datos de ejemplo - en producción vendrían del backend
-  const userData = {
-    name: "Imer Alejandro",
-    role: "Gestor operador",
-  };
-
-  const operations: Operation[] = [
-    {
-      id: "1",
-      amount: "1,350.80",
-      clientName: "Nombre del cliente",
-      time: "3:00 am",
-      type: "prestamo",
-    },
-    {
-      id: "2",
-      amount: "1,350.80",
-      clientName: "Nombre del cliente",
-      time: "3:00 am",
-      type: "abono",
-    },
-    {
-      id: "3",
-      amount: "1,350.80",
-      clientName: "Nombre del cliente",
-      time: "3:00 am",
-      type: "prestamo",
-    },
-    {
-      id: "4",
-      amount: "1,350.80",
-      clientName: "Nombre del cliente",
-      time: "3:00 am",
-      type: "abono",
-    },
-  ];
+  const userData = mockUserData;
+  const notifications = mockNotifications;
+  const operations = mockOperations;
+  const dailyTotals = mockDailyTotals;
 
   // Maneja la búsqueda de clientes
   const handleSearch = () => {
@@ -81,70 +53,40 @@ export default function HomeScreen() {
     // TODO: Navegar al detalle
   };
 
+  // Eliminar notificación
+  const handleDeleteNotification = (notificationId: string) => {
+    console.log("Eliminar notificación:", notificationId);
+    // TODO: Implementar eliminación de notificación
+  };
+
+  // Navegar a nuevo abono
+  const handleNuevoAbono = () => {
+    setShowQuickActions(false);
+    console.log("Navegar a nuevo abono");
+    // TODO: Implementar navegación a nuevo abono
+  };
+
+  // Navegar a nuevo préstamo
+  const handleNuevoPrestamo = () => {
+    setShowQuickActions(false);
+    console.log("Navegar a nuevo préstamo");
+    // TODO: Implementar navegación a nuevo préstamo
+  };
+
   return (
     <View className="flex-1 bg-gray-50">
-      {/* Header con perfil */}
-      <View className="bg-[#13678A] px-6 pt-16 pb-6 rounded-b-3xl shadow-lg">
-        <View className="flex-row items-center justify-between mb-6">
-          {/* Perfil de usuario */}
-          <View className="flex-row items-center">
-            {/* Avatar con iniciales */}
-            <View className="w-12 h-12 bg-white/20 rounded-full items-center justify-center border-2 border-white/30 mr-3">
-              <Text className="text-white text-lg font-bold">IA</Text>
-            </View>
-            {/* Nombre y rol */}
-            <View>
-              <Text className="text-white text-base font-semibold">
-                Hola, {userData.name}
-              </Text>
-              <Text className="text-white/70 text-xs">
-                {userData.role}
-              </Text>
-            </View>
-          </View>
-
-          {/* Iconos de notificación y menú */}
-          <View className="flex-row gap-3">
-            <TouchableOpacity
-              className="w-10 h-10 bg-white/10 rounded-full items-center justify-center"
-              activeOpacity={0.7}
-            >
-              <Ionicons name="notifications-outline" size={22} color="#ffffff" />
-              {/* Badge de notificaciones */}
-              <View className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border border-[#13678A]" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="w-10 h-10 bg-white/10 rounded-full items-center justify-center"
-              activeOpacity={0.7}
-            >
-              <Ionicons name="menu" size={26} color="#ffffff" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Buscador */}
-        <View className="flex-row items-center gap-3">
-          <View className="flex-1 bg-white/95 rounded-xl px-4 py-3 flex-row items-center">
-            <Ionicons name="search" size={20} color="#999" />
-            <TextInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Buscar clientes..."
-              placeholderTextColor="#999"
-              className="flex-1 ml-2 text-gray-800 text-sm"
-              onSubmitEditing={handleSearch}
-            />
-          </View>
-          <TouchableOpacity
-            onPress={handleSearch}
-            className="bg-[#0D4D68] rounded-xl px-5 py-3.5"
-            activeOpacity={0.8}
-          >
-            <Ionicons name="search" size={22} color="#ffffff" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Stack.Screen options={{ headerShown: false, animation: "none" }} />
+      
+      {/* Header compartido */}
+      <AppHeader
+        userData={userData}
+        onNotificationsPress={() => setShowNotifications(true)}
+        onMenuPress={() => setShowDrawer(true)}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSearchSubmit={handleSearch}
+        hasNotifications={notifications.length > 0}
+      />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Banner de Promociones */}
@@ -177,7 +119,7 @@ export default function HomeScreen() {
                 Total de préstamos
               </Text>
               <Text className="text-white text-3xl font-bold">
-                5,700.00
+                {dailyTotals.loans}
               </Text>
             </View>
 
@@ -187,7 +129,7 @@ export default function HomeScreen() {
                 Total de abonos
               </Text>
               <Text className="text-white text-3xl font-bold">
-                5,700.00
+                {dailyTotals.payments}
               </Text>
             </View>
           </View>
@@ -249,9 +191,59 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
+      {/* Botones de acción rápida flotantes */}
+      {showQuickActions && (
+        <>
+          {/* Overlay para cerrar */}
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setShowQuickActions(false)}
+            className="absolute inset-0 bg-black/20"
+          />
+
+          {/* Botón Nuevo Abono */}
+          <TouchableOpacity
+            onPress={handleNuevoAbono}
+            className="absolute bottom-[220px] right-6 bg-[#10B981] rounded-full px-6 py-3 flex-row items-center shadow-lg"
+            activeOpacity={0.8}
+            style={{
+              shadowColor: "#10B981",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+          >
+            <Ionicons name="arrow-down-circle-outline" size={24} color="#ffffff" />
+            <Text className="text-white font-semibold text-base ml-2">
+              nuevo abono
+            </Text>
+          </TouchableOpacity>
+
+          {/* Botón Nuevo Préstamo */}
+          <TouchableOpacity
+            onPress={handleNuevoPrestamo}
+            className="absolute bottom-[160px] right-6 bg-[#0EA5E9] rounded-full px-6 py-3 flex-row items-center shadow-lg"
+            activeOpacity={0.8}
+            style={{
+              shadowColor: "#0EA5E9",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+          >
+            <Ionicons name="arrow-up-circle-outline" size={24} color="#ffffff" />
+            <Text className="text-white font-semibold text-base ml-2">
+              nuevo prestamo
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
+
       {/* Botón flotante de agregar */}
       <TouchableOpacity
-        onPress={() => console.log("Agregar nueva operación")}
+        onPress={() => setShowQuickActions(!showQuickActions)}
         className="absolute bottom-24 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
         activeOpacity={0.8}
         style={{
@@ -262,7 +254,11 @@ export default function HomeScreen() {
           elevation: 8,
         }}
       >
-        <Ionicons name="add" size={32} color="#ffffff" />
+        <Ionicons 
+          name={showQuickActions ? "close" : "add"} 
+          size={32} 
+          color="#ffffff" 
+        />
       </TouchableOpacity>
 
       {/* Bottom Navigation Bar */}
@@ -311,6 +307,21 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Modal de Notificaciones */}
+      <NotificationModal
+        visible={showNotifications}
+        notifications={notifications}
+        onClose={() => setShowNotifications(false)}
+        onDeleteNotification={handleDeleteNotification}
+      />
+
+      {/* Drawer Menu */}
+      <DrawerMenu
+        visible={showDrawer}
+        onClose={() => setShowDrawer(false)}
+        userData={userData}
+      />
     </View>
   );
 }

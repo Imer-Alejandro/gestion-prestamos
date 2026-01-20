@@ -19,10 +19,10 @@ export default function RegistroTipoScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#13678A] px-8 pt-20 pb-10">
+    <View className="flex-1 bg-[#13678A] justify-center px-8 py-10">
       {/* Header con título */}
-      <View className="mb-16">
-        <Text className="text-white text-3xl font-bold text-center leading-tight">
+      <View className="mb-12">
+        <Text className="text-white text-4xl font-bold text-center leading-tight">
           Como desea{"\n"}aplicar su registro?
         </Text>
       </View>
@@ -43,7 +43,7 @@ export default function RegistroTipoScreen() {
             </View>
           </View>
           {/* Label */}
-          <Text className="text-white text-base font-medium">
+          <Text className="text-white text-lg font-medium">
             Organización
           </Text>
         </TouchableOpacity>
@@ -62,7 +62,7 @@ export default function RegistroTipoScreen() {
             </View>
           </View>
           {/* Label */}
-          <Text className="text-white text-base font-medium">Empleado</Text>
+          <Text className="text-white text-lg font-medium">Empleado</Text>
         </TouchableOpacity>
       </View>
 
@@ -73,8 +73,8 @@ export default function RegistroTipoScreen() {
           className="flex-row items-center justify-center py-3"
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={20} color="#ffffff90" />
-          <Text className="text-white/70 text-sm ml-2">Volver al inicio</Text>
+          <Ionicons name="arrow-back" size={22} color="#ffffff90" />
+          <Text className="text-white/70 text-base ml-2">Volver al inicio</Text>
         </TouchableOpacity>
       </View>
     </View>

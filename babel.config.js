@@ -6,7 +6,7 @@ module.exports = function(api) {
       "nativewind/babel",
     ],
     plugins: [
-      // "react-native-reanimated/plugin", // Comentado temporalmente
+      "react-native-reanimated/plugin",
     ],
   };
 };

@@ -89,14 +89,19 @@ export default function RegistroEmpleadoScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-[#13678A]">
-      <View className="px-8 pt-16 pb-10">
+    <ScrollView 
+      className="flex-1 bg-[#13678A]"
+      contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View className="px-8 py-10">
         {/* Header */}
-        <View className="mb-10">
-          <Text className="text-white text-3xl font-bold mb-1">
+        <View className="mb-8">
+          <Text className="text-white text-4xl font-bold mb-2">
             Comience el registro
           </Text>
-          <Text className="text-white text-3xl font-bold">
+          <Text className="text-white text-4xl font-bold">
             en su organización
           </Text>
         </View>

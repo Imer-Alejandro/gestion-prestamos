@@ -1,0 +1,71 @@
+import * as Crypto from "expo-crypto";
+import { getDb } from "../database/db.js";
+
+async function hashPassword(password) {
+  return await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    password,
+  );
+}
+
+export async function createUser(userData) {
+  const db = await getDb();
+  const passwordHash = await hashPassword(userData.password);
+
+  const result = await db.runAsync(
+    `INSERT INTO users 
+      (full_name, email, phone, password_hash, created_at, is_active)
+     VALUES (?, ?, ?, ?, ?, 1)`,
+    [
+      userData.full_name,
+      userData.email,
+      userData.phone,
+      passwordHash,
+      new Date().toISOString(),
+    ],
+  );
+
+  return result.lastInsertRowId;
+}
+
+export async function getUserById(id) {
+  const db = await getDb();
+  return await db.getFirstAsync(`SELECT * FROM users WHERE id = ?`, [id]);
+}
+
+export async function updateUser(id, data) {
+  const db = await getDb();
+
+  await db.runAsync(
+    `UPDATE users 
+     SET full_name = ?, phone = ?, is_active = ?
+     WHERE id = ?`,
+    [data.full_name, data.phone, data.is_active, id],
+  );
+}
+
+/* LOGIN SOLO POR CONTRASEÑA */
+export async function loginWithPassword(password) {
+  const db = await getDb();
+
+  // Obtener el único usuario activo
+  const user = await db.getFirstAsync(
+    `SELECT * FROM users WHERE is_active = 1 LIMIT 1`,
+  );
+
+  if (!user) {
+    throw new Error("No existe usuario registrado");
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  if (passwordHash !== user.password_hash) {
+    throw new Error("Contraseña incorrecta");
+  }
+  await db.runAsync(`UPDATE users SET last_login = ? WHERE id = ?`, [
+    new Date().toISOString(),
+    user.id,
+  ]);
+
+  return user;
+}

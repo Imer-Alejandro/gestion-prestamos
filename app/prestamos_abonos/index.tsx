@@ -16,7 +16,8 @@ import {
   mockPrestamosActivos,
   type Prestamo
 } from "../../data/prestamosData";
-import { mockUserData, mockNotifications } from "../../data/homeData";
+import { mockNotifications } from "../../data/homeData";
+import { useAuth } from "../../contexts/AuthContext";
 
 /**
  * Pantalla de Préstamos y Abonos
@@ -24,14 +25,20 @@ import { mockUserData, mockNotifications } from "../../data/homeData";
  */
 export default function PrestamosScreen() {
   const router = useRouter();
+  const { user } = useAuth(); // 👈 Acceder al usuario logueado
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showNuevoPrestamo, setShowNuevoPrestamo] = useState(false);
+  
+  const userData = {
+    name: user?.full_name || "Usuario",
+    role: "Gestor operador",
+    avatar: null,
+  };
   const [activeTab, setActiveTab] = useState<"prestamos" | "abonos">("prestamos");
   const [showFiltros, setShowFiltros] = useState(false);
   
-  const userData = mockUserData;
   const notifications = mockNotifications;
 
   // Calcular total de deudas pendientes

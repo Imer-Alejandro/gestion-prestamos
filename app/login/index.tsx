@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -11,27 +11,56 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import { validateCredentials } from "../../data/authData";
+import { useAuth } from "../../contexts/AuthContext";
+import { getDb } from "../../database/db";
 
 /**
- * Pantalla de Login - Permite iniciar sesión con usuario/contraseña
- * o mediante proveedores externos (Google, Facebook, Otro)
+ * Pantalla de Login - Permite iniciar sesión con contraseña
  */
 export default function LoginScreen() {
   const router = useRouter();
+  const { login, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberSession, setRememberSession] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [rememberSession, setRememberSession] = useState(true);
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     password: "",
   });
 
-  // Maneja el inicio de sesión con credenciales
-  const handleLogin = () => {
+  // 👀 VER DATOS DE LA BASE DE DATOS
+  useEffect(() => {
+    const verDatosDB = async () => {
+      try {
+        const db = await getDb();
+        const usuarios = await db.getAllAsync('SELECT * FROM users');
+        console.log('========================================');
+        console.log('👥 USUARIOS EN BASE DE DATOS:');
+        console.log('========================================');
+        usuarios.forEach((user: any) => {
+          console.log(`\n📋 Usuario #${user.id}:`);
+          console.log(`   Nombre: ${user.full_name}`);
+          console.log(`   Email: ${user.email}`);
+          console.log(`   Teléfono: ${user.phone}`);
+          console.log(`   Activo: ${user.is_active ? 'Sí' : 'No'}`);
+          console.log(`   Creado: ${user.created_at}`);
+          console.log(`   Último login: ${user.last_login || 'Nunca'}`);
+          console.log(`   Password Hash: ${user.password_hash.substring(0, 20)}...`);
+        });
+        console.log('\n========================================');
+        console.log(`Total de usuarios: ${usuarios.length}`);
+        console.log('========================================\n');
+      } catch (error) {
+        console.error('❌ Error al leer BD:', error);
+      }
+    };
+    verDatosDB();
+  }, []);
+
+  // Maneja el inicio de sesión con email y contraseña
+  const handleLogin = async () => {
     // Validaciones básicas
-    if (!formData.username.trim()) {
-      Alert.alert("Error", "Por favor ingrese su nombre de usuario");
+    if (!formData.email.trim()) {
+      Alert.alert("Error", "Por favor ingrese su correo electrónico");
       return;
     }
 
@@ -40,40 +69,21 @@ export default function LoginScreen() {
       return;
     }
 
-    setIsLoading(true);
-
-    // Simular delay de red
-    setTimeout(() => {
-      const user = validateCredentials(formData.username, formData.password);
-
-      if (user) {
-        // Login exitoso
-        console.log("Usuario autenticado:", user);
-        
-        // Si se marcó "Guardar inicio de sesión"
-        if (rememberSession) {
-          // TODO: Guardar sesión en AsyncStorage
-          console.log("Sesión guardada");
-        }
-
-        // Navegar al home
-        router.replace("/home");
-      } else {
-        // Credenciales incorrectas
-        Alert.alert(
-          "Error de autenticación",
-          "Usuario o contraseña incorrectos. Intente nuevamente."
-        );
-      }
-
-      setIsLoading(false);
-    }, 800);
+    try {
+      await login(formData.email, formData.password);
+      // El AuthContext redirigirá automáticamente a /home
+    } catch (error: any) {
+      Alert.alert(
+        "Error de autenticación",
+        error.message || "Email o contraseña incorrectos. Intente nuevamente."
+      );
+    }
   };
 
   // Maneja el inicio de sesión con proveedores externos
   const handleSocialLogin = (provider: string) => {
     // TODO: Implementar autenticación con proveedores
-    console.log("Login con:", provider);
+    Alert.alert("Próximamente", `Login con ${provider} estará disponible pronto`);
   };
 
   return (
@@ -107,35 +117,23 @@ export default function LoginScreen() {
             </View>
           </View>
 
-        {/* Información de credenciales de prueba 
-        <View className="mb-6 bg-white/10 rounded-lg p-4 border border-white/20">
-          <Text className="text-white/90 text-xs font-semibold mb-2">
-            💡 Credenciales de prueba:
-          </Text>
-          <Text className="text-white/70 text-xs mb-1">
-            Usuario: <Text className="text-white font-medium">admin</Text>
-          </Text>
-          <Text className="text-white/70 text-xs">
-            Contraseña: <Text className="text-white font-medium">admin123</Text>
-          </Text>
-        </View>*/}
 
         {/* Formulario de login */}
         <View className="mb-6">
-          {/* Campo de nombre de usuario */}
-          <View className="mb-6">
-            <Text className="text-white/70 text-base mb-2">
-              Nombre de usuario
-            </Text>
+          {/* Campo de correo electrónico */}
+          <View className="mb-5">
+            <Text className="text-white/70 text-base mb-2">Correo electrónico</Text>
             <TextInput
-              value={formData.username}
+              value={formData.email}
               onChangeText={(text) =>
-                setFormData({ ...formData, username: text })
+                setFormData({ ...formData, email: text })
               }
-              placeholder=""
+              placeholder="ejemplo@correo.com"
               placeholderTextColor="#ffffff40"
-              className="bg-white/10 border border-white/20 rounded-lg px-4 py-4 text-white text-lg"
+              keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
+              className="bg-white/10 border border-white/20 rounded-lg px-4 py-4 text-white text-lg"
             />
           </View>
 
@@ -148,10 +146,11 @@ export default function LoginScreen() {
                 onChangeText={(text) =>
                   setFormData({ ...formData, password: text })
                 }
-                placeholder=""
+                placeholder="Ingrese su contraseña"
                 placeholderTextColor="#ffffff40"
                 secureTextEntry={!showPassword}
                 className="bg-white/10 border border-white/20 rounded-lg px-4 py-4 text-white text-lg pr-12"
+                onSubmitEditing={handleLogin}
               />
               {/* Botón para mostrar/ocultar contraseña */}
               <TouchableOpacity

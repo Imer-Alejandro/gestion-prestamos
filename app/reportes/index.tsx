@@ -20,7 +20,8 @@ import {
   mockComparacionPeriodos,
   type EstadisticaMensual,
 } from "../../data/reportesData";
-import { mockUserData, mockNotifications } from "../../data/homeData";
+import { mockNotifications } from "../../data/homeData";
+import { useAuth } from "../../contexts/AuthContext";
 
 const { width: screenWidth } = Dimensions.get("window");
 const chartWidth = screenWidth - 80;
@@ -32,13 +33,18 @@ const chartHeight = 150;
  */
 export default function ReportesScreen() {
   const router = useRouter();
+  const { user } = useAuth(); // 👈 Acceder al usuario logueado
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [activeTab, setActiveTab] = useState<"prestamos" | "ganancias" | "clientes" | "empleados">("prestamos");
   const [showFiltros, setShowFiltros] = useState(false);
   
-  const userData = mockUserData;
+  const userData = {
+    name: user?.full_name || "Usuario",
+    role: "Gestor operador",
+    avatar: null,
+  };
   const notifications = mockNotifications;
 
   // Calcular monto total según el tab activo

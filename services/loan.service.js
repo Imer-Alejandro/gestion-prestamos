@@ -8,6 +8,7 @@ export async function createLoan(data) {
     `INSERT INTO loans (
       user_id, client_id,
       contract_number,
+      loan_type,
       principal_amount, disbursed_amount,
       interest_rate, interest_calculation_base,
       late_fee_type, late_fee_value,
@@ -17,11 +18,12 @@ export async function createLoan(data) {
       status,
       created_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.user_id,
       data.client_id,
       data.contract_number,
+      data.loan_type || 'personal',
       data.principal_amount,
       data.disbursed_amount,
       data.interest_rate,

@@ -11,29 +11,26 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuth } from "../../contexts/AuthContext";
 
 /**
  * Pantalla de Completar Información - Paso 2
- * Formulario final para completar el registro de la organización:
- * - Representante
- * - Dirección
- * - Correo
- * - Teléfono
- * - Nueva contraseña
- * - Repetir contraseña
+ * Formulario final para completar el registro de la organización
  */
 export default function CompletarInformacionScreen() {
   const router = useRouter();
+  const { register } = useAuth();
   // Recibe los datos del paso anterior
   const params = useLocalSearchParams();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     representante: "",
     direccion: "",
     correo: "",
-    codigoArea: "",
+    codigoArea: "+1",
     telefono: "",
     nuevaContrasena: "",
     repetirContrasena: "",
@@ -46,7 +43,7 @@ export default function CompletarInformacionScreen() {
   };
 
   // Maneja el envío del formulario completo
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validaciones
     if (!formData.representante.trim()) {
       Alert.alert("Error", "El nombre del representante es requerido");
@@ -75,22 +72,48 @@ export default function CompletarInformacionScreen() {
 
     // Combinar todos los datos del registro
     const registroCompleto = {
-      ...params,
-      ...formData,
+      full_name: formData.representante,
+      email: formData.correo,
+      phone: formData.codigoArea + formData.telefono,
+      password: formData.nuevaContrasena,
+      // Datos adicionales de la organización (pueden guardarse después)
+      organizacion: {
+        nombre: params.nombreOrganizacion,
+        eslogan: params.eslogan,
+        logo: params.logo,
+        tipo: params.tipoOrganizacion,
+        direccion: formData.direccion,
+      }
     };
 
-    // TODO: Implementar registro en Firebase
-    console.log("Registro completo:", registroCompleto);
-    Alert.alert(
-      "Éxito",
-      "Organización registrada correctamente",
-      [
-        {
-          text: "OK",
-          onPress: () => router.replace("../index"),
-        },
-      ]
-    );
+    try {
+      setIsLoading(true);
+      
+      // Registrar el usuario en la base de datos
+      await register(registroCompleto);
+      
+      // El AuthContext redirigirá automáticamente a /home
+      Alert.alert(
+        "¡Bienvenido! 🎉",
+        "Tu organización ha sido registrada exitosamente",
+        [
+          {
+            text: "Continuar",
+            onPress: () => {
+              // La navegación se maneja automáticamente por AuthContext
+            }
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error("Error en registro:", error);
+      Alert.alert(
+        "Error",
+        error.message || "No se pudo completar el registro. Intente nuevamente."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -255,11 +278,14 @@ export default function CompletarInformacionScreen() {
           {/* Botón continuar */}
           <TouchableOpacity
             onPress={handleSubmit}
-            className="bg-white/90 rounded-lg py-4 items-center mt-4"
+            disabled={isLoading}
+            className={`bg-white/90 rounded-lg py-4 items-center mt-4 ${
+              isLoading ? "opacity-50" : ""
+            }`}
             activeOpacity={0.8}
           >
             <Text className="text-[#13678A] font-semibold text-lg">
-              continuar
+              {isLoading ? "Registrando..." : "continuar"}
             </Text>
           </TouchableOpacity>
         </View>

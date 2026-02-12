@@ -9,6 +9,11 @@ export async function getDatabase() {
   return db;
 }
 
+// Alias para compatibilidad con user.service.js
+export async function getDb() {
+  return await getDatabase();
+}
+
 export async function initializeDatabase() {
   const database = await getDatabase();
 
@@ -91,6 +96,7 @@ export async function initializeDatabase() {
       client_id INTEGER NOT NULL,
 
       contract_number TEXT UNIQUE,
+      loan_type TEXT DEFAULT 'personal',
 
       principal_amount REAL NOT NULL,
       disbursed_amount REAL NOT NULL,

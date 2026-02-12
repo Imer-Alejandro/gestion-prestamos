@@ -69,3 +69,39 @@ export async function loginWithPassword(password) {
 
   return user;
 }
+
+/* LOGIN CON EMAIL Y CONTRASEÑA */
+export async function loginWithEmail(email, password) {
+  const db = await getDb();
+
+  console.log('🔐 Intentando login con:', email);
+
+  // Buscar usuario por email
+  const user = await db.getFirstAsync(
+    `SELECT * FROM users WHERE email = ? AND is_active = 1`,
+    [email.toLowerCase().trim()]
+  );
+
+  console.log('👤 Usuario encontrado:', user ? `${user.full_name} (${user.email})` : 'NO ENCONTRADO');
+
+  if (!user) {
+    throw new Error("Usuario no encontrado");
+  }
+
+  const passwordHash = await hashPassword(password);
+  
+  console.log('🔑 Hash de password ingresado:', passwordHash);
+  console.log('🔑 Hash guardado en BD:', user.password_hash);
+  console.log('✅ ¿Coinciden?', passwordHash === user.password_hash);
+
+  if (passwordHash !== user.password_hash) {
+    throw new Error("Contraseña incorrecta");
+  }
+
+  await db.runAsync(`UPDATE users SET last_login = ? WHERE id = ?`, [
+    new Date().toISOString(),
+    user.id,
+  ]);
+
+  return user;
+}

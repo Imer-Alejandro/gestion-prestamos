@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface DrawerMenuProps {
   visible: boolean;
@@ -40,6 +41,7 @@ const DRAWER_WIDTH = 320;
  */
 export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuProps) {
   const router = useRouter();
+  const { logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -166,11 +168,10 @@ export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuPro
         {
           text: "Cerrar sesión",
           style: "destructive",
-          onPress: () => {
+          onPress: async () => {
             onClose();
-            setTimeout(() => {
-              router.replace("/login");
-            }, 300);
+            await logout();
+            // AuthContext se encarga de la navegación
           },
         },
       ]

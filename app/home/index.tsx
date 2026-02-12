@@ -14,29 +14,28 @@ import {
   mockDailyTotals,
   mockNotifications,
   mockOperations,
-  mockUserData
 } from "../../data/homeData";
+import { useAuth } from "../../contexts/AuthContext";
 
 /**
  * Dashboard/Home Principal
- * Pantalla principal de la aplicación que muestra:
- * - Header con perfil de usuario
- * - Buscador de clientes
- * - Banner de promociones
- * - Resumen de totales (préstamos y abonos)
- * - Historial de operaciones recientes
- * - Bottom navigation bar
+ * Pantalla principal de la aplicación
  */
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
 
   // Datos de ejemplo - en producción vendrían del backend
-  const userData = mockUserData;
+  const userData = {
+    name: user?.full_name || "Usuario",
+    role: "Gestor operador",
+    avatar: null,
+  };
   const notifications = mockNotifications;
   const operations = mockOperations;
   const dailyTotals = mockDailyTotals;

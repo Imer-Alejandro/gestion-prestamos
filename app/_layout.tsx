@@ -13,8 +13,6 @@ import { useColorScheme } from "../hooks/useColorScheme";
 import { AuthProvider } from "../contexts/AuthContext";
 import { initializeDatabase } from "../database/db";
 import { createTestUser, createTestClients } from "../database/testUtils";
-import { createTestLoans } from "../database/createTestLoans";
-
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
@@ -31,16 +29,15 @@ export default function RootLayout() {
       try {
         await initializeDatabase();
         console.log("✅ Base de datos inicializada");
-        
+
         // Crear datos de prueba si no existe (solo para desarrollo)
         if (__DEV__) {
           await createTestUser();
           await createTestClients();
           // Esperar un momento para asegurar que se crearon los clientes
-          await new Promise(resolve => setTimeout(resolve, 500));
-          await createTestLoans();
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
-        
+
         setDbInitialized(true);
       } catch (error) {
         console.error("❌ Error inicializando la base de datos:", error);
@@ -66,91 +63,94 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           {/* Pantalla inicial - Splash Screen */}
           <Stack.Screen name="index" options={{ headerShown: false }} />
-          
+
           {/* Stack de login y registro */}
-          <Stack.Screen 
-            name="login/index" 
-            options={{ 
+          <Stack.Screen
+            name="login/index"
+            options={{
               headerShown: false,
-              animation: 'fade' 
-            }} 
+              animation: "fade",
+            }}
           />
-          <Stack.Screen 
-            name="login/registro" 
-            options={{ 
+          <Stack.Screen
+            name="login/registro"
+            options={{
               headerShown: false,
-              animation: 'slide_from_right' 
-            }} 
+              animation: "slide_from_right",
+            }}
           />
-          <Stack.Screen 
-            name="login/registro-organizacion" 
-            options={{ 
+          <Stack.Screen
+            name="login/registro-organizacion"
+            options={{
               headerShown: false,
-              animation: 'slide_from_right' 
-            }} 
+              animation: "slide_from_right",
+            }}
           />
-          <Stack.Screen 
-            name="login/completar-informacion" 
-            options={{ 
+          <Stack.Screen
+            name="login/completar-informacion"
+            options={{
               headerShown: false,
-              animation: 'slide_from_right' 
-            }} 
+              animation: "slide_from_right",
+            }}
           />
-          <Stack.Screen 
-            name="login/recuperar-contrasena" 
-            options={{ 
+          <Stack.Screen
+            name="login/recuperar-contrasena"
+            options={{
               headerShown: false,
-              animation: 'slide_from_right' 
-            }} 
+              animation: "slide_from_right",
+            }}
           />
-          <Stack.Screen 
-            name="login/validar-correo" 
-            options={{ 
+          <Stack.Screen
+            name="login/validar-correo"
+            options={{
               headerShown: false,
-              animation: 'slide_from_right' 
-            }} 
+              animation: "slide_from_right",
+            }}
           />
-          <Stack.Screen 
-            name="login/firma-digital" 
-            options={{ 
+          <Stack.Screen
+            name="login/firma-digital"
+            options={{
               headerShown: false,
-              animation: 'slide_from_right' 
-            }} 
+              animation: "slide_from_right",
+            }}
           />
-          <Stack.Screen 
-            name="login/agregar-empleados" 
-            options={{ 
+          <Stack.Screen
+            name="login/agregar-empleados"
+            options={{
               headerShown: false,
-              animation: 'slide_from_right' 
-            }} 
+              animation: "slide_from_right",
+            }}
           />
-          <Stack.Screen 
-            name="login/onboarding" 
-            options={{ 
+          <Stack.Screen
+            name="login/onboarding"
+            options={{
               headerShown: false,
-              animation: 'fade',
-              gestureEnabled: false
-            }} 
+              animation: "fade",
+              gestureEnabled: false,
+            }}
           />
-          <Stack.Screen 
-            name="login/registro-empleado" 
-            options={{ 
+          <Stack.Screen
+            name="login/registro-empleado"
+            options={{
               headerShown: false,
-              animation: 'slide_from_right' 
-            }} 
+              animation: "slide_from_right",
+            }}
           />
-          <Stack.Screen 
-            name="login/validar-correo-empleado" 
-            options={{ 
+          <Stack.Screen
+            name="login/validar-correo-empleado"
+            options={{
               headerShown: false,
-              animation: 'slide_from_right' 
-            }} 
+              animation: "slide_from_right",
+            }}
           />
 
           {/* Otras secciones de la app */}
           <Stack.Screen name="home" options={{ headerShown: false }} />
           <Stack.Screen name="clientes" options={{ headerShown: false }} />
-          <Stack.Screen name="prestamos_abonos" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="prestamos_abonos"
+            options={{ headerShown: false }}
+          />
           <Stack.Screen name="reportes" options={{ headerShown: false }} />
           <Stack.Screen name="configuracion" options={{ headerShown: false }} />
         </Stack>

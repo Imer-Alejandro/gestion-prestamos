@@ -95,6 +95,10 @@ export async function initializeDatabase() {
       user_id INTEGER NOT NULL,
       client_id INTEGER NOT NULL,
 
+      current_balance REAL NOT NULL,
+      total_interest REAL DEFAULT 0,
+      total_late_fees REAL DEFAULT 0,
+
       contract_number TEXT UNIQUE,
       loan_type TEXT DEFAULT 'personal',
 
@@ -159,7 +163,35 @@ export async function initializeDatabase() {
 
     CREATE INDEX IF NOT EXISTS idx_payments_date
     ON payments(payment_date);
-  `);
+
+
+    -------------------------------------------------------
+    -- loan_installments 
+    -------------------------------------------------------
+
+    CREATE TABLE loan_installments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    loan_id INTEGER NOT NULL,
+
+    installment_number INTEGER NOT NULL,
+    due_date TEXT NOT NULL,
+
+    scheduled_amount REAL NOT NULL,
+    capital_amount REAL NOT NULL,
+    interest_amount REAL NOT NULL,
+
+    late_fee_accrued REAL DEFAULT 0,
+    amount_paid REAL DEFAULT 0,
+
+    status TEXT NOT NULL, -- pending | partial | paid | overdue
+
+    created_at TEXT NOT NULL,
+    updated_at TEXT,
+
+    FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+  );
+
+    `);
 
   console.log("✅ Database initialized successfully");
 }

@@ -100,7 +100,7 @@ export async function initializeDatabase() {
       total_late_fees REAL DEFAULT 0,
 
       contract_number TEXT UNIQUE,
-      loan_type TEXT DEFAULT 'personal',
+      loan_type TEXT DEFAULT 'personal',a
 
       principal_amount REAL NOT NULL,
       disbursed_amount REAL NOT NULL,

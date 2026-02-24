@@ -6,24 +6,15 @@ export async function createLoan(data) {
 
   const result = await db.runAsync(
     `INSERT INTO loans (
-      user_id, client_id,
-      contract_number,
-      loan_type,
-      principal_amount, disbursed_amount,
-      interest_rate, interest_calculation_base,
-      late_fee_type, late_fee_value,
-      start_date, due_date,
-      payment_frequency,
-      grace_days,
-      status,
-      created_at
+    user_id,  
+
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.user_id,
       data.client_id,
       data.contract_number,
-      data.loan_type || 'personal',
+      data.loan_type || "personal",
       data.principal_amount,
       data.disbursed_amount,
       data.interest_rate,

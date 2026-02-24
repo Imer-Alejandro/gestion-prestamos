@@ -107,9 +107,13 @@ export async function initializeDatabase() {
 
       interest_rate REAL NOT NULL,
       interest_calculation_base TEXT NOT NULL,
+      interest_rate_period TEXT NOT NULL,
 
       late_fee_type TEXT NOT NULL,
       late_fee_value REAL NOT NULL,
+
+      amortization_type TEXT NOT NULL,
+      installments INTEGER NOT NULL,
 
       start_date TEXT NOT NULL,
       due_date TEXT NOT NULL,
@@ -169,27 +173,32 @@ export async function initializeDatabase() {
     -- loan_installments 
     -------------------------------------------------------
 
-    CREATE TABLE loan_installments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    loan_id INTEGER NOT NULL,
+    CREATE TABLE IF NOT EXISTS loan_installments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  loan_id INTEGER NOT NULL,
 
-    installment_number INTEGER NOT NULL,
-    due_date TEXT NOT NULL,
+  installment_number INTEGER NOT NULL,
+  due_date TEXT NOT NULL,
 
-    scheduled_amount REAL NOT NULL,
-    capital_amount REAL NOT NULL,
-    interest_amount REAL NOT NULL,
+  scheduled_amount REAL NOT NULL,
 
-    late_fee_accrued REAL DEFAULT 0,
-    amount_paid REAL DEFAULT 0,
+  capital_amount REAL NOT NULL,
+  interest_amount REAL NOT NULL,
 
-    status TEXT NOT NULL, -- pending | partial | paid | overdue
+  remaining_capital REAL NOT NULL,
+  remaining_interest REAL NOT NULL,
+  remaining_late_fee REAL DEFAULT 0,
 
-    created_at TEXT NOT NULL,
-    updated_at TEXT,
+  late_fee_accrued REAL DEFAULT 0,
+  amount_paid REAL DEFAULT 0,
 
-    FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
-  );
+  status TEXT NOT NULL, -- pending | partial | paid | overdue
+
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+
+  FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+);
 
     `);
 

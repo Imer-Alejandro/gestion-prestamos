@@ -7,7 +7,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View,KeyboardAvoidingView, Platform
 } from "react-native";
 
 /**
@@ -73,13 +73,25 @@ export default function RegistroOrganizacionScreen() {
   };
 
   return (
-    <ScrollView 
-      className="flex-1 bg-[#13678A]"
-      contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View className="px-8 py-10">
+    <View className="flex-1 bg-[#13678A]">
+      {/* Botón Volver - Posición fija arriba a la izquierda */}
+      <View className="px-8 pt-14 pb-6">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="flex-row items-center self-start"
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color="#ffffff" />
+          <Text className="text-white text-base ml-2 font-medium">Volver</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        <View className="px-8">
         {/* Header */}
         <View className="mb-8">
           <Text className="text-white text-4xl font-bold mb-2">
@@ -92,8 +104,8 @@ export default function RegistroOrganizacionScreen() {
 
         {/* Formulario */}
         <View className="mb-6">
-          {/* Campo: Nombre de la organización */}
-          <View className="mb-5">
+          {/* Campo: Nombre de la organización - Altura fija para evitar movimiento */}
+          <View className="mb-4">
             <Text className="text-white/80 text-base mb-2">
               Nombre organización
             </Text>
@@ -104,12 +116,13 @@ export default function RegistroOrganizacionScreen() {
               }
               placeholder=""
               placeholderTextColor="#ffffff40"
-              className="bg-white/10 border border-white/30 rounded-lg px-4 py-4 text-white text-lg"
+              className="bg-white/10 border border-white/30 rounded-lg px-6 text-white text-lg"
+              style={{ height: 48 }}
             />
           </View>
 
-          {/* Campo: Eslogan */}
-          <View className="mb-5">
+          {/* Campo: Eslogan - Altura fija para evitar movimiento */}
+          <View className="mb-4">
             <Text className="text-white/80 text-sm mb-2">Eslogan</Text>
             <TextInput
               value={formData.eslogan}
@@ -118,15 +131,17 @@ export default function RegistroOrganizacionScreen() {
               }
               placeholder=""
               placeholderTextColor="#ffffff40"
-              className="bg-white/10 border border-white/30 rounded-lg px-4 py-3.5 text-white text-base"
+              className="bg-white/10 border border-white/30 rounded-lg px-4 text-white text-base"
+              style={{ height: 48 }}
             />
           </View>
 
-          {/* Campo: Logo */}
+          {/* Campo: Logo - Altura fija para mantener consistencia visual */}
           <View className="mb-6">
             <Text className="text-white/80 text-sm mb-2">Logo</Text>
             <TouchableOpacity
-              className="bg-white/10 border border-white/30 rounded-lg px-4 py-3.5 flex-row items-center justify-between"
+              className="bg-white/10 border border-white/30 rounded-lg px-4 flex-row items-center justify-between"
+              style={{ height: 48 }}
               activeOpacity={0.7}
             >
               <Text className="text-white/40 text-base">
@@ -197,10 +212,11 @@ export default function RegistroOrganizacionScreen() {
             </View>
           </View>
 
-          {/* Botón continuar */}
+          {/* Botón continuar - Altura fija para mantener consistencia */}
           <TouchableOpacity
             onPress={handleContinuar}
-            className="bg-white/90 rounded-lg py-4 items-center mt-4"
+            className="bg-white/90 rounded-lg items-center justify-center mt-4"
+            style={{ height: 56 }}
             activeOpacity={0.8}
           >
             <Text className="text-[#13678A] font-semibold text-base">
@@ -208,17 +224,8 @@ export default function RegistroOrganizacionScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-
-        {/* Botón volver */}
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="flex-row items-center justify-center py-3 mt-2"
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={20} color="#ffffff90" />
-          <Text className="text-white/70 text-sm ml-2">Volver</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   );
 }

@@ -82,14 +82,14 @@ export default function LoginScreen() {
     }
   };
 
-  // Maneja el inicio de sesión con proveedores externos
+  /* Maneja el inicio de sesión con proveedores externos
   const handleSocialLogin = (provider: string) => {
     // TODO: Implementar autenticación con proveedores
     Alert.alert(
       "Próximamente",
       `Login con ${provider} estará disponible pronto`,
     );
-  };
+  };*/
 
   return (
     <KeyboardAvoidingView
@@ -208,7 +208,7 @@ export default function LoginScreen() {
 
           {/* Links de navegación en el footer */}
           <View className="flex-row justify-between mt-8 mb-6">
-            <TouchableOpacity onPress={() => router.push("/login/registro")}>
+            <TouchableOpacity onPress={() => router.push("/login/registro-organizacion")}>
               <Text className="text-white/80 text-base underline">
                 registrarse
               </Text>

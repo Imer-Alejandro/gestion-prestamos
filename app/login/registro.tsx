@@ -48,26 +48,26 @@ export default function RegistroTipoScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* Opción Empleado */}
+        {/* Opción Empleado 
         <TouchableOpacity
           onPress={() => handleSelectType("empleado")}
           className="items-center"
           activeOpacity={0.7}
         >
-          {/* Card con ilustración */}
+          {/* Card con ilustración 
           <View className="bg-white/95 rounded-2xl p-6 w-36 h-36 items-center justify-center mb-3 shadow-lg">
-            {/* Ilustración de empleado (person) */}
+            {/* Ilustración de empleado (person) 
             <View className="bg-[#13678A]/10 rounded-full p-4 mb-2">
               <Ionicons name="person" size={48} color="#13678A" />
             </View>
           </View>
-          {/* Label */}
+          {/* Label 
           <Text className="text-white text-lg font-medium">Empleado</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>*/}
       </View>
 
       {/* Botón para volver al login */}
-      <View className="absolute bottom-10 left-8 right-8">
+      <View className="absolute top-16 left-6 ">
         <TouchableOpacity
           onPress={() => router.back()}
           className="flex-row items-center justify-center py-3"

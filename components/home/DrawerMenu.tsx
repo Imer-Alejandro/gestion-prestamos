@@ -52,7 +52,7 @@ export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuPro
     { id: "clientes", label: "Clientes", icon: "people-outline", route: "/clientes" },
     { id: "prestamos", label: "Préstamos y abonos", icon: "cash-outline", route: "/prestamos_abonos" },
     { id: "reportes", label: "Reportes y consultas", icon: "bar-chart-outline", route: "/reportes" },
-    { id: "empleados", label: "Empleados", icon: "briefcase-outline", route: "/empleados" },
+  //  {id: "empleados", label: "Empleados", icon: "briefcase-outline", route: "/empleados" }
   ];
 
   // Menú inferior

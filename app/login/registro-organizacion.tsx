@@ -7,7 +7,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,KeyboardAvoidingView, Platform
+  View,
 } from "react-native";
 
 /**
@@ -117,7 +117,7 @@ export default function RegistroOrganizacionScreen() {
               placeholder=""
               placeholderTextColor="#ffffff40"
               className="bg-white/10 border border-white/30 rounded-lg px-6 text-white text-lg"
-              style={{ height: 48 }}
+              style={{ height: 56, paddingVertical: 0 }}
             />
           </View>
 
@@ -132,7 +132,7 @@ export default function RegistroOrganizacionScreen() {
               placeholder=""
               placeholderTextColor="#ffffff40"
               className="bg-white/10 border border-white/30 rounded-lg px-4 text-white text-base"
-              style={{ height: 48 }}
+              style={{ height: 52, paddingVertical: 0 }}
             />
           </View>
 
@@ -141,7 +141,7 @@ export default function RegistroOrganizacionScreen() {
             <Text className="text-white/80 text-sm mb-2">Logo</Text>
             <TouchableOpacity
               className="bg-white/10 border border-white/30 rounded-lg px-4 flex-row items-center justify-between"
-              style={{ height: 48 }}
+              style={{ height: 52 }}
               activeOpacity={0.7}
             >
               <Text className="text-white/40 text-base">

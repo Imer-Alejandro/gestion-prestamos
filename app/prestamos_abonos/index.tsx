@@ -1,23 +1,32 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ScrollView,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Alert,
 } from "react-native";
 import AppHeader from "../../components/shared/AppHeader";
 import DrawerMenu from "../../components/home/DrawerMenu";
 import NotificationModal from "../../components/home/NotificationModal";
+import { PrestamoCard } from "../../components/prestamos_abonos/PrestamoCard";
+import { AbonoCard } from "../../components/prestamos_abonos/AbonoCard";
+import { NuevoPrestamoModal } from "../../components/prestamos_abonos/NuevoPrestamoModal";
+import { RegistroAbonoModal } from "../../components/prestamos_abonos/RegistroAbonoModal";
+import { DetallesPrestamoModal } from "../../components/prestamos_abonos/DetallesPrestamoModal";
 import {
   formatCurrencyPrestamos,
-  mockAbonos,
-  mockPrestamosActivos,
   type Prestamo
 } from "../../data/prestamosData";
 import { mockNotifications } from "../../data/homeData";
 import { useAuth } from "../../contexts/AuthContext";
+
+// Importar servicios
+import { getLoansByStatus, createLoan } from "../../services/loan.service";
+import { createPayment } from "../../services/payment.service";
+import { getClients } from "../../services/client.service";
 
 /**
  * Pantalla de Préstamos y Abonos
@@ -25,24 +34,74 @@ import { useAuth } from "../../contexts/AuthContext";
  */
 export default function PrestamosScreen() {
   const router = useRouter();
-  const { user } = useAuth(); // 👈 Acceder al usuario logueado
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showNuevoPrestamo, setShowNuevoPrestamo] = useState(false);
-  
+  const [showRegistroAbono, setShowRegistroAbono] = useState(false);
+  const [showDetallesPrestamo, setShowDetallesPrestamo] = useState(false);
+  const [selectedPrestamo, setSelectedPrestamo] = useState<Prestamo | null>(null);
+
+  // Estado de datos
+  const [loans, setLoans] = useState<Prestamo[]>([]);
+  const [abonos, setAbonos] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+
   const userData = {
     name: user?.full_name || "Usuario",
     role: "Gestor operador",
     avatar: null,
   };
+
   const [activeTab, setActiveTab] = useState<"prestamos" | "abonos">("prestamos");
   const [showFiltros, setShowFiltros] = useState(false);
-  
+
   const notifications = mockNotifications;
 
+  // Cargar datos iniciales
+  useEffect(() => {
+    if (user?.id) {
+      loadData();
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadData = async () => {
+    try {
+      const [loansData, clientsData] = await Promise.all([
+        getLoansByStatus(user!.id, 'active'),
+        getClients(user!.id)
+      ]);
+
+      // Transformar datos de loans al formato Prestamo
+      const transformedLoans: Prestamo[] = loansData.map((loan: any) => ({
+        id: loan.id.toString(),
+        clienteId: loan.client_id.toString(),
+        clienteNombre: clientsData.find((c: any) => c.id === loan.client_id)?.first_name + ' ' +
+                      clientsData.find((c: any) => c.id === loan.client_id)?.last_name || 'Cliente',
+        clienteIniciales: (clientsData.find((c: any) => c.id === loan.client_id)?.first_name?.[0] || '') +
+                         (clientsData.find((c: any) => c.id === loan.client_id)?.last_name?.[0] || ''),
+        totalPrestamo: loan.principal_amount,
+        totalAbonado: loan.total_paid,
+        deudaPendiente: loan.current_balance,
+        deudaPendientePorcentaje: loan.current_balance / loan.principal_amount,
+        cuotas: loan.installments,
+        estado: loan.status === 'active' ? 'activo' as const :
+               loan.status === 'completed' ? 'completado' as const : 'mora' as const,
+        fechaCreacion: loan.created_at,
+      }));
+
+      setLoans(transformedLoans);
+      setClients(clientsData);
+      setAbonos([]); // TODO: Implementar obtener abonos
+    } catch (error) {
+      console.error("Error cargando datos:", error);
+      Alert.alert('Error', 'No se pudieron cargar los datos');
+    }
+  };
+
   // Calcular total de deudas pendientes
-  const totalDeudasPendientes = mockPrestamosActivos.reduce(
+  const totalDeudasPendientes = loans.reduce(
     (sum, prestamo) => sum + prestamo.deudaPendiente,
     0
   );
@@ -57,91 +116,81 @@ export default function PrestamosScreen() {
     console.log("Buscando:", searchQuery);
   };
 
+  // Filtrar préstamos por búsqueda
+  const filteredLoans = loans.filter(loan =>
+    loan.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    loan.id.includes(searchQuery)
+  );
+
   // Navegar al detalle del préstamo
   const handlePrestamoPress = (prestamoId: string) => {
-    console.log("Ver préstamo:", prestamoId);
-    // TODO: Navegar al detalle del préstamo
+    const prestamo = loans.find(p => p.id === prestamoId);
+    if (prestamo) {
+      setSelectedPrestamo(prestamo);
+      setShowDetallesPrestamo(true);
+    }
   };
 
   // Abrir menú de opciones del préstamo
   const handlePrestamoMenu = (prestamoId: string) => {
-    console.log("Menú préstamo:", prestamoId);
-    // TODO: Abrir menú de opciones
+    Alert.alert(
+      "Opciones del Préstamo",
+      "¿Qué acción deseas realizar?",
+      [
+        { text: "Ver Detalles", onPress: () => handlePrestamoPress(prestamoId) },
+        { text: "Registrar Pago", onPress: () => {
+          const prestamo = loans.find(p => p.id === prestamoId);
+          if (prestamo) {
+            setSelectedPrestamo(prestamo);
+            setShowRegistroAbono(true);
+          }
+        }},
+        { text: "Cancelar", style: "cancel" }
+      ]
+    );
+  };
+
+  // Registrar pago/abono
+  const handleRegisterPayment = async (paymentData: any) => {
+    try {
+      await createPayment({ ...paymentData, user_id: user!.id });
+      await loadData(); // Recargar datos
+      setShowRegistroAbono(false);
+      setShowDetallesPrestamo(false);
+    } catch (error) {
+      console.error("Error registrando pago:", error);
+      // TODO: Mostrar error al usuario
+    }
+  };
+
+  // Crear nuevo préstamo
+  const handleCreateLoan = async (loanData: any) => {
+    try {
+      await createLoan({ ...loanData, user_id: user!.id });
+      await loadData(); // Recargar datos
+      setShowNuevoPrestamo(false);
+    } catch (error) {
+      console.error("Error creando préstamo:", error);
+      // TODO: Mostrar error al usuario
+    }
   };
 
   // Renderizar card de préstamo
   const renderPrestamoCard = (prestamo: Prestamo) => (
-    <TouchableOpacity
+    <PrestamoCard
       key={prestamo.id}
+      prestamo={prestamo}
       onPress={() => handlePrestamoPress(prestamo.id)}
-      className="bg-white rounded-2xl p-4 mb-3 shadow-sm"
-      activeOpacity={0.7}
-      style={{
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-      }}
-    >
-      {/* Header con monto total y menú */}
-      <View className="flex-row items-start justify-between mb-3">
-        <View>
-          <Text className="text-gray-500 text-xs mb-1">Total del prestamo</Text>
-          <Text className="text-blue-600 text-2xl font-bold">
-            {formatCurrencyPrestamos(prestamo.totalPrestamo)}
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => handlePrestamoMenu(prestamo.id)}
-          className="w-8 h-8 items-center justify-center"
-          activeOpacity={0.7}
-        >
-          <Ionicons name="ellipsis-vertical" size={20} color="#6B7280" />
-        </TouchableOpacity>
-      </View>
+      onMenuPress={() => handlePrestamoMenu(prestamo.id)}
+    />
+  );
 
-      {/* Nombre del cliente con avatar */}
-      <View className="flex-row items-center mb-3 pb-3 border-b border-gray-100">
-        <View className="w-10 h-10 rounded-full bg-blue-600 items-center justify-center mr-2">
-          <Text className="text-white text-sm font-bold">
-            {prestamo.clienteIniciales}
-          </Text>
-        </View>
-        <Text className="text-gray-700 text-sm">{prestamo.clienteNombre}</Text>
-      </View>
-
-      {/* Grid de información financiera */}
-      <View className="flex-row flex-wrap">
-        <View className="w-1/2 mb-3">
-          <Text className="text-gray-500 text-xs mb-1">Total abonado</Text>
-          <Text className="text-gray-900 text-sm font-semibold">
-            {formatCurrencyPrestamos(prestamo.totalAbonado)}
-          </Text>
-        </View>
-
-        <View className="w-1/2 mb-3">
-          <Text className="text-gray-500 text-xs mb-1">Deuda pendiente</Text>
-          <Text className="text-gray-900 text-sm font-semibold">
-            {formatCurrencyPrestamos(prestamo.deudaPendiente)}
-          </Text>
-        </View>
-
-        <View className="w-1/2">
-          <Text className="text-gray-500 text-xs mb-1">Deuda pendiente</Text>
-          <Text className="text-gray-900 text-sm font-semibold">
-            {(prestamo.deudaPendientePorcentaje * 100).toFixed(3)}%
-          </Text>
-        </View>
-
-        <View className="w-1/2">
-          <Text className="text-gray-500 text-xs mb-1">Cuotas</Text>
-          <Text className="text-gray-900 text-sm font-semibold">
-            {prestamo.cuotas}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+  // Renderizar card de abono
+  const renderAbonoCard = (abono: any) => (
+    <AbonoCard
+      key={abono.id}
+      abono={abono}
+    />
   );
 
   return (
@@ -191,7 +240,7 @@ export default function PrestamosScreen() {
               activeTab === "prestamos" ? "text-gray-900" : "text-gray-500"
             }`}
           >
-            Préstamos ({mockPrestamosActivos.length})
+            Préstamos ({filteredLoans.length})
           </Text>
         </TouchableOpacity>
 
@@ -219,7 +268,7 @@ export default function PrestamosScreen() {
             {/* Header de préstamos activos con filtro */}
             <View className="flex-row items-center justify-between mb-3">
               <Text className="text-gray-700 text-sm font-medium">
-                Préstamos - activos ({mockPrestamosActivos.length})
+                Préstamos - activos ({filteredLoans.length})
               </Text>
               <TouchableOpacity
                 onPress={() => setShowFiltros(!showFiltros)}
@@ -231,40 +280,12 @@ export default function PrestamosScreen() {
             </View>
 
             {/* Lista de préstamos */}
-            {mockPrestamosActivos.map(renderPrestamoCard)}
+            {filteredLoans.map(renderPrestamoCard)}
           </>
         ) : (
           /* Lista de abonos */
           <View className="pb-6">
-            {mockAbonos.map((abono) => (
-              <View
-                key={abono.id}
-                className="bg-white rounded-xl p-4 mb-3 flex-row items-center justify-between shadow-sm"
-                style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }}
-              >
-                <View className="flex-1">
-                  <Text className="text-blue-600 text-xl font-bold mb-1">
-                    {formatCurrencyPrestamos(abono.monto)}
-                  </Text>
-                  <Text className="text-gray-500 text-xs">
-                    fecha de pago: {abono.fechaPago}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => console.log("Menú abono", abono.id)}
-                  className="w-8 h-8 items-center justify-center"
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="ellipsis-vertical" size={20} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-            ))}
+            {abonos.map(renderAbonoCard)}
           </View>
         )}
 
@@ -339,6 +360,37 @@ export default function PrestamosScreen() {
         notifications={notifications}
         onClose={() => setShowNotifications(false)}
         onDeleteNotification={handleDeleteNotification}
+      />
+
+      {/* Modal Nuevo Préstamo */}
+      <NuevoPrestamoModal
+        visible={showNuevoPrestamo}
+        onClose={() => setShowNuevoPrestamo(false)}
+        onSave={handleCreateLoan}
+        clients={clients}
+      />
+
+      {/* Modal Detalles Préstamo */}
+      <DetallesPrestamoModal
+        visible={showDetallesPrestamo}
+        onClose={() => setShowDetallesPrestamo(false)}
+        loanId={selectedPrestamo ? parseInt(selectedPrestamo.id) : undefined}
+        onRegisterPayment={(loanId) => {
+          const prestamo = loans.find(p => p.id === loanId.toString());
+          if (prestamo) {
+            setSelectedPrestamo(prestamo);
+            setShowRegistroAbono(true);
+          }
+        }}
+      />
+
+      {/* Modal Registro Abono */}
+      <RegistroAbonoModal
+        visible={showRegistroAbono}
+        onClose={() => setShowRegistroAbono(false)}
+        onSave={handleRegisterPayment}
+        loanId={selectedPrestamo ? parseInt(selectedPrestamo.id) : undefined}
+        maxAmount={selectedPrestamo?.deudaPendiente}
       />
 
       {/* Drawer Menu */}

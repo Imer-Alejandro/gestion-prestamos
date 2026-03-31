@@ -1,0 +1,9 @@
+// Este archivo ya no es necesario - se han implementado todos los componentes:
+// ✅ PrestamoCard.tsx - Tarjeta para mostrar préstamos en lista
+// ✅ AbonoCard.tsx - Tarjeta para mostrar abonos/pagos
+// ✅ NuevoPrestamoModal.tsx - Modal completo para crear nuevos préstamos
+// ✅ RegistroAbonoModal.tsx - Modal para registrar pagos/abonos
+// ✅ DetallesPrestamoModal.tsx - Modal detallado con pestañas (General, Cuotas, Pagos)
+//
+// Los componentes están listos para ser integrados en la pantalla principal
+// app/prestamos_abonos/index.tsx

@@ -1,51 +1,215 @@
 import { getDb } from "../database/db.js";
+import { generateFrenchAmortization } from "../utils/amortization.utils.js";
+import { generateAndSaveInstallments } from "./installment.service.js";
 
 /* CREATE LOAN */
 export async function createLoan(data) {
+  // Validaciones básicas
+  if (!data.user_id || !data.client_id || !data.principal_amount) {
+    throw new Error("Missing required fields: user_id, client_id, principal_amount");
+  }
+
+  if (!data.interest_rate || !data.installments || !data.start_date) {
+    throw new Error("Missing required fields: interest_rate, installments, start_date");
+  }
+
   const db = await getDb();
 
   const result = await db.runAsync(
     `INSERT INTO loans (
-    user_id,  
-
+      user_id,
+      client_id,
+      current_balance,
+      total_interest,
+      total_late_fees,
+      contract_number,
+      loan_type,
+      principal_amount,
+      disbursed_amount,
+      interest_rate,
+      interest_calculation_base,
+      interest_rate_period,
+      late_fee_type,
+      late_fee_value,
+      amortization_type,
+      installments,
+      start_date,
+      due_date,
+      payment_frequency,
+      grace_days,
+      status,
+      total_paid,
+      created_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.user_id,
       data.client_id,
+      data.principal_amount, // current_balance inicial = principal
+      0, // total_interest
+      0, // total_late_fees
       data.contract_number,
       data.loan_type || "personal",
       data.principal_amount,
       data.disbursed_amount,
       data.interest_rate,
       data.interest_calculation_base,
+      data.interest_rate_period,
       data.late_fee_type,
       data.late_fee_value,
+      data.amortization_type || "francesa",
+      data.installments,
       data.start_date,
       data.due_date,
       data.payment_frequency,
-      data.grace_days,
+      data.grace_days || 0,
       "active",
+      0, // total_paid
       new Date().toISOString(),
     ],
   );
 
-  return result.lastInsertRowId;
+  const loanId = result.lastInsertRowId;
+
+  // Generar cuotas automáticamente si es amortización francesa
+  if (data.amortization_type === "francesa" || !data.amortization_type) {
+    try {
+      const schedule = generateFrenchAmortization({
+        principal: data.principal_amount,
+        rate: data.interest_rate,
+        installments: data.installments,
+        startDate: data.start_date,
+        paymentFrequency: data.payment_frequency || "monthly",
+      });
+
+      await generateAndSaveInstallments(loanId, schedule);
+    } catch (error) {
+      console.error("Error generating installments:", error);
+      // No fallar la creación del préstamo si falla la generación de cuotas
+    }
+  }
+
+  return loanId;
 }
 
-/* GET LOANS BY USER */
-export async function getLoans(userId) {
+/* GET LOAN BY ID */
+export async function getLoanById(id) {
   const db = await getDb();
-  return await db.getAllAsync(`SELECT * FROM loans WHERE user_id = ?`, [
-    userId,
+  return await db.getFirstAsync(`SELECT * FROM loans WHERE id = ?`, [id]);
+}
+
+/* UPDATE LOAN */
+export async function updateLoan(id, data) {
+  const db = await getDb();
+
+  const fields = [];
+  const values = [];
+
+  if (data.contract_number !== undefined) {
+    fields.push("contract_number = ?");
+    values.push(data.contract_number);
+  }
+  if (data.loan_type !== undefined) {
+    fields.push("loan_type = ?");
+    values.push(data.loan_type);
+  }
+  if (data.principal_amount !== undefined) {
+    fields.push("principal_amount = ?");
+    values.push(data.principal_amount);
+  }
+  if (data.disbursed_amount !== undefined) {
+    fields.push("disbursed_amount = ?");
+    values.push(data.disbursed_amount);
+  }
+  if (data.interest_rate !== undefined) {
+    fields.push("interest_rate = ?");
+    values.push(data.interest_rate);
+  }
+  if (data.interest_calculation_base !== undefined) {
+    fields.push("interest_calculation_base = ?");
+    values.push(data.interest_calculation_base);
+  }
+  if (data.interest_rate_period !== undefined) {
+    fields.push("interest_rate_period = ?");
+    values.push(data.interest_rate_period);
+  }
+  if (data.late_fee_type !== undefined) {
+    fields.push("late_fee_type = ?");
+    values.push(data.late_fee_type);
+  }
+  if (data.late_fee_value !== undefined) {
+    fields.push("late_fee_value = ?");
+    values.push(data.late_fee_value);
+  }
+  if (data.amortization_type !== undefined) {
+    fields.push("amortization_type = ?");
+    values.push(data.amortization_type);
+  }
+  if (data.installments !== undefined) {
+    fields.push("installments = ?");
+    values.push(data.installments);
+  }
+  if (data.start_date !== undefined) {
+    fields.push("start_date = ?");
+    values.push(data.start_date);
+  }
+  if (data.due_date !== undefined) {
+    fields.push("due_date = ?");
+    values.push(data.due_date);
+  }
+  if (data.payment_frequency !== undefined) {
+    fields.push("payment_frequency = ?");
+    values.push(data.payment_frequency);
+  }
+  if (data.grace_days !== undefined) {
+    fields.push("grace_days = ?");
+    values.push(data.grace_days);
+  }
+  if (data.status !== undefined) {
+    fields.push("status = ?");
+    values.push(data.status);
+  }
+
+  if (fields.length === 0) return;
+
+  fields.push("updated_at = ?");
+  values.push(new Date().toISOString());
+  values.push(id);
+
+  await db.runAsync(
+    `UPDATE loans SET ${fields.join(", ")} WHERE id = ?`,
+    values,
+  );
+}
+
+/* GET LOANS BY CLIENT */
+export async function getLoansByClient(clientId) {
+  const db = await getDb();
+  return await db.getAllAsync(`SELECT * FROM loans WHERE client_id = ?`, [
+    clientId,
   ]);
 }
 
-/* UPDATE STATUS */
-export async function updateLoanStatus(id, status) {
+/* UPDATE CURRENT BALANCE */
+export async function updateCurrentBalance(loanId, newBalance) {
   const db = await getDb();
   await db.runAsync(
-    `UPDATE loans SET status = ?, updated_at = ? WHERE id = ?`,
-    [status, new Date().toISOString(), id],
+    `UPDATE loans SET current_balance = ?, updated_at = ? WHERE id = ?`,
+    [newBalance, new Date().toISOString(), loanId],
   );
+}
+
+/* GET LOANS BY STATUS */
+export async function getLoansByStatus(userId, status) {
+  const db = await getDb();
+  return await db.getAllAsync(
+    `SELECT * FROM loans WHERE user_id = ? AND status = ?`,
+    [userId, status],
+  );
+}
+
+/* DELETE LOAN */
+export async function deleteLoan(id) {
+  const db = await getDb();
+  await db.runAsync(`DELETE FROM loans WHERE id = ?`, [id]);
 }

@@ -29,8 +29,8 @@ export async function generateAndSaveInstallments(loanId, schedule) {
         installment.scheduled_amount,
         installment.capital_amount,
         installment.interest_amount,
-        installment.capital_amount, // remaining_capital inicial
-        installment.interest_amount, // remaining_interest inicial
+        installment.remaining_capital,
+        0, // remaining_interest
         0, // remaining_late_fee
         0, // late_fee_accrued
         0, // amount_paid

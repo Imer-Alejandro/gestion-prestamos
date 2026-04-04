@@ -80,6 +80,7 @@ export async function createLoan(data) {
         installments: data.installments,
         startDate: data.start_date,
         paymentFrequency: data.payment_frequency || "monthly",
+        interestRatePeriod: data.interest_rate_period || "monthly",
       });
 
       await generateAndSaveInstallments(loanId, schedule);

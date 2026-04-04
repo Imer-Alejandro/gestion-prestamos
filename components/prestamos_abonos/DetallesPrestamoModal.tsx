@@ -8,6 +8,10 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { getLoanById } from '../../services/loan.service';
+import { getInstallmentsByLoan } from '../../services/installment.service';
+import { getPaymentsByLoan } from '../../services/payment.service';
+import { getClientById } from '../../services/client.service';
 
 interface DetallesPrestamoModalProps {
   visible: boolean;
@@ -74,62 +78,51 @@ export function DetallesPrestamoModal({
 
     setLoading(true);
     try {
-      // Aquí irían las llamadas reales a los servicios
-      // Por ahora, mock data para demostración
+      const loan = await getLoanById(loanId);
+      if (!loan) {
+        throw new Error('Préstamo no encontrado');
+      }
 
-      // Simular carga de datos del préstamo
-      const mockLoanDetails: LoanDetails = {
-        id: loanId,
-        client_name: "Juan Pérez",
-        contract_number: "CNT-001",
-        principal_amount: 5000000,
-        current_balance: 3200000,
-        total_paid: 1800000,
-        interest_rate: 2.5,
-        installments: 12,
-        status: "active",
-        start_date: "2024-01-15",
-        due_date: "2025-01-15",
-        payment_frequency: "monthly",
-      };
+      const client = await getClientById(loan.client_id);
+      const installmentsData = await getInstallmentsByLoan(loanId);
+      const paymentsData = await getPaymentsByLoan(loanId);
 
-      // Simular cuotas
-      const mockInstallments: Installment[] = Array.from({ length: 12 }, (_, i) => ({
-        id: i + 1,
-        installment_number: i + 1,
-        due_date: new Date(2024, i, 15).toISOString().split('T')[0],
-        scheduled_amount: 416667,
-        amount_paid: i < 3 ? 416667 : 0,
-        status: i < 3 ? 'paid' : i === 3 ? 'overdue' : 'pending',
-        late_fee_accrued: i === 3 ? 25000 : 0,
-      }));
+      setLoanDetails({
+        id: loan.id,
+        client_name: client ? `${client.first_name} ${client.last_name}` : 'Cliente no disponible',
+        contract_number: loan.contract_number || `#${loan.id}`,
+        principal_amount: loan.principal_amount,
+        current_balance: loan.current_balance,
+        total_paid: loan.total_paid,
+        interest_rate: loan.interest_rate,
+        installments: loan.installments,
+        status: loan.status,
+        start_date: loan.start_date,
+        due_date: loan.due_date,
+        payment_frequency: loan.payment_frequency,
+      });
 
-      // Simular pagos
-      const mockPayments: Payment[] = [
-        {
-          id: 1,
-          amount: 416667,
-          payment_date: "2024-01-15",
-          payment_method: "efectivo",
-          capital_portion: 380000,
-          interest_portion: 36667,
-          late_fee_portion: 0,
-        },
-        {
-          id: 2,
-          amount: 416667,
-          payment_date: "2024-02-15",
-          payment_method: "transferencia",
-          capital_portion: 385000,
-          interest_portion: 31667,
-          late_fee_portion: 0,
-        },
-      ];
+      setInstallments(installmentsData.map((installment: any) => ({
+        id: installment.id,
+        installment_number: installment.installment_number,
+        due_date: installment.due_date,
+        scheduled_amount: installment.scheduled_amount,
+        amount_paid: installment.amount_paid,
+        status: installment.status,
+        late_fee_accrued: installment.late_fee_accrued,
+      })));
 
-      setLoanDetails(mockLoanDetails);
-      setInstallments(mockInstallments);
-      setPayments(mockPayments);
+      setPayments(paymentsData.map((payment: any) => ({
+        id: payment.id,
+        amount: payment.amount,
+        payment_date: payment.payment_date,
+        payment_method: payment.payment_method,
+        capital_portion: payment.capital_portion,
+        interest_portion: payment.interest_portion,
+        late_fee_portion: payment.late_fee_portion,
+      })));
     } catch (error) {
+      console.error('Error cargando detalles de préstamo:', error);
       Alert.alert('Error', 'No se pudieron cargar los detalles del préstamo');
     } finally {
       setLoading(false);
@@ -281,30 +274,37 @@ export function DetallesPrestamoModal({
 
             <View style={styles.installmentDetails}>
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Monto Programado:</Text>
+                <Text style={styles.detailLabel}>Monto Programado</Text>
                 <Text style={styles.detailValue}>
                   {formatCurrency(installment.scheduled_amount)}
                 </Text>
               </View>
 
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Pagado:</Text>
-                <Text style={[styles.detailValue, { color: '#10B981' }]}>
+                <Text style={styles.detailLabel}>Pagado</Text>
+                <Text style={[styles.detailValue, { color: '#10B981' }]}> 
                   {formatCurrency(installment.amount_paid)}
+                </Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Restante</Text>
+                <Text style={styles.detailValue}>
+                  {formatCurrency(Math.max(0, installment.scheduled_amount - installment.amount_paid))}
                 </Text>
               </View>
 
               {installment.late_fee_accrued > 0 && (
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Mora:</Text>
-                  <Text style={[styles.detailValue, { color: '#EF4444' }]}>
+                  <Text style={styles.detailLabel}>Mora</Text>
+                  <Text style={[styles.detailValue, { color: '#EF4444' }]}> 
                     {formatCurrency(installment.late_fee_accrued)}
                   </Text>
                 </View>
               )}
 
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Fecha Vencimiento:</Text>
+                <Text style={styles.detailLabel}>Fecha Vencimiento</Text>
                 <Text style={styles.detailValue}>
                   {formatDate(installment.due_date)}
                 </Text>

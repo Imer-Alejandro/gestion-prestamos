@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { ThemedText } from '../ThemedText';
 import { Prestamo } from '../../data/prestamosData';
 
 interface PrestamoCardProps {
@@ -49,19 +48,19 @@ export function PrestamoCard({ prestamo, onPress, onMenuPress }: PrestamoCardPro
     <TouchableOpacity
       style={styles.card}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
     >
-      <View style={styles.header}>
+      <View style={styles.topRow}>
         <View style={styles.clientInfo}>
           <Text style={styles.clientInitials}>
             {prestamo.clienteIniciales}
           </Text>
-          <View>
+          <View style={styles.clientTextContainer}>
             <Text style={styles.clientName} numberOfLines={1}>
               {prestamo.clienteNombre}
             </Text>
             <Text style={styles.contractNumber}>
-              #{prestamo.id.toString().padStart(4, '0')}
+              Préstamo #{prestamo.id.toString().padStart(4, '0')}
             </Text>
           </View>
         </View>
@@ -74,53 +73,51 @@ export function PrestamoCard({ prestamo, onPress, onMenuPress }: PrestamoCardPro
         </TouchableOpacity>
       </View>
 
-      <View style={styles.amounts}>
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Total:</Text>
+      <View style={styles.amountsGrid}>
+        <View style={styles.amountBlock}>
+          <Text style={styles.amountLabel}>Monto</Text>
           <Text style={styles.amountValue}>
             {formatCurrency(prestamo.totalPrestamo)}
           </Text>
         </View>
 
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Abonado:</Text>
-          <Text style={[styles.amountValue, styles.amountPositive]}>
-            {formatCurrency(prestamo.totalAbonado)}
-          </Text>
-        </View>
-
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Deuda:</Text>
-          <Text style={[styles.amountValue, styles.amountNegative]}>
+        <View style={styles.amountBlock}>
+          <Text style={styles.amountLabel}>Saldo</Text>
+          <Text style={[styles.amountValue, styles.amountNegative]}> 
             {formatCurrency(prestamo.deudaPendiente)}
           </Text>
         </View>
       </View>
 
       <View style={styles.footer}>
-        <View style={styles.installmentsInfo}>
-          <Text style={styles.installmentsText}>
-            {prestamo.cuotas} cuotas
+        <View style={styles.footerInfo}>
+          <Text style={styles.detailLabel}>Pagado</Text>
+          <Text style={[styles.detailValue, styles.amountPositive]}>
+            {formatCurrency(prestamo.totalAbonado)}
           </Text>
         </View>
 
-        <View style={[
-          styles.statusBadge,
-          { backgroundColor: getEstadoColor(prestamo.estado) }
-        ]}>
-          <Text style={styles.statusText}>
-            {getEstadoTexto(prestamo.estado)}
-          </Text>
+        <View style={styles.footerInfo}>
+          <Text style={styles.detailLabel}>Cuotas</Text>
+          <Text style={styles.detailValue}>{prestamo.cuotas}</Text>
+        </View>
+
+        <View style={styles.statusContainer}>
+          <Text style={styles.detailLabel}>Estado</Text>
+          <View style={[styles.statusBadge, { backgroundColor: getEstadoColor(prestamo.estado) }]}> 
+            <Text style={styles.statusText}>
+              {getEstadoTexto(prestamo.estado)}
+            </Text>
+          </View>
         </View>
       </View>
 
-      {/* Barra de progreso */}
       <View style={styles.progressBar}>
         <View
           style={[
             styles.progressFill,
             {
-              width: `${Math.max(5, prestamo.deudaPendientePorcentaje * 100)}%`,
+              width: `${Math.max(6, Math.min(100, prestamo.deudaPendientePorcentaje * 100))}%`,
               backgroundColor: prestamo.estado === 'mora' ? '#EF4444' : '#10B981'
             }
           ]}
@@ -133,115 +130,135 @@ export function PrestamoCard({ prestamo, onPress, onMenuPress }: PrestamoCardPro
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 4,
+    borderRadius: 20,
+    padding: 20,
+    marginVertical: 8,
     marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  header: {
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
   clientInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+  clientTextContainer: {
+    flex: 1,
+  },
   clientInitials: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#3B82F6',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#2563EB',
     color: '#FFFFFF',
     textAlign: 'center',
     textAlignVertical: 'center',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginRight: 12,
+    fontSize: 18,
+    fontWeight: '700',
+    marginRight: 14,
   },
   clientName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 2,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
   },
   contractNumber: {
     fontSize: 12,
     color: '#6B7280',
   },
   menuButton: {
-    padding: 4,
+    padding: 6,
   },
   menuIcon: {
     fontSize: 20,
     color: '#6B7280',
   },
-  amounts: {
-    marginBottom: 12,
-  },
-  amountRow: {
+  amountsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 16,
+  },
+  amountBlock: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 14,
   },
   amountLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6B7280',
+    marginBottom: 6,
   },
   amountValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  amountPositive: {
-    color: '#10B981',
-  },
-  amountNegative: {
-    color: '#EF4444',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
-  installmentsInfo: {
+  footerInfo: {
     flex: 1,
   },
-  installmentsText: {
+  detailLabel: {
     fontSize: 12,
     color: '#6B7280',
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  statusContainer: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  amountPositive: {
+    color: '#16A34A',
+  },
+  amountNegative: {
+    color: '#DC2626',
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   progressBar: {
-    height: 4,
+    height: 6,
     backgroundColor: '#E5E7EB',
-    borderRadius: 2,
-    marginTop: 12,
+    borderRadius: 999,
+    marginTop: 18,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 2,
-    minWidth: 4,
+    borderRadius: 999,
+    minWidth: 6,
   },
 });

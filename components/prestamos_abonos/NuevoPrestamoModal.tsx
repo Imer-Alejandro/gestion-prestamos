@@ -10,6 +10,7 @@ import {
   Alert,
   FlatList,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Componente Picker personalizado más compatible con Expo
 function CustomPicker({ selectedValue, onValueChange, options, placeholder }) {
@@ -100,11 +101,14 @@ export function NuevoPrestamoModal({
     late_fee_value: '',
     amortization_type: 'francesa',
     installments: '',
-    start_date: new Date().toISOString().split('T')[0],
-    due_date: '',
+    start_date: new Date(),
+    due_date: new Date(),
     payment_frequency: 'monthly',
     grace_days: '0',
   });
+
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -140,6 +144,8 @@ export function NuevoPrestamoModal({
       late_fee_value: parseFloat(formData.late_fee_value.replace(',', '.')),
       installments: parseInt(formData.installments),
       grace_days: parseInt(formData.grace_days),
+      start_date: formData.start_date.toISOString().split('T')[0],
+      due_date: formData.due_date.toISOString().split('T')[0],
     };
 
     onSave(prestamoData);
@@ -160,8 +166,8 @@ export function NuevoPrestamoModal({
       late_fee_value: '',
       amortization_type: 'francesa',
       installments: '',
-      start_date: new Date().toISOString().split('T')[0],
-      due_date: '',
+      start_date: new Date(),
+      due_date: new Date(),
       payment_frequency: 'monthly',
       grace_days: '0',
     });
@@ -169,7 +175,7 @@ export function NuevoPrestamoModal({
     onClose();
   };
 
-  const updateFormData = (field: string, value: string) => {
+  const updateFormData = (field: string, value: string | Date) => {
     setFormData(prev => ({ ...prev, [field]: value }));
 
     // Limpiar error del campo
@@ -178,26 +184,26 @@ export function NuevoPrestamoModal({
     }
 
     // Calcular fecha de vencimiento automáticamente
-    if (field === 'installments' || field === 'payment_frequency') {
-      const installments = parseInt(field === 'installments' ? value : formData.installments);
-      const frequency = field === 'payment_frequency' ? value : formData.payment_frequency;
+    if (field === 'installments' || field === 'payment_frequency' || field === 'start_date') {
+      const installments = parseInt(field === 'installments' ? value as string : formData.installments);
+      const frequency = field === 'payment_frequency' ? value as string : formData.payment_frequency;
+      const startDate = field === 'start_date' ? value as Date : formData.start_date;
 
-      if (installments > 0 && formData.start_date) {
-        const startDate = new Date(formData.start_date);
+      if (installments > 0 && startDate) {
+        const dueDate = new Date(startDate);
         let monthsToAdd = installments;
 
         if (frequency === 'weekly') {
-          monthsToAdd = Math.ceil((installments * 7) / 30);
+          dueDate.setDate(dueDate.getDate() + installments * 7);
         } else if (frequency === 'biweekly') {
-          monthsToAdd = Math.ceil((installments * 14) / 30);
+          dueDate.setDate(dueDate.getDate() + installments * 14);
+        } else { // monthly
+          dueDate.setMonth(dueDate.getMonth() + installments);
         }
-
-        const dueDate = new Date(startDate);
-        dueDate.setMonth(dueDate.getMonth() + monthsToAdd);
 
         setFormData(prev => ({
           ...prev,
-          due_date: dueDate.toISOString().split('T')[0]
+          due_date: dueDate
         }));
       }
     }
@@ -395,23 +401,48 @@ export function NuevoPrestamoModal({
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.label}>Fecha de Inicio</Text>
-                <TextInput
+                <TouchableOpacity
                   style={styles.input}
-                  value={formData.start_date}
-                  onChangeText={(value) => updateFormData('start_date', value)}
-                  placeholder="YYYY-MM-DD"
-                />
+                  onPress={() => setShowStartDatePicker(true)}
+                >
+                  <Text>{formData.start_date.toLocaleDateString()}</Text>
+                </TouchableOpacity>
+                {showStartDatePicker && (
+                  <DateTimePicker
+                    value={formData.start_date}
+                    mode="date"
+                    display="default"
+                    onChange={(event, selectedDate) => {
+                      setShowStartDatePicker(false);
+                      if (selectedDate) {
+                        updateFormData('start_date', selectedDate);
+                      }
+                    }}
+                  />
+                )}
               </View>
 
               <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
                 <Text style={styles.label}>Fecha de Vencimiento</Text>
-                <TextInput
+                <TouchableOpacity
                   style={styles.input}
-                  value={formData.due_date}
-                  onChangeText={(value) => updateFormData('due_date', value)}
-                  placeholder="Se calcula automáticamente"
-                  editable={false}
-                />
+                  onPress={() => setShowDueDatePicker(true)}
+                >
+                  <Text>{formData.due_date.toLocaleDateString()}</Text>
+                </TouchableOpacity>
+                {showDueDatePicker && (
+                  <DateTimePicker
+                    value={formData.due_date}
+                    mode="date"
+                    display="default"
+                    onChange={(event, selectedDate) => {
+                      setShowDueDatePicker(false);
+                      if (selectedDate) {
+                        setFormData(prev => ({ ...prev, due_date: selectedDate }));
+                      }
+                    }}
+                  />
+                )}
               </View>
             </View>
 

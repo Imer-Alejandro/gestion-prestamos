@@ -95,18 +95,20 @@ export function RegistroAbonoModal({
     payment_date: new Date().toISOString().split('T')[0],
   });
 
+  const [displayAmount, setDisplayAmount] = useState('');
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    const amount = parseFloat(formData.amount);
+    const amount = parseFloat(formData.amount) || 0;
     if (!formData.amount || amount <= 0) {
       newErrors.amount = 'Monto debe ser mayor a 0';
     }
 
     if (maxAmount && amount > maxAmount) {
-      newErrors.amount = `Monto no puede exceder ${maxAmount.toLocaleString('es-CO')}`;
+      newErrors.amount = `Monto no puede exceder ${new Intl.NumberFormat('es-CO').format(maxAmount)}`;
     }
 
     setErrors(newErrors);
@@ -116,9 +118,11 @@ export function RegistroAbonoModal({
   const handleSave = () => {
     if (!validateForm()) return;
 
+    const amount = parseFloat(formData.amount) || 0;
+
     const abonoData = {
       loan_id: loanId,
-      amount: parseFloat(formData.amount),
+      amount: amount,
       payment_method: formData.payment_method,
       reference_number: formData.reference_number || null,
       payment_date: formData.payment_date,
@@ -135,13 +139,21 @@ export function RegistroAbonoModal({
       reference_number: '',
       payment_date: new Date().toISOString().split('T')[0],
     });
+    setDisplayAmount('');
     setErrors({});
     onClose();
   };
 
-  const formatCurrency = (value: string) => {
+  const handleAmountChange = (value: string) => {
+    // Remover caracteres no numéricos
     const numericValue = value.replace(/[^0-9]/g, '');
-    return numericValue ? parseInt(numericValue).toLocaleString('es-CO') : '';
+    
+    // Actualizar el valor numérico interno
+    setFormData(prev => ({ ...prev, amount: numericValue }));
+    
+    // Actualizar el valor mostrado formateado
+    const formatted = numericValue ? new Intl.NumberFormat('es-CO').format(parseInt(numericValue)) : '';
+    setDisplayAmount(formatted);
   };
 
   const getPaymentMethodLabel = (method: string) => {
@@ -179,15 +191,15 @@ export function RegistroAbonoModal({
             <Text style={styles.label}>Monto del Abono *</Text>
             <TextInput
               style={[styles.input, errors.amount && styles.inputError]}
-              value={formData.amount}
-              onChangeText={(value) => setFormData(prev => ({ ...prev, amount: formatCurrency(value) }))}
+              value={displayAmount}
+              onChangeText={handleAmountChange}
               placeholder="$ 0"
               keyboardType="numeric"
             />
             {errors.amount && <Text style={styles.error}>{errors.amount}</Text>}
             {maxAmount && (
               <Text style={styles.hint}>
-                Máximo sugerido: ${maxAmount.toLocaleString('es-CO')}
+                Máximo sugerido: ${new Intl.NumberFormat('es-CO').format(maxAmount)}
               </Text>
             )}
           </View>

@@ -211,7 +211,7 @@ export function NuevoPrestamoModal({
 
   const formatCurrency = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
-    return numericValue ? parseInt(numericValue).toLocaleString('es-CO') : '';
+    return numericValue ? new Intl.NumberFormat('es-CO').format(parseInt(numericValue)) : '';
   };
 
   return (

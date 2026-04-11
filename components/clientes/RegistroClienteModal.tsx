@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 interface RegistroClienteModalProps {
   visible: boolean;
@@ -80,6 +81,8 @@ export default function RegistroClienteModal({
   const [showSexoPicker, setShowSexoPicker] = useState(false);
   const [showViviendaPicker, setShowViviendaPicker] = useState(false);
   const [showSituacionLaboralPicker, setShowSituacionLaboralPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateNacimiento, setDateNacimiento] = useState(new Date());
 
   // Estado del formulario
   const [formData, setFormData] = useState<ClienteFormData>({
@@ -143,6 +146,8 @@ export default function RegistroClienteModal({
       setShowSexoPicker(false);
       setShowViviendaPicker(false);
       setShowSituacionLaboralPicker(false);
+      setShowDatePicker(false);
+      setDateNacimiento(new Date());
       
       // Animar entrada
       Animated.spring(translateY, {
@@ -341,15 +346,34 @@ export default function RegistroClienteModal({
                     <Text className="text-gray-800 text-sm font-medium mb-2">
                       Fecha de nacimiento
                     </Text>
-                    <TextInput
-                      value={formData.fechaNacimiento}
-                      onChangeText={(text) =>
-                        setFormData({ ...formData, fechaNacimiento: text })
-                      }
-                      placeholder="DD/MM/AAAA"
-                      className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-base"
-                      placeholderTextColor="#9CA3AF"
-                    />
+                    <TouchableOpacity
+                      onPress={() => setShowDatePicker(true)}
+                      className="border border-gray-300 rounded-lg px-4 py-3"
+                      activeOpacity={0.7}
+                    >
+                      <Text className={`text-base flex-1 ${formData.fechaNacimiento ? "text-gray-900" : "text-[#9CA3AF]"}`}>
+                        {formData.fechaNacimiento || "DD/MM/AAAA"}
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={dateNacimiento}
+                        mode="date"
+                        display="spinner"
+                        maximumDate={new Date()}
+                        onChange={(event, selectedDate) => {
+                          setShowDatePicker(Platform.OS === 'ios');
+                          if (event.type === 'set' && selectedDate) {
+                            setDateNacimiento(selectedDate);
+                            const day = selectedDate.getDate().toString().padStart(2, '0');
+                            const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0');
+                            const year = selectedDate.getFullYear();
+                            setFormData({ ...formData, fechaNacimiento: `${day}/${month}/${year}` });
+                          }
+                        }}
+                      />
+                    )}
                   </View>
 
                   <View className="flex-1">

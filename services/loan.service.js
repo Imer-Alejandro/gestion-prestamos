@@ -209,6 +209,15 @@ export async function getLoansByStatus(userId, status) {
   );
 }
 
+/* GET ALL LOANS BY USER */
+export async function getAllUserLoans(userId) {
+  const db = await getDb();
+  return await db.getAllAsync(
+    `SELECT * FROM loans WHERE user_id = ?`,
+    [userId],
+  );
+}
+
 /* DELETE LOAN */
 export async function deleteLoan(id) {
   const db = await getDb();

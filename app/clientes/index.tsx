@@ -130,7 +130,7 @@ export default function ClientesScreen() {
         phone_primary: clienteData.celularWhatsapp,
         phone_secondary: clienteData.telefonoCasa || null,
         email: clienteData.email || null,
-        address_line: clienteData.direccion || null,
+        address_line: clienteData.direccion || "",
         city: clienteData.municipio || null,
         province: clienteData.provincia || null,
         country: clienteData.nacionalidad || null,
@@ -160,7 +160,16 @@ export default function ClientesScreen() {
       
     } catch (error: any) {
       console.error("Error registrando cliente:", error);
-      Alert.alert("Error", error.message || "No se pudo registrar el cliente");
+      
+      const errorMsg = error.message || "";
+      if (errorMsg.includes("UNIQUE constraint failed: clients.document_number")) {
+        Alert.alert(
+          "Documento duplicado", 
+          "El número de documento que ingresaste ya se encuentra registrado para otro cliente."
+        );
+      } else {
+        Alert.alert("Error", errorMsg || "No se pudo registrar el cliente");
+      }
     } finally {
       setIsLoading(false);
     }

@@ -10,6 +10,8 @@ export interface Prestamo {
   cuotas: number;
   estado: "activo" | "completado" | "mora";
   fechaCreacion: string;
+  frecuenciaPago: string;
+  fechaVencimiento: string;
 }
 
 export const mockPrestamosActivos: Prestamo[] = [

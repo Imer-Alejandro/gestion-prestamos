@@ -4,6 +4,11 @@ import { getDb } from "../database/db.js";
 export async function createPayment(data) {
   const db = await getDb();
 
+  // Por ahora, asumir que todo el pago va a capital
+  const capitalPortion = data.amount;
+  const interestPortion = 0;
+  const lateFeePortion = 0;
+
   const result = await db.runAsync(
     `INSERT INTO payments (
       loan_id, user_id,
@@ -21,9 +26,9 @@ export async function createPayment(data) {
       data.loan_id,
       data.user_id,
       data.amount,
-      data.capital_portion,
-      data.interest_portion,
-      data.late_fee_portion,
+      capitalPortion,
+      interestPortion,
+      lateFeePortion,
       data.payment_method,
       data.reference_number,
       data.payment_date,
@@ -37,6 +42,14 @@ export async function createPayment(data) {
      SET total_paid = total_paid + ?
      WHERE id = ?`,
     [data.amount, data.loan_id],
+  );
+
+  /* ACTUALIZAR BALANCE ACTUAL */
+  await db.runAsync(
+    `UPDATE loans 
+     SET current_balance = current_balance - ?
+     WHERE id = ?`,
+    [capitalPortion, data.loan_id],
   );
 
   return result.lastInsertRowId;

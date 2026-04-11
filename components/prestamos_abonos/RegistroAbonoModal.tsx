@@ -146,6 +146,7 @@ export default function RegistroAbonoModal({
       referenciaPago: '',
       payment_date: new Date().toISOString().split('T')[0],
     });
+    setDisplayAmount('');
     setErrors({});
     Keyboard.dismiss();
     onClose();

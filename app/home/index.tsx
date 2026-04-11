@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ScrollView,
   Text,
@@ -25,6 +26,7 @@ import { useAuth } from "../../contexts/AuthContext";
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets(); // Obtiene el espacio seguro de Android/iOS
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -75,7 +77,7 @@ export default function HomeScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       <Stack.Screen options={{ headerShown: false, animation: "none" }} />
-      
+
       {/* Header compartido */}
       <AppHeader
         userData={userData}
@@ -203,7 +205,7 @@ export default function HomeScreen() {
           {/* Botón Nuevo Abono */}
           <TouchableOpacity
             onPress={handleNuevoAbono}
-            className="absolute bottom-[220px] right-6 bg-[#10B981] rounded-full px-6 py-3 flex-row items-center shadow-lg"
+            className="absolute bottom-[150px] right-6 bg-[#10B981] rounded-full px-6 py-3 flex-row items-center shadow-lg"
             activeOpacity={0.8}
             style={{
               shadowColor: "#10B981",
@@ -222,7 +224,7 @@ export default function HomeScreen() {
           {/* Botón Nuevo Préstamo */}
           <TouchableOpacity
             onPress={handleNuevoPrestamo}
-            className="absolute bottom-[160px] right-6 bg-[#0EA5E9] rounded-full px-6 py-3 flex-row items-center shadow-lg"
+            className="absolute bottom-[110px] right-6 bg-[#0EA5E9] rounded-full px-6 py-3 flex-row items-center shadow-lg"
             activeOpacity={0.8}
             style={{
               shadowColor: "#0EA5E9",
@@ -243,11 +245,11 @@ export default function HomeScreen() {
       {/* Botón flotante de agregar */}
       <TouchableOpacity
         onPress={() => setShowQuickActions(!showQuickActions)}
-        className="absolute bottom-24 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-32 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
         activeOpacity={0.8}
         style={{
           shadowColor: "#13678A",
-          shadowOffset: { width: 0, height: 4 },
+          shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.3,
           shadowRadius: 8,
           elevation: 8,
@@ -260,8 +262,11 @@ export default function HomeScreen() {
         />
       </TouchableOpacity>
 
-      {/* Bottom Navigation Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+      {/* Bottom Navigation Bar - Respeta la barra de navegación del sistema en Android */}
+      <View
+        className="bg-white border-t border-gray-200 shadow-lg"
+        style={{ paddingBottom: insets.bottom - 14}} // Agrega padding respetando la barra del sistema
+      >
         <View className="flex-row items-center justify-around px-6 py-3">
           {/* Home */}
           <TouchableOpacity

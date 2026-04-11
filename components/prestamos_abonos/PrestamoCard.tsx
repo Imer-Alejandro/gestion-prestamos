@@ -155,27 +155,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+   
+   
   },
   clientTextContainer: {
+  
     flex: 1,
   },
   clientInitials: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#13678A',
     color: '#FFFFFF',
     textAlign: 'center',
     textAlignVertical: 'center',
     fontSize: 18,
     fontWeight: '700',
     marginRight: 14,
+    lineHeight: 44, // Centra verticalmente el texto
   },
   clientName: {
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   contractNumber: {
     fontSize: 12,

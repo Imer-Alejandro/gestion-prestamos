@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ScrollView,
   Text,
@@ -23,6 +24,7 @@ import { getClients, createClient } from "../../services/client.service";
 export default function ClientesScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets(); // Obtiene el espacio seguro de Android/iOS
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -439,8 +441,11 @@ export default function ClientesScreen() {
         <View className="h-24" />
       </ScrollView>
 
-      {/* Bottom Navigation Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+      {/* Bottom Navigation Bar - Respeta la barra de navegación del sistema en Android */}
+      <View
+        className="bg-white border-t border-gray-200 shadow-lg"
+         style={{ paddingBottom: insets.bottom - 14}} // Agrega padding respetando la barra del sistema
+      >
         <View className="flex-row items-center justify-around px-6 py-3">
           {/* Home */}
           <TouchableOpacity

@@ -5,7 +5,7 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "start:lan": "cross-env REACT_NATIVE_PACKAGER_HOSTNAME=10.0.0.227 expo start --host lan  ",
+    "start:lan": "cross-env REACT_NATIVE_PACKAGER_HOSTNAME=10.0.0.227 expo start --host lan --clear  ",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

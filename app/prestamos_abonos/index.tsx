@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ScrollView,
   Text,
@@ -14,7 +15,7 @@ import NotificationModal from "../../components/home/NotificationModal";
 import { PrestamoCard } from "../../components/prestamos_abonos/PrestamoCard";
 import { AbonoCard } from "../../components/prestamos_abonos/AbonoCard";
 import { NuevoPrestamoModal } from "../../components/prestamos_abonos/NuevoPrestamoModal";
-import { RegistroAbonoModal } from "../../components/prestamos_abonos/RegistroAbonoModal";
+import  RegistroAbonoModal  from "../../components/prestamos_abonos/RegistroAbonoModal";
 import { DetallesPrestamoModal } from "../../components/prestamos_abonos/DetallesPrestamoModal";
 import {
   formatCurrencyPrestamos,
@@ -35,6 +36,7 @@ import { getClients } from "../../services/client.service";
 export default function PrestamosScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets(); // Obtiene el espacio seguro de Android/iOS
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -153,13 +155,33 @@ export default function PrestamosScreen() {
   // Registrar pago/abono
   const handleRegisterPayment = async (paymentData: any) => {
     try {
-      await createPayment({ ...paymentData, user_id: user!.id });
-      await loadData(); // Recargar datos
+      console.log('📋 Datos del pago:', paymentData);
+
+      if (!user?.id) {
+        Alert.alert('Error', 'Usuario no identificado');
+        return;
+      }
+
+      if (!paymentData.loan_id) {
+        Alert.alert('Error', 'Préstamo no identificado');
+        return;
+      }
+
+      const dataToSave = {
+        ...paymentData,
+        user_id: user.id,
+      };
+
+      console.log('💾 Guardando:', dataToSave);
+      await createPayment(dataToSave);
+
+      Alert.alert('Éxito', 'Pago registrado correctamente');
+      await loadData();
       setShowRegistroAbono(false);
       setShowDetallesPrestamo(false);
-    } catch (error) {
-      console.error("Error registrando pago:", error);
-      // TODO: Mostrar error al usuario
+    } catch (error: any) {
+      console.error('❌ Error registrando pago:', error);
+      Alert.alert('Error', error.message || 'No se pudo registrar el pago');
     }
   };
 
@@ -209,7 +231,7 @@ export default function PrestamosScreen() {
       />
 
       {/* Total de deudas pendientes */}
-      <View className="bg-blue-600 mx-4 mt-4 mb-3 rounded-2xl p-6 shadow-md"
+      <View className="bg-[#13678A] mx-4 mt-4 mb-3 rounded-2xl p-6 shadow-md"
         style={{
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
@@ -296,7 +318,7 @@ export default function PrestamosScreen() {
       {/* Botón flotante para nuevo préstamo */}
       <TouchableOpacity
         onPress={() => setShowNuevoPrestamo(true)}
-        className="absolute bottom-24 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-32 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
         activeOpacity={0.8}
         style={{
           shadowColor: "#13678A",
@@ -309,8 +331,11 @@ export default function PrestamosScreen() {
         <Ionicons name="add" size={32} color="white" />
       </TouchableOpacity>
 
-      {/* Bottom Navigation Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+      {/* Bottom Navigation Bar - Respeta la barra de navegación del sistema en Android */}
+      <View
+        className="bg-white border-t border-gray-200 shadow-lg"
+        style={{ paddingBottom: insets.bottom - 14}} // Agrega padding respetando la barra del sistema
+      >
         <View className="flex-row items-center justify-around px-6 py-3">
           {/* Home */}
           <TouchableOpacity

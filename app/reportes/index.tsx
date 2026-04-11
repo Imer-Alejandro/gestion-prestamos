@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ScrollView,
   Text,
@@ -34,6 +35,7 @@ const chartHeight = 150;
 export default function ReportesScreen() {
   const router = useRouter();
   const { user } = useAuth(); // 👈 Acceder al usuario logueado
+  const insets = useSafeAreaInsets(); // Obtiene el espacio seguro de Android/iOS
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -344,12 +346,12 @@ export default function ReportesScreen() {
                   elevation: 1,
                 }}
               >
-                <View className="w-10 h-10 bg-blue-600 rounded-lg items-center justify-center mr-3">
+                <View className="w-10 h-10 bg-[#13678A] rounded-lg items-center justify-center mr-3">
                   <Ionicons name="cash-outline" size={20} color="white" />
                 </View>
 
                 <View className="flex-1">
-                  <Text className="text-blue-600 text-base font-bold mb-1">
+                  <Text className="text-[#13678A] text-base font-bold mb-1">
                     {formatCurrencyReportes(operacion.monto)}
                   </Text>
                   <Text className="text-gray-500 text-xs">
@@ -399,7 +401,7 @@ export default function ReportesScreen() {
       {/* Botón flotante para nuevo reporte */}
       <TouchableOpacity
         onPress={() => console.log("Nuevo reporte")}
-        className="absolute bottom-24 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-32 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
         activeOpacity={0.8}
         style={{
           shadowColor: "#13678A",
@@ -412,8 +414,11 @@ export default function ReportesScreen() {
         <Ionicons name="add" size={32} color="white" />
       </TouchableOpacity>
 
-      {/* Bottom Navigation Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+      {/* Bottom Navigation Bar - Respeta la barra de navegación del sistema en Android */}
+      <View
+        className="bg-white border-t border-gray-200 shadow-lg"
+          style={{ paddingBottom: insets.bottom - 14}}   // Agrega padding respetando la barra del sistema
+      >
         <View className="flex-row items-center justify-around px-6 py-3">
           {/* Home */}
           <TouchableOpacity

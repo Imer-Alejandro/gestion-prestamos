@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ScrollView,
@@ -13,6 +13,9 @@ import { Svg, Rect, Circle } from "react-native-svg";
 import AppHeader from "../../components/shared/AppHeader";
 import DrawerMenu from "../../components/home/DrawerMenu";
 import NotificationModal from "../../components/home/NotificationModal";
+import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
+import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
+import { getClients } from "../../services/client.service";
 import {
   formatCurrencyReportes,
   mockEstadisticasPrestamos,
@@ -41,6 +44,18 @@ export default function ReportesScreen() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [activeTab, setActiveTab] = useState<"prestamos" | "ganancias" | "clientes" | "empleados">("prestamos");
   const [showFiltros, setShowFiltros] = useState(false);
+
+  // Estados de busqueda global
+  const [clients, setClients] = useState<any[]>([]);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+
+
+  useEffect(() => {
+    if (user?.id) {
+      getClients(user.id).then(setClients).catch(console.error);
+    }
+  }, [user]);
   
   const userData = {
     name: user?.full_name || "Usuario",
@@ -74,10 +89,27 @@ export default function ReportesScreen() {
     console.log("Eliminar notificación:", notificationId);
   };
 
-  // Maneja la búsqueda
-  const handleSearch = () => {
-    console.log("Buscando:", searchQuery);
+  // Manejar búsqueda de clientes
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    setIsSearchActive(text.length > 0);
   };
+
+  const handleSearchSubmit = () => {
+    if (searchQuery.length > 0) setIsSearchActive(true);
+  };
+
+  const handleResultPress = (client: any) => {
+    setIsSearchActive(false);
+    setSearchQuery("");
+    setSelectedClient(client);
+  };
+
+  // Filtrar clientes para el overlay
+  const filteredClients = clients.filter(c => 
+    (c.first_name + ' ' + c.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.document_number && c.document_number.includes(searchQuery))
+  );
 
   // Renderizar gráfico de barras
   const renderBarChart = (data: EstadisticaMensual[]) => {
@@ -212,9 +244,16 @@ export default function ReportesScreen() {
         onNotificationsPress={() => setShowNotifications(true)}
         onMenuPress={() => setShowDrawer(true)}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onSearchSubmit={handleSearch}
+        onSearchChange={handleSearchChange}
+        onSearchSubmit={handleSearchSubmit}
         hasNotifications={notifications.length > 0}
+      />
+
+      <SearchResultsOverlay 
+        isVisible={isSearchActive}
+        results={filteredClients}
+        onClose={() => setIsSearchActive(false)}
+        onResultPress={handleResultPress}
       />
 
       {/* Tabs horizontales */}
@@ -475,6 +514,13 @@ export default function ReportesScreen() {
         visible={showDrawer}
         onClose={() => setShowDrawer(false)}
         userData={userData}
+      />
+
+      {/* Modal de Detalles del Cliente */}
+      <ClientDetailsModal
+        visible={!!selectedClient}
+        client={selectedClient}
+        onClose={() => setSelectedClient(null)}
       />
     </View>
   );

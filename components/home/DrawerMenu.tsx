@@ -42,7 +42,6 @@ const DRAWER_WIDTH = 320;
 export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuProps) {
   const router = useRouter();
   const { logout } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
   const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -133,15 +132,6 @@ export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuPro
     setTimeout(() => {
       router.push(route as any);
     }, 300);
-  };
-
-  // Búsqueda de clientes
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      console.log("Buscando cliente:", searchQuery);
-      onClose();
-      // TODO: Implementar búsqueda y navegar a resultados
-    }
   };
 
   // Registrar abono
@@ -236,19 +226,6 @@ export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuPro
                       {userData.role}
                     </Text>
                   </View>
-                </View>
-
-                {/* Buscador */}
-                <View className="bg-white/95 rounded-xl px-4 py-3 flex-row items-center">
-                  <Ionicons name="search" size={20} color="#13678A" />
-                  <TextInput
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholder="Buscar clientes..."
-                    placeholderTextColor="#999"
-                    className="flex-1 ml-2 text-gray-800 text-sm"
-                    onSubmitEditing={handleSearch}
-                  />
                 </View>
               </View>
 

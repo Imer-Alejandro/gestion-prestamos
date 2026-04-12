@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useRouter } from "expo-router";
-import { useState } from "react";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
+import { useState, useCallback } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ScrollView,
@@ -11,12 +11,12 @@ import {
 import AppHeader from "../../components/shared/AppHeader";
 import DrawerMenu from "../../components/home/DrawerMenu";
 import NotificationModal from "../../components/home/NotificationModal";
-import {
-  mockDailyTotals,
-  mockNotifications,
-  mockOperations,
-} from "../../data/homeData";
+import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
+import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
+import { mockNotifications } from "../../data/homeData";
 import { useAuth } from "../../contexts/AuthContext";
+import { getDailyDashboardData } from "../../services/dashboard.service";
+import { getClients } from "../../services/client.service";
 
 /**
  * Dashboard/Home Principal
@@ -32,6 +32,32 @@ export default function HomeScreen() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
 
+  const [dailyTotals, setDailyTotals] = useState<any>({ loans: "0.00", payments: "0.00" });
+  const [operations, setOperations] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+
+  // Cargar datos reales de la bd y refrescarlos cuando vuelve a entrar
+  useFocusEffect(
+    useCallback(() => {
+      async function loadDashboardData() {
+        if (user?.id) {
+          try {
+            const data = await getDailyDashboardData(user.id);
+            setDailyTotals(data.dailyTotals);
+            setOperations(data.operations);
+            const clientsData = await getClients(user.id);
+            setClients(clientsData);
+          } catch (error) {
+            console.error("Error cargando dashboard:", error);
+          }
+        }
+      }
+      loadDashboardData();
+    }, [user?.id])
+  );
+
   // Datos de ejemplo - en producción vendrían del backend
   const userData = {
     name: user?.full_name || "Usuario",
@@ -39,13 +65,32 @@ export default function HomeScreen() {
     avatar: null,
   };
   const notifications = mockNotifications;
-  const operations = mockOperations;
-  const dailyTotals = mockDailyTotals;
 
   // Maneja la búsqueda de clientes
-  const handleSearch = () => {
-    console.log("Buscando:", searchQuery);
-    // TODO: Implementar búsqueda
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    if (text.length > 0) {
+      setIsSearchActive(true);
+    } else {
+      setIsSearchActive(false);
+    }
+  };
+
+  const handleSearchSubmit = () => {
+    if (searchQuery.length > 0) {
+      setIsSearchActive(true);
+    }
+  };
+
+  const filteredClients = clients.filter(c => 
+    (c.first_name + ' ' + c.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.document_number.includes(searchQuery)
+  );
+
+  const handleResultPress = (client: any) => {
+    setIsSearchActive(false);
+    setSearchQuery("");
+    setSelectedClient(client);
   };
 
   // Navega al detalle de una operación
@@ -84,9 +129,16 @@ export default function HomeScreen() {
         onNotificationsPress={() => setShowNotifications(true)}
         onMenuPress={() => setShowDrawer(true)}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onSearchSubmit={handleSearch}
+        onSearchChange={handleSearchChange}
+        onSearchSubmit={handleSearchSubmit}
         hasNotifications={notifications.length > 0}
+      />
+
+      <SearchResultsOverlay 
+        isVisible={isSearchActive}
+        results={filteredClients}
+        onClose={() => setIsSearchActive(false)}
+        onResultPress={handleResultPress}
       />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -108,10 +160,10 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Estado de hoy - Totales */}
+        {/* Estado general - Totales */}
         <View className="px-6 pb-4">
           <Text className="text-gray-800 text-base font-semibold mb-3">
-            Estado de hoy
+            Estado general
           </Text>
           <View className="flex-row gap-3">
             {/* Card Total de préstamos */}
@@ -141,53 +193,59 @@ export default function HomeScreen() {
           <Text className="text-gray-800 text-base font-semibold mb-3">
             Historial de operaciones
           </Text>
-          <View className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            {operations.map((operation, index) => (
-              <TouchableOpacity
-                key={operation.id}
-                onPress={() => handleOperationPress(operation.id)}
-                className={`flex-row items-center px-4 py-4 ${
-                  index !== operations.length - 1
-                    ? "border-b border-gray-100"
-                    : ""
-                }`}
-                activeOpacity={0.7}
-              >
-                {/* Icono de operación */}
-                <View
-                  className={`w-12 h-12 rounded-full items-center justify-center mr-3 ${
-                    operation.type === "prestamo"
-                      ? "bg-[#13678A]"
-                      : "bg-[#0D8A7A]"
+          <View className="bg-white rounded-2xl shadow-sm overflow-hidden min-h-[100px]">
+            {operations.length === 0 ? (
+              <View className="flex-1 items-center justify-center p-6">
+                <Text className="text-gray-400">No hay operaciones el día de hoy.</Text>
+              </View>
+            ) : (
+              operations.map((operation, index) => (
+                <TouchableOpacity
+                  key={operation.id}
+                  onPress={() => handleOperationPress(operation.id)}
+                  className={`flex-row items-center px-4 py-4 ${
+                    index !== operations.length - 1
+                      ? "border-b border-gray-100"
+                      : ""
                   }`}
+                  activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name={
+                  {/* Icono de operación */}
+                  <View
+                    className={`w-12 h-12 rounded-full items-center justify-center mr-3 ${
                       operation.type === "prestamo"
-                        ? "arrow-up"
-                        : "arrow-down"
-                    }
-                    size={24}
-                    color="#ffffff"
-                  />
-                </View>
+                        ? "bg-[#13678A]"
+                        : "bg-[#0D8A7A]"
+                    }`}
+                  >
+                    <Ionicons
+                      name={
+                        operation.type === "prestamo"
+                          ? "arrow-up"
+                          : "arrow-down"
+                      }
+                      size={24}
+                      color="#ffffff"
+                    />
+                  </View>
 
-                {/* Información de la operación */}
-                <View className="flex-1">
-                  <Text className="text-gray-900 text-base font-bold mb-0.5">
-                    {operation.amount}
-                  </Text>
-                  <Text className="text-gray-500 text-xs">
-                    {operation.clientName}
-                  </Text>
-                </View>
+                  {/* Información de la operación */}
+                  <View className="flex-1">
+                    <Text className="text-gray-900 text-base font-bold mb-0.5">
+                      {operation.amount}
+                    </Text>
+                    <Text className="text-gray-500 text-xs">
+                      {operation.clientName}
+                    </Text>
+                  </View>
 
-                {/* Hora */}
-                <Text className="text-gray-400 text-xs">
-                  {operation.time}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  {/* Hora */}
+                  <Text className="text-gray-400 text-xs">
+                    {operation.time}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         </View>
       </ScrollView>
@@ -325,6 +383,13 @@ export default function HomeScreen() {
         visible={showDrawer}
         onClose={() => setShowDrawer(false)}
         userData={userData}
+      />
+
+      {/* Modal de Detalles del Cliente */}
+      <ClientDetailsModal
+        visible={!!selectedClient}
+        client={selectedClient}
+        onClose={() => setSelectedClient(null)}
       />
     </View>
   );

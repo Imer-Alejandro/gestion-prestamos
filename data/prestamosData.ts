@@ -14,47 +14,6 @@ export interface Prestamo {
   fechaVencimiento: string;
 }
 
-export const mockPrestamosActivos: Prestamo[] = [
-  {
-    id: "1",
-    clienteId: "c1",
-    clienteNombre: "Nombre del cliente",
-    clienteIniciales: "NC",
-    totalPrestamo: 17500.0,
-    totalAbonado: 17500.0,
-    deudaPendiente: 11500.0,
-    deudaPendientePorcentaje: 0.003,
-    cuotas: 10,
-    estado: "activo",
-    fechaCreacion: "2025-01-15",
-  },
-  {
-    id: "2",
-    clienteId: "c2",
-    clienteNombre: "María González",
-    clienteIniciales: "MG",
-    totalPrestamo: 17500.0,
-    totalAbonado: 17500.0,
-    deudaPendiente: 11500.0,
-    deudaPendientePorcentaje: 0.003,
-    cuotas: 10,
-    estado: "activo",
-    fechaCreacion: "2025-01-10",
-  },
-  {
-    id: "3",
-    clienteId: "c3",
-    clienteNombre: "Carlos Pérez",
-    clienteIniciales: "CP",
-    totalPrestamo: 17500.0,
-    totalAbonado: 17500.0,
-    deudaPendiente: 11500.0,
-    deudaPendientePorcentaje: 0.003,
-    cuotas: 10,
-    estado: "activo",
-    fechaCreacion: "2025-01-08",
-  },
-];
 
 export const mockAbonos = [
   {

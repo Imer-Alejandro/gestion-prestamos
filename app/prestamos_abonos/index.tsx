@@ -18,6 +18,8 @@ import { AbonoCard } from "../../components/prestamos_abonos/AbonoCard";
 import { NuevoPrestamoModal } from "../../components/prestamos_abonos/NuevoPrestamoModal";
 import  RegistroAbonoModal  from "../../components/prestamos_abonos/RegistroAbonoModal";
 import { DetallesPrestamoModal } from "../../components/prestamos_abonos/DetallesPrestamoModal";
+import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
+import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
 import {
   formatCurrencyPrestamos,
   type Prestamo
@@ -45,6 +47,8 @@ export default function PrestamosScreen() {
   const [showRegistroAbono, setShowRegistroAbono] = useState(false);
   const [showDetallesPrestamo, setShowDetallesPrestamo] = useState(false);
   const [selectedPrestamo, setSelectedPrestamo] = useState<Prestamo | null>(null);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
 
   // Estado de datos
   const [loans, setLoans] = useState<Prestamo[]>([]);
@@ -120,10 +124,27 @@ export default function PrestamosScreen() {
     console.log("Eliminar notificación:", notificationId);
   };
 
-  // Maneja la búsqueda
-  const handleSearch = () => {
-    console.log("Buscando:", searchQuery);
+  // Manejar búsqueda de clientes
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    setIsSearchActive(text.length > 0);
   };
+
+  const handleSearchSubmit = () => {
+    if (searchQuery.length > 0) setIsSearchActive(true);
+  };
+
+  const handleResultPress = (client: any) => {
+    setIsSearchActive(false);
+    setSearchQuery("");
+    setSelectedClient(client);
+  };
+
+  // Filtrar clientes para el overlay
+  const filteredClients = clients.filter(c => 
+    (c.first_name + ' ' + c.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.document_number && c.document_number.includes(searchQuery))
+  );
 
   // Filtrar préstamos por búsqueda y filtros
   const filteredLoans = loans.filter(loan => {
@@ -259,9 +280,16 @@ export default function PrestamosScreen() {
         onNotificationsPress={() => setShowNotifications(true)}
         onMenuPress={() => setShowDrawer(true)}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onSearchSubmit={handleSearch}
+        onSearchChange={handleSearchChange}
+        onSearchSubmit={handleSearchSubmit}
         hasNotifications={notifications.length > 0}
+      />
+
+      <SearchResultsOverlay 
+        isVisible={isSearchActive}
+        results={filteredClients}
+        onClose={() => setIsSearchActive(false)}
+        onResultPress={handleResultPress}
       />
 
       {/* Total de deudas pendientes */}
@@ -579,6 +607,13 @@ export default function PrestamosScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de Detalles del Cliente */}
+      <ClientDetailsModal
+        visible={!!selectedClient}
+        client={selectedClient}
+        onClose={() => setSelectedClient(null)}
+      />
 
     </View>
   );

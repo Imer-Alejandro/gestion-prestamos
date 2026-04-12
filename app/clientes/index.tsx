@@ -13,6 +13,8 @@ import {
 import AppHeader from "../../components/shared/AppHeader";
 import DrawerMenu from "../../components/home/DrawerMenu";
 import NotificationModal from "../../components/home/NotificationModal";
+import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
+import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
 import RegistroClienteModal, { type ClienteFormData } from "../../components/clientes/RegistroClienteModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { getClients, createClient } from "../../services/client.service";
@@ -32,6 +34,8 @@ export default function ClientesScreen() {
   const [clientes, setClientes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
   
   const userData = {
     name: user?.full_name || "Usuario",
@@ -76,9 +80,20 @@ export default function ClientesScreen() {
     console.log("Eliminar notificación:", notificationId);
   }, []);
 
-  // Maneja la búsqueda de clientes
+  // Maneja la búsqueda de clientes (Overlay)
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    setIsSearchActive(text.length > 0);
+  };
+
   const handleSearch = () => {
-    console.log("Buscando cliente:", searchQuery);
+    if (searchQuery.length > 0) setIsSearchActive(true);
+  };
+
+  const handleResultPress = (client: any) => {
+    setIsSearchActive(false);
+    setSearchQuery("");
+    setSelectedClient(client);
   };
 
   // Filtrar clientes según búsqueda
@@ -323,9 +338,16 @@ export default function ClientesScreen() {
         onNotificationsPress={() => setShowNotifications(true)}
         onMenuPress={() => setShowDrawer(true)}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={handleSearchChange}
         onSearchSubmit={handleSearch}
         hasNotifications={notifications.length > 0}
+      />
+
+      <SearchResultsOverlay 
+        isVisible={isSearchActive}
+        results={clientesFiltrados}
+        onClose={() => setIsSearchActive(false)}
+        onResultPress={handleResultPress}
       />
 
       <ScrollView 
@@ -520,6 +542,13 @@ export default function ClientesScreen() {
         visible={showDrawer}
         onClose={() => setShowDrawer(false)}
         userData={userData}
+      />
+
+      {/* Modal de Detalles del Cliente */}
+      <ClientDetailsModal
+        visible={!!selectedClient}
+        client={selectedClient}
+        onClose={() => setSelectedClient(null)}
       />
     </View>
   );

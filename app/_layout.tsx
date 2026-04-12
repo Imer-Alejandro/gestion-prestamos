@@ -12,6 +12,7 @@ import "../global.css";
 import { useColorScheme } from "../hooks/useColorScheme";
 import { AuthProvider } from "../contexts/AuthContext";
 import { initializeDatabase } from "../database/db";
+import { setupNotifications } from "../services/notification.service";
 import { createTestUser, createTestClients } from "../database/testUtils";
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -29,6 +30,9 @@ export default function RootLayout() {
       try {
         await initializeDatabase();
         console.log("✅ Base de datos inicializada");
+
+        // Inicializar notificaciones e hilos en background
+        await setupNotifications();
 
         // Crear datos de prueba si no existe (solo para desarrollo)
         if (__DEV__) {

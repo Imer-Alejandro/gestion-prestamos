@@ -11,9 +11,10 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
 } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
+import { sendLocalNotification } from "../../services/notification.service";
 
 interface DrawerMenuProps {
   visible: boolean;
@@ -168,6 +169,15 @@ export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuPro
     );
   };
 
+  // Simular notificación local
+  const handleTestNotification = async () => {
+    onClose();
+    await sendLocalNotification(
+      "🔔 Notificación de Prueba",
+      "El sistema está configurado y funcionando. Vibración y sonido activados."
+    );
+  };
+
   if (!visible) return null;
 
   return (
@@ -302,8 +312,22 @@ export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuPro
                 ))}
               </View>
 
+              {/* Botón Probar Notificaciones */}
+              <View className="px-6 py-2">
+                <TouchableOpacity
+                  onPress={handleTestNotification}
+                  className="bg-teal-100 rounded-xl py-4 flex-row items-center justify-center border border-teal-200"
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="notifications-outline" size={20} color="#0D9488" />
+                  <Text className="text-teal-700 font-semibold text-base ml-2">
+                    Probar Notificación Activa
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               {/* Botón de cerrar sesión */}
-              <View className="px-6 py-4 pb-8">
+              <View className="px-6 py-2 pb-8">
                 <TouchableOpacity
                   onPress={handleLogout}
                   className="bg-gray-100 rounded-xl py-4 items-center border border-gray-200"

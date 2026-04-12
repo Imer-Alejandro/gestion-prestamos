@@ -17,6 +17,7 @@ import { mockNotifications } from "../../data/homeData";
 import { useAuth } from "../../contexts/AuthContext";
 import { getDailyDashboardData } from "../../services/dashboard.service";
 import { getClients } from "../../services/client.service";
+import { getPendingNotificationsUI } from "../../services/notification.service";
 
 /**
  * Dashboard/Home Principal
@@ -37,6 +38,7 @@ export default function HomeScreen() {
   const [clients, setClients] = useState<any[]>([]);
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   // Cargar datos reales de la bd y refrescarlos cuando vuelve a entrar
   useFocusEffect(
@@ -49,6 +51,10 @@ export default function HomeScreen() {
             setOperations(data.operations);
             const clientsData = await getClients(user.id);
             setClients(clientsData);
+            
+            // Cargar notificaciones del centro de notificaciones de la UI
+            const uiNotifications = await getPendingNotificationsUI();
+            setNotifications(uiNotifications);
           } catch (error) {
             console.error("Error cargando dashboard:", error);
           }
@@ -64,7 +70,6 @@ export default function HomeScreen() {
     role: "Gestor operador",
     avatar: null,
   };
-  const notifications = mockNotifications;
 
   // Maneja la búsqueda de clientes
   const handleSearchChange = (text: string) => {

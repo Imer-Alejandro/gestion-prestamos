@@ -1,14 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ScrollView,
   Text,
   TouchableOpacity,
   View,
   Alert,
-  Modal,
 } from "react-native";
 import AppHeader from "../../components/shared/AppHeader";
 import DrawerMenu from "../../components/home/DrawerMenu";
@@ -16,10 +14,8 @@ import NotificationModal from "../../components/home/NotificationModal";
 import { PrestamoCard } from "../../components/prestamos_abonos/PrestamoCard";
 import { AbonoCard } from "../../components/prestamos_abonos/AbonoCard";
 import { NuevoPrestamoModal } from "../../components/prestamos_abonos/NuevoPrestamoModal";
-import  RegistroAbonoModal  from "../../components/prestamos_abonos/RegistroAbonoModal";
+import { RegistroAbonoModal } from "../../components/prestamos_abonos/RegistroAbonoModal";
 import { DetallesPrestamoModal } from "../../components/prestamos_abonos/DetallesPrestamoModal";
-import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
-import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
 import {
   formatCurrencyPrestamos,
   type Prestamo
@@ -28,7 +24,7 @@ import { mockNotifications } from "../../data/homeData";
 import { useAuth } from "../../contexts/AuthContext";
 
 // Importar servicios
-import { getAllUserLoans, createLoan } from "../../services/loan.service";
+import { getLoansByStatus, createLoan } from "../../services/loan.service";
 import { createPayment } from "../../services/payment.service";
 import { getClients } from "../../services/client.service";
 
@@ -39,7 +35,6 @@ import { getClients } from "../../services/client.service";
 export default function PrestamosScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const insets = useSafeAreaInsets(); // Obtiene el espacio seguro de Android/iOS
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -47,8 +42,6 @@ export default function PrestamosScreen() {
   const [showRegistroAbono, setShowRegistroAbono] = useState(false);
   const [showDetallesPrestamo, setShowDetallesPrestamo] = useState(false);
   const [selectedPrestamo, setSelectedPrestamo] = useState<Prestamo | null>(null);
-  const [isSearchActive, setIsSearchActive] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<any>(null);
 
   // Estado de datos
   const [loans, setLoans] = useState<Prestamo[]>([]);
@@ -63,10 +56,6 @@ export default function PrestamosScreen() {
 
   const [activeTab, setActiveTab] = useState<"prestamos" | "abonos">("prestamos");
   const [showFiltros, setShowFiltros] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>("todos");
-  const [filterFrequency, setFilterFrequency] = useState<string>("todos");
-  const [filterNearDue, setFilterNearDue] = useState<boolean>(false);
-  const [filterDateBase, setFilterDateBase] = useState<string>("todos");
 
   const notifications = mockNotifications;
 
@@ -80,7 +69,7 @@ export default function PrestamosScreen() {
   const loadData = async () => {
     try {
       const [loansData, clientsData] = await Promise.all([
-        getAllUserLoans(user!.id),
+        getLoansByStatus(user!.id, 'active'),
         getClients(user!.id)
       ]);
 
@@ -100,8 +89,6 @@ export default function PrestamosScreen() {
         estado: loan.status === 'active' ? 'activo' as const :
                loan.status === 'completed' ? 'completado' as const : 'mora' as const,
         fechaCreacion: loan.created_at,
-        frecuenciaPago: loan.payment_frequency || "monthly",
-        fechaVencimiento: loan.due_date || "",
       }));
 
       setLoans(transformedLoans);
@@ -124,60 +111,16 @@ export default function PrestamosScreen() {
     console.log("Eliminar notificación:", notificationId);
   };
 
-  // Manejar búsqueda de clientes
-  const handleSearchChange = (text: string) => {
-    setSearchQuery(text);
-    setIsSearchActive(text.length > 0);
+  // Maneja la búsqueda
+  const handleSearch = () => {
+    console.log("Buscando:", searchQuery);
   };
 
-  const handleSearchSubmit = () => {
-    if (searchQuery.length > 0) setIsSearchActive(true);
-  };
-
-  const handleResultPress = (client: any) => {
-    setIsSearchActive(false);
-    setSearchQuery("");
-    setSelectedClient(client);
-  };
-
-  // Filtrar clientes para el overlay
-  const filteredClients = clients.filter(c => 
-    (c.first_name + ' ' + c.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.document_number && c.document_number.includes(searchQuery))
+  // Filtrar préstamos por búsqueda
+  const filteredLoans = loans.filter(loan =>
+    loan.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    loan.id.includes(searchQuery)
   );
-
-  // Filtrar préstamos por búsqueda y filtros
-  const filteredLoans = loans.filter(loan => {
-    // Búsqueda por texto
-    if (searchQuery && !loan.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()) && !loan.id.includes(searchQuery)) return false;
-
-    // Filtro por estado
-    if (filterStatus !== "todos" && loan.estado !== filterStatus) return false;
-
-    // Filtro por frecuencia
-    if (filterFrequency !== "todos" && loan.frecuenciaPago !== filterFrequency) return false;
-
-    // Filtro próximos a vencer (próximos 7 días)
-    if (filterNearDue) {
-      if (loan.estado !== "activo") return false; // Solo activos pueden "vencer pronto" en este caso
-      const dueDate = new Date(loan.fechaVencimiento);
-      const today = new Date();
-      const diffTime = dueDate.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays < 0 || diffDays > 7) return false;
-    }
-
-    // Filtro por fecha de creación
-    if (filterDateBase !== "todos") {
-      const creationDate = new Date(loan.fechaCreacion);
-      const today = new Date();
-      const firstDayThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      if (filterDateBase === "esteMes" && creationDate < firstDayThisMonth) return false;
-      if (filterDateBase === "anteriores" && creationDate >= firstDayThisMonth) return false;
-    }
-
-    return true;
-  });
 
   // Navegar al detalle del préstamo
   const handlePrestamoPress = (prestamoId: string) => {
@@ -210,33 +153,13 @@ export default function PrestamosScreen() {
   // Registrar pago/abono
   const handleRegisterPayment = async (paymentData: any) => {
     try {
-      console.log('📋 Datos del pago:', paymentData);
-
-      if (!user?.id) {
-        Alert.alert('Error', 'Usuario no identificado');
-        return;
-      }
-
-      if (!paymentData.loan_id) {
-        Alert.alert('Error', 'Préstamo no identificado');
-        return;
-      }
-
-      const dataToSave = {
-        ...paymentData,
-        user_id: user.id,
-      };
-
-      console.log('💾 Guardando:', dataToSave);
-      await createPayment(dataToSave);
-
-      Alert.alert('Éxito', 'Pago registrado correctamente');
-      await loadData();
+      await createPayment({ ...paymentData, user_id: user!.id });
+      await loadData(); // Recargar datos
       setShowRegistroAbono(false);
       setShowDetallesPrestamo(false);
-    } catch (error: any) {
-      console.error('❌ Error registrando pago:', error);
-      Alert.alert('Error', error.message || 'No se pudo registrar el pago');
+    } catch (error) {
+      console.error("Error registrando pago:", error);
+      // TODO: Mostrar error al usuario
     }
   };
 
@@ -280,20 +203,13 @@ export default function PrestamosScreen() {
         onNotificationsPress={() => setShowNotifications(true)}
         onMenuPress={() => setShowDrawer(true)}
         searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
-        onSearchSubmit={handleSearchSubmit}
+        onSearchChange={setSearchQuery}
+        onSearchSubmit={handleSearch}
         hasNotifications={notifications.length > 0}
       />
 
-      <SearchResultsOverlay 
-        isVisible={isSearchActive}
-        results={filteredClients}
-        onClose={() => setIsSearchActive(false)}
-        onResultPress={handleResultPress}
-      />
-
       {/* Total de deudas pendientes */}
-      <View className="bg-[#13678A] mx-4 mt-4 mb-3 rounded-2xl p-6 shadow-md"
+      <View className="bg-blue-600 mx-4 mt-4 mb-3 rounded-2xl p-6 shadow-md"
         style={{
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
@@ -352,7 +268,7 @@ export default function PrestamosScreen() {
             {/* Header de préstamos activos con filtro */}
             <View className="flex-row items-center justify-between mb-3">
               <Text className="text-gray-700 text-sm font-medium">
-                Préstamos {filterStatus !== "todos" ? `- ${filterStatus}` : ""} ({filteredLoans.length})
+                Préstamos - activos ({filteredLoans.length})
               </Text>
               <TouchableOpacity
                 onPress={() => setShowFiltros(!showFiltros)}
@@ -380,7 +296,7 @@ export default function PrestamosScreen() {
       {/* Botón flotante para nuevo préstamo */}
       <TouchableOpacity
         onPress={() => setShowNuevoPrestamo(true)}
-        className="absolute bottom-32 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-24 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
         activeOpacity={0.8}
         style={{
           shadowColor: "#13678A",
@@ -393,11 +309,8 @@ export default function PrestamosScreen() {
         <Ionicons name="add" size={32} color="white" />
       </TouchableOpacity>
 
-      {/* Bottom Navigation Bar - Respeta la barra de navegación del sistema en Android */}
-      <View
-        className="bg-white border-t border-gray-200 shadow-lg"
-        style={{ paddingBottom: insets.bottom - 14}} // Agrega padding respetando la barra del sistema
-      >
+      {/* Bottom Navigation Bar */}
+      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
         <View className="flex-row items-center justify-around px-6 py-3">
           {/* Home */}
           <TouchableOpacity
@@ -486,135 +399,6 @@ export default function PrestamosScreen() {
         onClose={() => setShowDrawer(false)}
         userData={userData}
       />
-
-      {/* Modal de Filtros */}
-      <Modal
-        visible={showFiltros}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowFiltros(false)}
-      >
-        <View className="flex-1 justify-end">
-          <TouchableOpacity 
-            className="absolute inset-0 bg-black/30" 
-            activeOpacity={1} 
-            onPress={() => setShowFiltros(false)} 
-          />
-          <View className="bg-white rounded-t-3xl p-6 shadow-xl h-4/5 pt-8">
-            <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-xl font-bold text-gray-800">Filtrar Préstamos</Text>
-              <TouchableOpacity onPress={() => setShowFiltros(false)}>
-                <Ionicons name="close" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView showsVerticalScrollIndicator={false} className="mb-4">
-              {/* Estado */}
-              <Text className="text-sm font-semibold text-gray-700 mb-3">Estado</Text>
-              <View className="flex-row flex-wrap mb-5">
-                {['todos', 'activo', 'mora', 'completado'].map((status) => (
-                  <TouchableOpacity
-                    key={status}
-                    onPress={() => setFilterStatus(status)}
-                    className={`mr-2 mb-2 px-4 py-2 rounded-full border ${filterStatus === status ? 'bg-[#13678A] border-[#13678A]' : 'bg-white border-gray-300'}`}
-                  >
-                    <Text className={`capitalize ${filterStatus === status ? 'text-white font-semibold' : 'text-gray-600'}`}>
-                      {status}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Frecuencia de Pago */}
-              <Text className="text-sm font-semibold text-gray-700 mb-3">Frecuencia de Pago</Text>
-              <View className="flex-row flex-wrap mb-5">
-                {['todos', 'daily', 'weekly', 'biweekly', 'monthly'].map((freq) => {
-                  const labels: Record<string, string> = {
-                    todos: 'Todos', daily: 'Diario', weekly: 'Semanal', biweekly: 'Quincenal', monthly: 'Mensual'
-                  };
-                  return (
-                    <TouchableOpacity
-                      key={freq}
-                      onPress={() => setFilterFrequency(freq)}
-                      className={`mr-2 mb-2 px-4 py-2 rounded-full border ${filterFrequency === freq ? 'bg-[#13678A] border-[#13678A]' : 'bg-white border-gray-300'}`}
-                    >
-                      <Text className={`${filterFrequency === freq ? 'text-white font-semibold' : 'text-gray-600'}`}>
-                        {labels[freq]}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Fecha de Creación */}
-              <Text className="text-sm font-semibold text-gray-700 mb-3">Fecha de Creación</Text>
-              <View className="flex-row flex-wrap mb-5">
-                {['todos', 'esteMes', 'anteriores'].map((dateBase) => {
-                  const labels: Record<string, string> = {
-                    todos: 'Todos', esteMes: 'Este Mes', anteriores: 'Meses Anteriores'
-                  };
-                  return (
-                    <TouchableOpacity
-                      key={dateBase}
-                      onPress={() => setFilterDateBase(dateBase)}
-                      className={`mr-2 mb-2 px-4 py-2 rounded-full border ${filterDateBase === dateBase ? 'bg-[#13678A] border-[#13678A]' : 'bg-white border-gray-300'}`}
-                    >
-                      <Text className={`${filterDateBase === dateBase ? 'text-white font-semibold' : 'text-gray-600'}`}>
-                        {labels[dateBase]}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Próximos a Vencer */}
-              <TouchableOpacity
-                onPress={() => setFilterNearDue(!filterNearDue)}
-                className={`flex-row justify-between items-center p-4 rounded-xl border mb-8 mt-2 ${filterNearDue ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-200'}`}
-              >
-                <View className="flex-row items-center">
-                  <Ionicons name="warning" size={20} color={filterNearDue ? '#F59E0B' : '#9CA3AF'} />
-                  <Text className={`ml-2 font-medium ${filterNearDue ? 'text-orange-700' : 'text-gray-700'}`}>
-                    Próximos a vencer (7 días)
-                  </Text>
-                </View>
-                <View className={`w-6 h-6 rounded-md border items-center justify-center ${filterNearDue ? 'bg-[#F59E0B] border-[#F59E0B]' : 'border-gray-300'}`}>
-                  {filterNearDue && <Ionicons name="checkmark" size={16} color="white" />}
-                </View>
-              </TouchableOpacity>
-
-            </ScrollView>
-
-            <View className="flex-row border-t border-gray-100 pt-5 pb-6">
-              <TouchableOpacity
-                className="flex-1 py-4 px-4 mr-2 bg-gray-100 rounded-xl items-center"
-                onPress={() => {
-                  setFilterStatus('todos');
-                  setFilterFrequency('todos');
-                  setFilterNearDue(false);
-                  setFilterDateBase('todos');
-                }}
-              >
-                <Text className="text-gray-700 font-semibold text-base">Limpiar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-[2] py-4 px-4 ml-2 bg-[#10B981] rounded-xl items-center shadow-sm"
-                onPress={() => setShowFiltros(false)}
-              >
-                <Text className="text-white font-bold text-base">Ver Resultados ({filteredLoans.length})</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal de Detalles del Cliente */}
-      <ClientDetailsModal
-        visible={!!selectedClient}
-        client={selectedClient}
-        onClose={() => setSelectedClient(null)}
-      />
-
     </View>
   );
 }

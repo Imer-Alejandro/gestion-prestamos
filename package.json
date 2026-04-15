@@ -6,8 +6,8 @@
   "scripts": {
     "start": "expo start",
     "start:lan": "cross-env REACT_NATIVE_PACKAGER_HOSTNAME=10.0.0.227 expo start --host lan --clear  ",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint"
   },
@@ -55,7 +55,8 @@
     "react-native-svg": "15.12.1",
     "react-native-web": "^0.21.2",
     "react-native-webview": "13.15.0",
-    "tailwindcss": "3.4.17"
+    "tailwindcss": "3.4.17",
+    "expo": "~54.0.33"
   },
   "devDependencies": {
     "@babel/core": "^7.28.6",

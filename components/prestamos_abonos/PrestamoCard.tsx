@@ -73,19 +73,21 @@ export function PrestamoCard({ prestamo, onPress, onMenuPress }: PrestamoCardPro
         </TouchableOpacity>
       </View>
 
-      <View style={styles.amountsGrid}>
-        <View style={styles.amountBlock}>
-          <Text style={styles.amountLabel}>Monto</Text>
-          <Text style={styles.amountValue}>
-            {formatCurrency(prestamo.totalPrestamo)}
-          </Text>
-        </View>
+      <View style={styles.contentBlockBg}>
+        <View style={styles.amountsGrid}>
+          <View style={styles.amountBlock}>
+            <Text style={styles.amountLabel}>Monto</Text>
+            <Text style={styles.amountValue}>
+              {formatCurrency(prestamo.totalPrestamo)}
+            </Text>
+          </View>
 
-        <View style={styles.amountBlock}>
-          <Text style={styles.amountLabel}>Saldo</Text>
-          <Text style={[styles.amountValue, styles.amountNegative]}> 
-            {formatCurrency(prestamo.deudaPendiente)}
-          </Text>
+          <View style={styles.amountBlock}>
+            <Text style={styles.amountLabel}>Saldo</Text>
+            <Text style={[styles.amountValue, styles.amountNegative]}>
+              {formatCurrency(prestamo.deudaPendiente)}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -104,7 +106,7 @@ export function PrestamoCard({ prestamo, onPress, onMenuPress }: PrestamoCardPro
 
         <View style={styles.statusContainer}>
           <Text style={styles.detailLabel}>Estado</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getEstadoColor(prestamo.estado) }]}> 
+          <View style={[styles.statusBadge, { backgroundColor: getEstadoColor(prestamo.estado) }]}>
             <Text style={styles.statusText}>
               {getEstadoTexto(prestamo.estado)}
             </Text>
@@ -112,13 +114,17 @@ export function PrestamoCard({ prestamo, onPress, onMenuPress }: PrestamoCardPro
         </View>
       </View>
 
+      {/* Barra de progreso de pago */}
       <View style={styles.progressBar}>
         <View
           style={[
             styles.progressFill,
             {
-              width: `${Math.max(6, Math.min(100, prestamo.deudaPendientePorcentaje * 100))}%`,
-              backgroundColor: prestamo.estado === 'mora' ? '#EF4444' : '#10B981'
+              width: `${Math.max(6, Math.min(100, (1 - prestamo.deudaPendientePorcentaje) * 100))}%`,
+              backgroundColor: 
+                ((1 - prestamo.deudaPendientePorcentaje) * 100) < 50 ? '#EF4444' : // Rojo
+                ((1 - prestamo.deudaPendientePorcentaje) * 100) < 80 ? '#F59E0B' : // Amarillo
+                '#10B981' // Verde
             }
           ]}
         />
@@ -155,31 +161,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-   
-   
   },
   clientTextContainer: {
-  
     flex: 1,
   },
   clientInitials: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#13678A',
+    backgroundColor: '#2563EB',
     color: '#FFFFFF',
     textAlign: 'center',
     textAlignVertical: 'center',
     fontSize: 18,
     fontWeight: '700',
     marginRight: 14,
-    lineHeight: 44, // Centra verticalmente el texto
   },
   clientName: {
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   contractNumber: {
     fontSize: 12,
@@ -197,9 +199,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
+  contentBlockBg: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 8,
+    marginBottom: 10,
+  },
   amountBlock: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
     borderRadius: 14,
     padding: 14,
   },
@@ -207,34 +214,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     marginBottom: 6,
+    textAlign: "center"
   },
   amountValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
+    textAlign: "center"
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
   },
   footerInfo: {
     flex: 1,
+    textAlign: "center"
   },
   detailLabel: {
     fontSize: 12,
     color: '#6B7280',
     marginBottom: 4,
+    textAlign: "center"
   },
   detailValue: {
     fontSize: 14,
+    textAlign: "center",
     fontWeight: '600',
     color: '#111827',
   },
   statusContainer: {
     flex: 1,
-    alignItems: 'flex-end',
+    alignItems: 'center',
   },
   amountPositive: {
     color: '#16A34A',
@@ -243,7 +254,7 @@ const styles = StyleSheet.create({
     color: '#DC2626',
   },
   statusBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,

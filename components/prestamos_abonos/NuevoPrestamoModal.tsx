@@ -12,8 +12,15 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+interface CustomPickerProps {
+  selectedValue: string | undefined;
+  onValueChange: (value: string) => void;
+  options: { label: string; value: string }[];
+  placeholder: string;
+}
+
 // Componente Picker personalizado más compatible con Expo
-function CustomPicker({ selectedValue, onValueChange, options, placeholder }) {
+function CustomPicker({ selectedValue, onValueChange, options, placeholder }: CustomPickerProps) {
   const [showModal, setShowModal] = useState(false);
 
   const selectedOption = options.find(opt => opt.value === selectedValue);

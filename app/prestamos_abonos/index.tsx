@@ -403,15 +403,22 @@ export default function PrestamosScreen() {
         visible={showDetallesPrestamo}
         onClose={() => setShowDetallesPrestamo(false)}
         loanId={selectedPrestamo ? parseInt(selectedPrestamo.id) : undefined}
-        onRegisterPayment={(loanId) => {
+        onRegisterPayment={(loanId: number) => {
           const prestamo = loans.find(p => p.id === loanId.toString());
           if (prestamo) {
             setSelectedPrestamo(prestamo);
             setShowRegistroAbono(true);
           }
         }}
+      />
 
-      //maxAmount={selectedPrestamo?.deudaPendiente}
+      {/* Modal Registro Abono */}
+      <RegistroAbonoModal
+        visible={showRegistroAbono}
+        onClose={() => setShowRegistroAbono(false)}
+        onSave={handleRegisterPayment}
+        loanId={selectedPrestamo ? parseInt(selectedPrestamo.id) : undefined}
+        maxAmount={selectedPrestamo?.deudaPendiente}
       />
 
       {/* Modal Detalles Abono */}

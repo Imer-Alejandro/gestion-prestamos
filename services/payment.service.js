@@ -62,3 +62,20 @@ export async function getPaymentsByLoan(loanId) {
     loanId,
   ]);
 }
+
+/* GET ALL PAYMENTS FOR A USER */
+export async function getAllPayments(userId) {
+  const db = await getDb();
+  return await db.getAllAsync(
+    `SELECT 
+      p.*, 
+      c.first_name || ' ' || c.last_name as client_name,
+      l.contract_number as loan_contract_number
+    FROM payments p
+    JOIN loans l ON p.loan_id = l.id
+    JOIN clients c ON l.client_id = c.id
+    WHERE p.user_id = ?
+    ORDER BY p.payment_date DESC, p.created_at DESC`,
+    [userId]
+  );
+}

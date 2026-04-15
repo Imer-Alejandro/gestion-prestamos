@@ -16,6 +16,8 @@ import { AbonoCard } from "../../components/prestamos_abonos/AbonoCard";
 import { NuevoPrestamoModal } from "../../components/prestamos_abonos/NuevoPrestamoModal";
 import { RegistroAbonoModal } from "../../components/prestamos_abonos/RegistroAbonoModal";
 import { DetallesPrestamoModal } from "../../components/prestamos_abonos/DetallesPrestamoModal";
+import { DetallesAbonoModal } from "../../components/prestamos_abonos/DetallesAbonoModal";
+import { Abono } from "../../components/prestamos_abonos/AbonoCard";
 import {
   formatCurrencyPrestamos,
   type Prestamo
@@ -25,7 +27,7 @@ import { useAuth } from "../../contexts/AuthContext";
 
 // Importar servicios
 import { getLoansByStatus, createLoan } from "../../services/loan.service";
-import { createPayment } from "../../services/payment.service";
+import { createPayment, getAllPayments } from "../../services/payment.service";
 import { getClients } from "../../services/client.service";
 
 /**
@@ -41,7 +43,9 @@ export default function PrestamosScreen() {
   const [showNuevoPrestamo, setShowNuevoPrestamo] = useState(false);
   const [showRegistroAbono, setShowRegistroAbono] = useState(false);
   const [showDetallesPrestamo, setShowDetallesPrestamo] = useState(false);
+  const [showDetallesAbono, setShowDetallesAbono] = useState(false);
   const [selectedPrestamo, setSelectedPrestamo] = useState<Prestamo | null>(null);
+  const [selectedAbono, setSelectedAbono] = useState<Abono | null>(null);
 
   // Estado de datos
   const [loans, setLoans] = useState<Prestamo[]>([]);
@@ -78,22 +82,25 @@ export default function PrestamosScreen() {
         id: loan.id.toString(),
         clienteId: loan.client_id.toString(),
         clienteNombre: clientsData.find((c: any) => c.id === loan.client_id)?.first_name + ' ' +
-                      clientsData.find((c: any) => c.id === loan.client_id)?.last_name || 'Cliente',
+          clientsData.find((c: any) => c.id === loan.client_id)?.last_name || 'Cliente',
         clienteIniciales: (clientsData.find((c: any) => c.id === loan.client_id)?.first_name?.[0] || '') +
-                         (clientsData.find((c: any) => c.id === loan.client_id)?.last_name?.[0] || ''),
+          (clientsData.find((c: any) => c.id === loan.client_id)?.last_name?.[0] || ''),
         totalPrestamo: loan.principal_amount,
         totalAbonado: loan.total_paid,
         deudaPendiente: loan.current_balance,
         deudaPendientePorcentaje: loan.current_balance / loan.principal_amount,
         cuotas: loan.installments,
         estado: loan.status === 'active' ? 'activo' as const :
-               loan.status === 'completed' ? 'completado' as const : 'mora' as const,
+          loan.status === 'completed' ? 'completado' as const : 'mora' as const,
         fechaCreacion: loan.created_at,
       }));
 
       setLoans(transformedLoans);
       setClients(clientsData);
-      setAbonos([]); // TODO: Implementar obtener abonos
+
+      // Cargar todos los abonos
+      const abonosData = await getAllPayments(user!.id);
+      setAbonos(abonosData);
     } catch (error) {
       console.error("Error cargando datos:", error);
       Alert.alert('Error', 'No se pudieron cargar los datos');
@@ -138,13 +145,36 @@ export default function PrestamosScreen() {
       "¿Qué acción deseas realizar?",
       [
         { text: "Ver Detalles", onPress: () => handlePrestamoPress(prestamoId) },
-        { text: "Registrar Pago", onPress: () => {
-          const prestamo = loans.find(p => p.id === prestamoId);
-          if (prestamo) {
-            setSelectedPrestamo(prestamo);
-            setShowRegistroAbono(true);
+        {
+          text: "Registrar Pago", onPress: () => {
+            const prestamo = loans.find(p => p.id === prestamoId);
+            if (prestamo) {
+              setSelectedPrestamo(prestamo);
+              setShowRegistroAbono(true);
+            }
           }
-        }},
+        },
+        { text: "Cancelar", style: "cancel" }
+      ]
+    );
+  };
+
+  // Detalle del abono
+  const handleAbonoPress = (abono: any) => {
+    setSelectedAbono(abono);
+    setShowDetallesAbono(true);
+  };
+
+  // Menú de opciones del abono
+  const handleAbonoMenu = (abono: any) => {
+    Alert.alert(
+      "Opciones de Abono",
+      "¿Qué acción deseas realizar?",
+      [
+        { text: "Ver Detalle", onPress: () => handleAbonoPress(abono) },
+        { text: "Eliminar", onPress: () => console.log("Eliminar abono:", abono.id), style: "destructive" },
+        { text: "Editar", onPress: () => console.log("Editar abono:", abono.id) },
+        { text: "Comprobante", onPress: () => console.log("Generar comprobante:", abono.id) },
         { text: "Cancelar", style: "cancel" }
       ]
     );
@@ -190,6 +220,8 @@ export default function PrestamosScreen() {
     <AbonoCard
       key={abono.id}
       abono={abono}
+      onPress={() => handleAbonoPress(abono)}
+      onMenuPress={() => handleAbonoMenu(abono)}
     />
   );
 
@@ -230,15 +262,13 @@ export default function PrestamosScreen() {
       <View className="flex-row px-4 mb-3">
         <TouchableOpacity
           onPress={() => setActiveTab("prestamos")}
-          className={`flex-1 py-3 mr-2 rounded-lg ${
-            activeTab === "prestamos" ? "bg-white" : "bg-transparent"
-          }`}
+          className={`flex-1 py-3 mr-2 rounded-lg ${activeTab === "prestamos" ? "bg-white" : "bg-transparent"
+            }`}
           activeOpacity={0.7}
         >
           <Text
-            className={`text-center font-semibold ${
-              activeTab === "prestamos" ? "text-gray-900" : "text-gray-500"
-            }`}
+            className={`text-center font-semibold ${activeTab === "prestamos" ? "text-gray-900" : "text-gray-500"
+              }`}
           >
             Préstamos ({filteredLoans.length})
           </Text>
@@ -246,15 +276,13 @@ export default function PrestamosScreen() {
 
         <TouchableOpacity
           onPress={() => setActiveTab("abonos")}
-          className={`flex-1 py-3 ml-2 rounded-lg ${
-            activeTab === "abonos" ? "bg-white" : "bg-transparent"
-          }`}
+          className={`flex-1 py-3 ml-2 rounded-lg ${activeTab === "abonos" ? "bg-white" : "bg-transparent"
+            }`}
           activeOpacity={0.7}
         >
           <Text
-            className={`text-center font-semibold ${
-              activeTab === "abonos" ? "text-gray-900" : "text-gray-500"
-            }`}
+            className={`text-center font-semibold ${activeTab === "abonos" ? "text-gray-900" : "text-gray-500"
+              }`}
           >
             Abonos
           </Text>
@@ -382,15 +410,15 @@ export default function PrestamosScreen() {
             setShowRegistroAbono(true);
           }
         }}
+
+      //maxAmount={selectedPrestamo?.deudaPendiente}
       />
 
-      {/* Modal Registro Abono */}
-      <RegistroAbonoModal
-        visible={showRegistroAbono}
-        onClose={() => setShowRegistroAbono(false)}
-        onSave={handleRegisterPayment}
-        loanId={selectedPrestamo ? parseInt(selectedPrestamo.id) : undefined}
-        maxAmount={selectedPrestamo?.deudaPendiente}
+      {/* Modal Detalles Abono */}
+      <DetallesAbonoModal
+        visible={showDetallesAbono}
+        onClose={() => setShowDetallesAbono(false)}
+        abono={selectedAbono}
       />
 
       {/* Drawer Menu */}

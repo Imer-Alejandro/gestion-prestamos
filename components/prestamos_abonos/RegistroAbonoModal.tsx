@@ -300,12 +300,14 @@ export function RegistroAbonoModal({
                       <View style={styles.detailRow}>
                         <Text style={styles.totalLabel}>Total a Pagar en Cuota:</Text>
                         <Text style={styles.totalValue}>
-                          ${new Intl.NumberFormat('es-CO').format(
+                        ${new Intl.NumberFormat('es-CO').format(
+                        Math.round(
                           (installments.find(i => i.id === selectedInstallmentId)?.scheduled_amount || 0) +
                           (installments.find(i => i.id === selectedInstallmentId)?.late_fee_accrued || 0) -
                           (installments.find(i => i.id === selectedInstallmentId)?.amount_paid || 0)
-                        )}
-                        </Text>
+                        )
+                      )}
+                      </Text>
                       </View>
                     </View>
                   )}

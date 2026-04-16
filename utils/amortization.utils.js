@@ -14,8 +14,9 @@ export function generateFrenchAmortization({
     monthlyRate = monthlyRate * 30; // approximate
   }
 
-  const cuota =
-    (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -installments));
+  // Rounding the base installment amount to integer
+  const cuotaBase = (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -installments));
+  const cuota = Math.round(cuotaBase);
 
   let saldo = principal;
   let currentDate = new Date(startDate);
@@ -23,18 +24,25 @@ export function generateFrenchAmortization({
   const schedule = [];
 
   for (let i = 1; i <= installments; i++) {
-    const interest = saldo * monthlyRate;
-    const capital = cuota - interest;
+    let interest = Math.round(saldo * monthlyRate);
+    let capital = cuota - interest;
+
+    // Last installment adjustment: ensure saldo becomes exactly 0
+    if (i === installments) {
+      capital = saldo;
+      interest = Math.max(0, cuota - capital);
+    }
+
     saldo -= capital;
 
     schedule.push({
       installment_number: i,
       due_date: new Date(currentDate).toISOString(),
-      scheduled_amount: cuota,
+      scheduled_amount: capital + interest,
       capital_amount: capital,
       interest_amount: interest,
-      remaining_capital: saldo,
-      remaining_interest: 0, // interest is paid
+      remaining_capital: Math.max(0, Math.round(saldo)),
+      remaining_interest: 0,
       status: "pending",
     });
 
@@ -50,3 +58,4 @@ export function generateFrenchAmortization({
 
   return schedule;
 }
+

@@ -78,13 +78,13 @@ export async function applyPaymentToInstallment(installmentId, paymentAmount) {
   const installment = await getInstallmentById(installmentId);
   if (!installment) throw new Error("Installment not found");
 
-  const totalDue = installment.scheduled_amount + (installment.late_fee_accrued || 0);
-  const currentPaid = installment.amount_paid || 0;
-  const newPaid = currentPaid + paymentAmount;
+  const totalDue = Math.round(installment.scheduled_amount + (installment.late_fee_accrued || 0));
+  const currentPaid = Math.round(installment.amount_paid || 0);
+  const newPaid = Math.round(currentPaid + paymentAmount);
 
-  // Determinar nuevo estado
+  // Determinar nuevo estado - Tolerancia de 1 peso para considerar pagado
   let newStatus = installment.status;
-  if (newPaid >= totalDue) {
+  if (newPaid >= totalDue || (totalDue - newPaid) < 1) {
     newStatus = "paid";
   } else if (newPaid > 0) {
     newStatus = "partial";
@@ -100,6 +100,7 @@ export async function applyPaymentToInstallment(installmentId, paymentAmount) {
 
   return { previousPaid: currentPaid, newPaid, status: newStatus, overpaid: Math.max(0, newPaid - totalDue) };
 }
+
 
 /* CALCULATE AND UPDATE MORA FOR INSTALLMENT */
 export async function refreshInstallmentMora(installmentId) {
@@ -122,9 +123,9 @@ export async function refreshInstallmentMora(installmentId) {
   if (today > graceDate && inst.late_fee_accrued === 0 && inst.late_fee_value > 0) {
     let mora = 0;
     if (inst.late_fee_type === 'percentage') {
-      mora = inst.scheduled_amount * (inst.late_fee_value / 100);
+      mora = Math.round(inst.scheduled_amount * (inst.late_fee_value / 100));
     } else {
-      mora = inst.late_fee_value;
+      mora = Math.round(inst.late_fee_value);
     }
 
     await db.runAsync(
@@ -138,6 +139,7 @@ export async function refreshInstallmentMora(installmentId) {
 
   return inst;
 }
+
 
 
 /* GET OVERDUE INSTALLMENTS */

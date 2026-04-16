@@ -46,6 +46,8 @@ export default function PrestamosScreen() {
   const [showDetallesAbono, setShowDetallesAbono] = useState(false);
   const [selectedPrestamo, setSelectedPrestamo] = useState<Prestamo | null>(null);
   const [selectedAbono, setSelectedAbono] = useState<Abono | null>(null);
+  const [editAbonoData, setEditAbonoData] = useState<any>(null);
+
 
   // Estado de datos
   const [loans, setLoans] = useState<Prestamo[]>([]);
@@ -186,12 +188,13 @@ export default function PrestamosScreen() {
       await createPayment({ ...paymentData, user_id: user!.id });
       await loadData(); // Recargar datos
       setShowRegistroAbono(false);
+      setEditAbonoData(null); // Limpiar datos de edición
       setShowDetallesPrestamo(false);
     } catch (error) {
       console.error("Error registrando pago:", error);
-      // TODO: Mostrar error al usuario
     }
   };
+
 
   // Crear nuevo préstamo
   const handleCreateLoan = async (loanData: any) => {
@@ -403,23 +406,30 @@ export default function PrestamosScreen() {
         visible={showDetallesPrestamo}
         onClose={() => setShowDetallesPrestamo(false)}
         loanId={selectedPrestamo ? parseInt(selectedPrestamo.id) : undefined}
-        onRegisterPayment={(loanId: number) => {
+        onRegisterPayment={(loanId: number, editData?: any) => {
           const prestamo = loans.find(p => p.id === loanId.toString());
           if (prestamo) {
             setSelectedPrestamo(prestamo);
+            if (editData) setEditAbonoData(editData);
             setShowRegistroAbono(true);
           }
         }}
       />
 
+
       {/* Modal Registro Abono */}
       <RegistroAbonoModal
         visible={showRegistroAbono}
-        onClose={() => setShowRegistroAbono(false)}
+        onClose={() => {
+          setShowRegistroAbono(false);
+          setEditAbonoData(null);
+        }}
         onSave={handleRegisterPayment}
         loanId={selectedPrestamo ? parseInt(selectedPrestamo.id) : undefined}
         maxAmount={selectedPrestamo?.deudaPendiente}
+        initialData={editAbonoData}
       />
+
 
       {/* Modal Detalles Abono */}
       <DetallesAbonoModal

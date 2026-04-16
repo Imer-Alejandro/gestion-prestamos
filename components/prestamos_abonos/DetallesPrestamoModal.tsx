@@ -10,16 +10,19 @@ import {
 } from 'react-native';
 import { getLoanById } from '../../services/loan.service';
 import { getInstallmentsByLoan, refreshInstallmentMora } from '../../services/installment.service';
-import { getPaymentsByLoan } from '../../services/payment.service';
+import { getPaymentsByLoan, voidPayment } from '../../services/payment.service';
 import { getClientById } from '../../services/client.service';
+import { Ionicons } from '@expo/vector-icons';
+
 
 
 interface DetallesPrestamoModalProps {
   visible: boolean;
   onClose: () => void;
   loanId?: number;
-  onRegisterPayment?: (loanId: number) => void;
+  onRegisterPayment?: (loanId: number, editData?: any) => void;
 }
+
 
 interface LoanDetails {
   id: number;
@@ -57,7 +60,10 @@ interface Payment {
   capital_portion: number;
   interest_portion: number;
   late_fee_portion: number;
+  status: string;
+  created_at: string;
 }
+
 
 export function DetallesPrestamoModal({
   visible,
@@ -137,7 +143,10 @@ export function DetallesPrestamoModal({
         capital_portion: payment.capital_portion,
         interest_portion: payment.interest_portion,
         late_fee_portion: payment.late_fee_portion,
+        status: payment.status,
+        created_at: payment.created_at,
       })));
+
     } catch (error) {
       console.error('Error cargando detalles de préstamo:', error);
       Alert.alert('Error', 'No se pudieron cargar los detalles del préstamo');
@@ -340,54 +349,118 @@ export function DetallesPrestamoModal({
     );
   };
 
+  const handleVoidPayment = async (paymentId: number) => {
+    Alert.alert(
+      "Confirmar Anulación",
+      "¿Estás seguro de que deseas anular este pago? El dinero se devolverá al saldo del préstamo y las cuotas volverán a estar pendientes. Esta acción no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Anular Pago", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await voidPayment(paymentId);
+              Alert.alert("Éxito", "El pago ha sido anulado correctamente.");
+              loadLoanDetails(); // Recargar todo
+            } catch (error: any) {
+              Alert.alert("Error", error.message || "No se pudo anular el pago.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleEditPayment = (payment: Payment) => {
+    Alert.alert(
+      "Editar Pago",
+      "Vas a editar este pago. El registro original se mantendrá activo hasta que confirmes los nuevos cambios en el siguiente paso. ¿Deseas continuar?",
+      [
+        { text: "No", style: "cancel" },
+        { 
+          text: "Sí, Editar", 
+          onPress: () => {
+            // 1. Cerrar y reabrir con datos pre-cargados e ID de reemplazo
+            onClose();
+            onRegisterPayment?.(loanId!, {
+              amount: payment.amount.toString(),
+              payment_method: payment.payment_method,
+              payment_date: new Date(payment.payment_date),
+              replace_payment_id: payment.id // Enviamos el ID para que el servicio lo reemplace al final
+            });
+          }
+        }
+      ]
+    );
+  };
+
+
   const renderPayments = () => {
     return (
       <ScrollView style={styles.tabContent}>
-        {payments.map((payment) => (
-          <View key={payment.id} style={styles.paymentCard}>
-            <View style={styles.paymentHeader}>
-              <Text style={styles.paymentAmount}>
-                {formatCurrency(payment.amount)}
-              </Text>
-              <Text style={styles.paymentDate}>
-                {formatDate(payment.payment_date)}
-              </Text>
-            </View>
+        {payments.map((payment) => {
+          const isVoided = payment.status === 'voided';
+          const createdAt = new Date(payment.created_at);
+          const diffHours = (new Date().getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+          const canAction = !isVoided && diffHours <= 24;
 
-            <View style={styles.paymentDetails}>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Método:</Text>
-                <Text style={styles.detailValue}>{payment.payment_method}</Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Capital:</Text>
-                <Text style={styles.detailValue}>
-                  {formatCurrency(payment.capital_portion)}
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Interés:</Text>
-                <Text style={styles.detailValue}>
-                  {formatCurrency(payment.interest_portion)}
-                </Text>
-              </View>
-
-              {payment.late_fee_portion > 0 && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Mora:</Text>
-                  <Text style={[styles.detailValue, { color: '#EF4444' }]}>
-                    {formatCurrency(payment.late_fee_portion)}
+          return (
+            <View key={payment.id} style={[styles.paymentCard, isVoided && styles.voidedCard]}>
+              <View style={styles.paymentHeader}>
+                <View>
+                  <Text style={[styles.paymentAmount, isVoided && styles.voidedText]}>
+                    {formatCurrency(payment.amount)}
                   </Text>
+                  {isVoided && (
+                    <Text style={styles.voidedBadge}>ANULADO</Text>
+                  )}
                 </View>
-              )}
+                <View style={styles.paymentDateContainer}>
+                  <Text style={styles.paymentDate}>
+                    {formatDate(payment.payment_date)}
+                  </Text>
+                  {canAction && (
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity 
+                        onPress={() => handleEditPayment(payment)}
+                        style={styles.actionBtn}
+                      >
+                        <Ionicons name="pencil" size={18} color="#3B82F6" />
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        onPress={() => handleVoidPayment(payment.id)}
+                        style={styles.actionBtn}
+                      >
+                        <Ionicons name="trash" size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <View style={styles.paymentDetails}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Método:</Text>
+                  <Text style={styles.detailValue}>{payment.payment_method}</Text>
+                </View>
+                {/* ... existing portions ... */}
+                {payment.late_fee_portion > 0 && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Mora:</Text>
+                    <Text style={[styles.detailValue, { color: '#EF4444' }]}>
+                      {formatCurrency(payment.late_fee_portion)}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </ScrollView>
     );
   };
+
 
   return (
     <Modal
@@ -624,4 +697,33 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#FFFFFF',
   },
-});
+  voidedCard: {
+    opacity: 0.6,
+    backgroundColor: '#F3F4F6',
+  },
+  voidedText: {
+    textDecorationLine: 'line-through',
+    color: '#6B7280',
+  },
+  voidedBadge: {
+    fontSize: 10,
+    color: '#EF4444',
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  paymentDateContainer: {
+    alignItems: 'flex-end',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  actionBtn: {
+    padding: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 6,
+    marginLeft: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+});

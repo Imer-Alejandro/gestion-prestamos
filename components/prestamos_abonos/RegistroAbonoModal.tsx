@@ -92,15 +92,25 @@ interface RegistroAbonoModalProps {
   onSave: (abonoData: any) => void;
   loanId?: number;
   maxAmount?: number;
+  initialData?: {
+    amount: string;
+    payment_method: string;
+    payment_date: Date;
+    replace_payment_id?: number;
+  } | null;
+
 }
+
 
 export function RegistroAbonoModal({
   visible,
   onClose,
   onSave,
   loanId,
-  maxAmount
+  maxAmount,
+  initialData
 }: RegistroAbonoModalProps) {
+
   const [formData, setFormData] = useState({
     amount: '',
     payment_method: 'efectivo',
@@ -115,8 +125,23 @@ export function RegistroAbonoModal({
   const [loading, setLoading] = useState(false);
   const [selectedInstallmentId, setSelectedInstallmentId] = useState<number | null>(null);
 
+  // Cargar datos iniciales al editar
+  React.useEffect(() => {
+    if (visible && initialData) {
+      setFormData({
+        amount: initialData.amount,
+        payment_method: initialData.payment_method,
+        reference_number: '',
+        payment_date: initialData.payment_date,
+      });
+      const formatted = initialData.amount ? new Intl.NumberFormat('es-CO').format(parseInt(initialData.amount)) : '';
+      setDisplayAmount(formatted);
+    }
+  }, [visible, initialData]);
+
   // Cargar cuotas pendientes al abrir el modal
   React.useEffect(() => {
+
     if (visible && loanId) {
       loadInstallments();
     }
@@ -189,8 +214,10 @@ export function RegistroAbonoModal({
       payment_method: formData.payment_method,
       reference_number: formData.reference_number || null,
       payment_date: formData.payment_date.toISOString().split('T')[0],
-      installment_id: selectedInstallmentId, // Enviamos el ID de la cuota seleccionada
+      installment_id: selectedInstallmentId,
+      replace_payment_id: initialData?.replace_payment_id,
     };
+
 
 
     onSave(abonoData);

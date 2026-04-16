@@ -226,3 +226,28 @@ export async function deleteLoan(id) {
   const db = await getDb();
   await db.runAsync(`DELETE FROM loans WHERE id = ?`, [id]);
 }
+/* GET LOANS WITH FILTERS */
+export async function getLoans(userId, filters = {}) {
+  const db = await getDb();
+  let query = `SELECT * FROM loans WHERE user_id = ?`;
+  const params = [userId];
+
+  if (filters.status && filters.status !== 'all') {
+    query += ` AND status = ?`;
+    params.push(filters.status);
+  }
+
+  if (filters.payment_frequency && filters.payment_frequency !== 'all') {
+    query += ` AND payment_frequency = ?`;
+    params.push(filters.payment_frequency);
+  }
+
+  if (filters.date) {
+    query += ` AND start_date = ?`;
+    params.push(filters.date);
+  }
+
+  query += ` ORDER BY created_at DESC`;
+
+  return await db.getAllAsync(query, params);
+}

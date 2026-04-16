@@ -17,7 +17,9 @@ import { NuevoPrestamoModal } from "../../components/prestamos_abonos/NuevoPrest
 import { RegistroAbonoModal } from "../../components/prestamos_abonos/RegistroAbonoModal";
 import { DetallesPrestamoModal } from "../../components/prestamos_abonos/DetallesPrestamoModal";
 import { DetallesAbonoModal } from "../../components/prestamos_abonos/DetallesAbonoModal";
+import { FiltrosPrestamoModal } from "../../components/prestamos_abonos/FiltrosPrestamoModal";
 import { Abono } from "../../components/prestamos_abonos/AbonoCard";
+
 import {
   formatCurrencyPrestamos,
   type Prestamo
@@ -26,8 +28,9 @@ import { mockNotifications } from "../../data/homeData";
 import { useAuth } from "../../contexts/AuthContext";
 
 // Importar servicios
-import { getLoansByStatus, createLoan } from "../../services/loan.service";
+import { getLoans, createLoan } from "../../services/loan.service";
 import { createPayment, getAllPayments } from "../../services/payment.service";
+
 import { getClients } from "../../services/client.service";
 
 /**
@@ -62,22 +65,31 @@ export default function PrestamosScreen() {
 
   const [activeTab, setActiveTab] = useState<"prestamos" | "abonos">("prestamos");
   const [showFiltros, setShowFiltros] = useState(false);
+  const [filters, setFilters] = useState({
+    status: 'all', // Base: Mostrar todos
+    payment_frequency: 'all',
+    date: null
+  });
+
+
 
   const notifications = mockNotifications;
 
-  // Cargar datos iniciales
+  // Cargar datos al cambiar filtros o usuario
   useEffect(() => {
     if (user?.id) {
       loadData();
     }
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, filters]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const loadData = async () => {
     try {
       const [loansData, clientsData] = await Promise.all([
-        getLoansByStatus(user!.id, 'active'),
+        getLoans(user!.id, filters),
         getClients(user!.id)
       ]);
+
 
       // Transformar datos de loans al formato Prestamo
       const transformedLoans: Prestamo[] = loansData.map((loan: any) => ({
@@ -125,11 +137,18 @@ export default function PrestamosScreen() {
     console.log("Buscando:", searchQuery);
   };
 
+  // Determinar si hay filtros activos (diferentes al defecto 'all')
+  const isFiltering = filters.status !== 'all' || 
+                      filters.payment_frequency !== 'all' || 
+                      filters.date !== null;
+
+
   // Filtrar préstamos por búsqueda
   const filteredLoans = loans.filter(loan =>
     loan.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
     loan.id.includes(searchQuery)
   );
+
 
   // Navegar al detalle del préstamo
   const handlePrestamoPress = (prestamoId: string) => {
@@ -296,18 +315,43 @@ export default function PrestamosScreen() {
       <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
         {activeTab === "prestamos" ? (
           <>
-            {/* Header de préstamos activos con filtro */}
+            {/* Header de préstamos con filtros */}
             <View className="flex-row items-center justify-between mb-3">
               <Text className="text-gray-700 text-sm font-medium">
-                Préstamos - activos ({filteredLoans.length})
+                Préstamos - {
+                  filters.status === 'all' ? 'todos' : 
+                  filters.status === 'active' ? 'activos' : 
+                  filters.status === 'completed' ? 'completados' : 'en mora'
+                } ({filteredLoans.length})
               </Text>
+
               <TouchableOpacity
                 onPress={() => setShowFiltros(!showFiltros)}
                 className="w-10 h-10 items-center justify-center"
                 activeOpacity={0.7}
               >
-                <Ionicons name="options-outline" size={24} color="#374151" />
+                <Ionicons 
+                  name={isFiltering ? "options" : "options-outline"} 
+                  size={24} 
+                  color={isFiltering ? "#13678A" : "#374151"} 
+                />
+                {isFiltering && (
+                  <View 
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: '#EF4444',
+                      borderWidth: 1,
+                      borderColor: '#F9FAFB'
+                    }}
+                  />
+                )}
               </TouchableOpacity>
+
             </View>
 
             {/* Lista de préstamos */}
@@ -438,12 +482,31 @@ export default function PrestamosScreen() {
         abono={selectedAbono}
       />
 
+      {/* Modal de Filtros */}
+      <FiltrosPrestamoModal
+        visible={showFiltros}
+        onClose={() => setShowFiltros(false)}
+        currentFilters={filters}
+        onApply={(newFilters) => {
+          setFilters(newFilters);
+        }}
+        onClear={() => {
+          setFilters({
+            status: 'all',
+            payment_frequency: 'all',
+            date: null
+          });
+        }}
+
+      />
+
       {/* Drawer Menu */}
       <DrawerMenu
         visible={showDrawer}
         onClose={() => setShowDrawer(false)}
         userData={userData}
       />
+
     </View>
   );
 }

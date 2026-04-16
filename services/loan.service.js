@@ -15,6 +15,25 @@ export async function createLoan(data) {
 
   const db = await getDb();
 
+  // Generar cuotas primero para calcular interés total
+  let totalInterest = 0;
+  let schedule = [];
+  const amortizationType = data.amortization_type || "francesa";
+
+  if (amortizationType === "francesa") {
+    schedule = generateFrenchAmortization({
+      principal: data.principal_amount,
+      rate: data.interest_rate,
+      installments: data.installments,
+      startDate: data.start_date,
+      paymentFrequency: data.payment_frequency || "monthly",
+      interestRatePeriod: data.interest_rate_period || "monthly",
+    });
+    totalInterest = schedule.reduce((sum, inst) => sum + inst.interest_amount, 0);
+  }
+
+  const initialBalance = data.principal_amount + totalInterest;
+
   const result = await db.runAsync(
     `INSERT INTO loans (
       user_id,
@@ -45,8 +64,8 @@ export async function createLoan(data) {
     [
       data.user_id,
       data.client_id,
-      data.principal_amount, // current_balance inicial = principal
-      0, // total_interest
+      initialBalance, // current_balance inicial = principal + intereses
+      totalInterest, // total_interest proyectado
       0, // total_late_fees
       data.contract_number,
       data.loan_type || "personal",
@@ -57,7 +76,7 @@ export async function createLoan(data) {
       data.interest_rate_period,
       data.late_fee_type,
       data.late_fee_value,
-      data.amortization_type || "francesa",
+      amortizationType,
       data.installments,
       data.start_date,
       data.due_date,
@@ -71,22 +90,12 @@ export async function createLoan(data) {
 
   const loanId = result.lastInsertRowId;
 
-  // Generar cuotas automáticamente si es amortización francesa
-  if (data.amortization_type === "francesa" || !data.amortization_type) {
+  // Guardar cuotas generadas
+  if (schedule.length > 0) {
     try {
-      const schedule = generateFrenchAmortization({
-        principal: data.principal_amount,
-        rate: data.interest_rate,
-        installments: data.installments,
-        startDate: data.start_date,
-        paymentFrequency: data.payment_frequency || "monthly",
-        interestRatePeriod: data.interest_rate_period || "monthly",
-      });
-
       await generateAndSaveInstallments(loanId, schedule);
     } catch (error) {
-      console.error("Error generating installments:", error);
-      // No fallar la creación del préstamo si falla la generación de cuotas
+      console.error("Error saving installments:", error);
     }
   }
 

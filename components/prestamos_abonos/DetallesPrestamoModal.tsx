@@ -33,6 +33,7 @@ interface LoanDetails {
   start_date: string;
   due_date: string;
   payment_frequency: string;
+  expected_profit: number;
 }
 
 interface Installment {
@@ -43,6 +44,8 @@ interface Installment {
   amount_paid: number;
   status: string;
   late_fee_accrued: number;
+  interest_amount: number;
+  capital_amount: number;
 }
 
 interface Payment {
@@ -100,6 +103,7 @@ export function DetallesPrestamoModal({
         start_date: loan.start_date,
         due_date: loan.due_date,
         payment_frequency: loan.payment_frequency,
+        expected_profit: installmentsData.reduce((sum: number, inst: any) => sum + inst.interest_amount, 0),
       });
 
       setInstallments(installmentsData.map((installment: any) => ({
@@ -110,6 +114,8 @@ export function DetallesPrestamoModal({
         amount_paid: installment.amount_paid,
         status: installment.status,
         late_fee_accrued: installment.late_fee_accrued,
+        interest_amount: installment.interest_amount,
+        capital_amount: installment.capital_amount,
       })));
 
       setPayments(paymentsData.map((payment: any) => ({
@@ -201,7 +207,7 @@ export function DetallesPrestamoModal({
           <Text style={styles.cardTitle}>Montos</Text>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Monto Principal:</Text>
+            <Text style={styles.infoLabel}>Capital Inicial:</Text>
             <Text style={styles.infoValue}>{formatCurrency(loanDetails.principal_amount)}</Text>
           </View>
 
@@ -214,6 +220,13 @@ export function DetallesPrestamoModal({
             <Text style={styles.infoLabel}>Total Pagado:</Text>
             <Text style={[styles.infoValue, { color: '#10B981' }]}>
               {formatCurrency(loanDetails.total_paid)}
+            </Text>
+          </View>
+ 
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Ganancias Estimadas:</Text>
+            <Text style={[styles.infoValue, { color: '#2563EB' }]}>
+              {formatCurrency(loanDetails.expected_profit)}
             </Text>
           </View>
         </View>

@@ -9,9 +9,10 @@ import {
   Alert,
 } from 'react-native';
 import { getLoanById } from '../../services/loan.service';
-import { getInstallmentsByLoan } from '../../services/installment.service';
+import { getInstallmentsByLoan, refreshInstallmentMora } from '../../services/installment.service';
 import { getPaymentsByLoan } from '../../services/payment.service';
 import { getClientById } from '../../services/client.service';
+
 
 interface DetallesPrestamoModalProps {
   visible: boolean;
@@ -87,8 +88,18 @@ export function DetallesPrestamoModal({
       }
 
       const client = await getClientById(loan.client_id);
+      
+      // Actualizar mora de las cuotas antes de mostrarlas
+      const rawInstallments = await getInstallmentsByLoan(loanId);
+      for (const inst of rawInstallments) {
+        if (inst.status !== 'paid') {
+          await refreshInstallmentMora(inst.id);
+        }
+      }
+      
       const installmentsData = await getInstallmentsByLoan(loanId);
       const paymentsData = await getPaymentsByLoan(loanId);
+
 
       setLoanDetails({
         id: loan.id,

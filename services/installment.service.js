@@ -1,4 +1,6 @@
 import { getDb } from "../database/db.js";
+import { getLoanById } from "./loan.service.js";
+
 
 /* GENERATE AND SAVE INSTALLMENTS */
 export async function generateAndSaveInstallments(loanId, schedule) {
@@ -68,7 +70,7 @@ export async function updateInstallmentStatus(installmentId, status) {
   );
 }
 
-/* APPLY PAYMENT TO INSTALLMENT */
+/* APPLY PAYMENT TO INSTALLMENT (Internal distribution) */
 export async function applyPaymentToInstallment(installmentId, paymentAmount) {
   const db = await getDb();
 
@@ -76,12 +78,13 @@ export async function applyPaymentToInstallment(installmentId, paymentAmount) {
   const installment = await getInstallmentById(installmentId);
   if (!installment) throw new Error("Installment not found");
 
+  const totalDue = installment.scheduled_amount + (installment.late_fee_accrued || 0);
   const currentPaid = installment.amount_paid || 0;
   const newPaid = currentPaid + paymentAmount;
 
   // Determinar nuevo estado
   let newStatus = installment.status;
-  if (newPaid >= installment.scheduled_amount) {
+  if (newPaid >= totalDue) {
     newStatus = "paid";
   } else if (newPaid > 0) {
     newStatus = "partial";
@@ -95,8 +98,47 @@ export async function applyPaymentToInstallment(installmentId, paymentAmount) {
     [newPaid, newStatus, new Date().toISOString(), installmentId],
   );
 
-  return { previousPaid: currentPaid, newPaid, status: newStatus };
+  return { previousPaid: currentPaid, newPaid, status: newStatus, overpaid: Math.max(0, newPaid - totalDue) };
 }
+
+/* CALCULATE AND UPDATE MORA FOR INSTALLMENT */
+export async function refreshInstallmentMora(installmentId) {
+  const db = await getDb();
+  
+  const inst = await db.getFirstAsync(`
+    SELECT li.*, l.late_fee_type, l.late_fee_value, l.grace_days
+    FROM loan_installments li
+    JOIN loans l ON li.loan_id = l.id
+    WHERE li.id = ?
+  `, [installmentId]);
+
+  if (!inst || inst.status === 'paid') return inst;
+
+  const today = new Date();
+  const dueDate = new Date(inst.due_date);
+  const graceDate = new Date(dueDate);
+  graceDate.setDate(graceDate.getDate() + (inst.grace_days || 0));
+
+  if (today > graceDate && inst.late_fee_accrued === 0 && inst.late_fee_value > 0) {
+    let mora = 0;
+    if (inst.late_fee_type === 'percentage') {
+      mora = inst.scheduled_amount * (inst.late_fee_value / 100);
+    } else {
+      mora = inst.late_fee_value;
+    }
+
+    await db.runAsync(
+      `UPDATE loan_installments SET late_fee_accrued = ?, status = 'overdue', updated_at = ? WHERE id = ?`,
+      [mora, new Date().toISOString(), installmentId]
+    );
+    
+    // Devolver objeto actualizado
+    return { ...inst, late_fee_accrued: mora, status: 'overdue' };
+  }
+
+  return inst;
+}
+
 
 /* GET OVERDUE INSTALLMENTS */
 export async function getOverdueInstallments(loanId) {
@@ -111,16 +153,17 @@ export async function getOverdueInstallments(loanId) {
   );
 }
 
-/* GET PENDING INSTALLMENTS */
+/* GET PENDING INSTALLMENTS (inc. partial and overdue) */
 export async function getPendingInstallments(loanId) {
   const db = await getDb();
   return await db.getAllAsync(
     `SELECT * FROM loan_installments
-     WHERE loan_id = ? AND status IN ('pending', 'partial')
+     WHERE loan_id = ? AND status IN ('pending', 'partial', 'overdue')
      ORDER BY installment_number`,
     [loanId],
   );
 }
+
 
 /* UPDATE LATE FEES FOR INSTALLMENT */
 export async function updateInstallmentLateFees(installmentId, lateFeeAmount) {

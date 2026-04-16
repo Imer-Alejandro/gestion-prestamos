@@ -8,8 +8,13 @@ import {
   Modal,
   Alert,
   FlatList,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
+
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { getPendingInstallments, refreshInstallmentMora } from '../../services/installment.service';
+
 
 interface CustomPickerProps {
   selectedValue: string | undefined;
@@ -106,8 +111,44 @@ export function RegistroAbonoModal({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [displayAmount, setDisplayAmount] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [installments, setInstallments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedInstallmentId, setSelectedInstallmentId] = useState<number | null>(null);
+
+  // Cargar cuotas pendientes al abrir el modal
+  React.useEffect(() => {
+    if (visible && loanId) {
+      loadInstallments();
+    }
+  }, [visible, loanId]);
+
+  const loadInstallments = async () => {
+    if (!loanId) return;
+    setLoading(true);
+    try {
+      // 1. Obtener cuotas pendientes
+      const pending = await getPendingInstallments(loanId);
+      
+      // 2. Refrescar mora de la primera cuota (la más antigua) para mostrarla al usuario
+      if (pending.length > 0) {
+        await refreshInstallmentMora(pending[0].id);
+        const refreshedCurrent = await getPendingInstallments(loanId);
+        setInstallments(refreshedCurrent);
+        
+        // Seleccionar por defecto la primera cuota pendiente (obligatorio)
+        setSelectedInstallmentId(refreshedCurrent[0].id);
+      } else {
+        setInstallments([]);
+      }
+    } catch (error) {
+      console.error("Error cargando cuotas:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const validateForm = () => {
+
     const newErrors: Record<string, string> = {};
 
     const amount = parseFloat(formData.amount) || 0;
@@ -128,13 +169,29 @@ export function RegistroAbonoModal({
 
     const amount = parseFloat(formData.amount) || 0;
 
+    // Validación elegante: Si el usuario intenta cambiar la cuota y hay una mora anterior
+    // (En este diseño, forzamos el pago de la cuota seleccionada que por defecto es la más antigua)
+    const selectedInst = installments.find(i => i.id === selectedInstallmentId);
+    const firstInst = installments[0];
+
+    if (selectedInstallmentId !== firstInst?.id) {
+      Alert.alert(
+        "Orden Obligatorio",
+        "Debes completar el pago de la cuota más antigua antes de abonar a las siguientes para mantener el orden cronológico.",
+        [{ text: "Entendido", onPress: () => setSelectedInstallmentId(firstInst.id) }]
+      );
+      return;
+    }
+
     const abonoData = {
       loan_id: loanId,
       amount: amount,
       payment_method: formData.payment_method,
       reference_number: formData.reference_number || null,
       payment_date: formData.payment_date.toISOString().split('T')[0],
+      installment_id: selectedInstallmentId, // Enviamos el ID de la cuota seleccionada
     };
+
 
     onSave(abonoData);
     handleClose();
@@ -193,82 +250,147 @@ export function RegistroAbonoModal({
           </TouchableOpacity>
         </View>
 
-        <View style={styles.form}>
-          {/* Monto */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Monto del Abono *</Text>
-            <TextInput
-              style={[styles.input, errors.amount && styles.inputError]}
-              value={displayAmount}
-              onChangeText={handleAmountChange}
-              placeholder="$ 0"
-              keyboardType="numeric"
-            />
-            {errors.amount && <Text style={styles.error}>{errors.amount}</Text>}
-            {maxAmount && (
-              <Text style={styles.hint}>
-                Máximo sugerido: ${new Intl.NumberFormat('es-CO').format(maxAmount)}
-              </Text>
-            )}
-          </View>
+        <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.form}>
+            {/* Cuota a pagar */}
+            <View style={styles.field}>
+              <Text style={styles.label}>Cuota a Abonar</Text>
+              {loading ? (
+                <ActivityIndicator color="#13678A" style={{ marginVertical: 10 }} />
+              ) : installments.length > 0 ? (
+                <>
+                  <CustomPicker
+                    selectedValue={selectedInstallmentId?.toString()}
+                    onValueChange={(value) => {
+                      const instId = parseInt(value);
+                      if (instId !== installments[0].id) {
+                        Alert.alert(
+                          "⚠️ Pago en Orden",
+                          "El sistema requiere que liquides primero las cuotas vencidas o pendientes más antiguas. Hemos seleccionado automáticamente la cuota correspondiente."
+                        );
+                        setSelectedInstallmentId(installments[0].id);
+                      } else {
+                        setSelectedInstallmentId(instId);
+                      }
+                    }}
+                    options={installments.map(inst => ({
+                      label: `Cuota #${inst.installment_number} - ${inst.status === 'overdue' ? '⚠️ EN MORA' : 'Pendiente'}`,
+                      value: inst.id.toString()
+                    }))}
+                    placeholder="Seleccionar cuota"
+                  />
+                  {/* Detalles de la cuota seleccionada */}
+                  {selectedInstallmentId && (
+                    <View style={styles.installmentDetail}>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Monto Programado:</Text>
+                        <Text style={styles.detailValue}>
+                          ${new Intl.NumberFormat('es-CO').format(installments.find(i => i.id === selectedInstallmentId)?.scheduled_amount || 0)}
+                        </Text>
+                      </View>
+                      {installments.find(i => i.id === selectedInstallmentId)?.late_fee_accrued > 0 && (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.lateFeeLabel}>Mora Aplicada:</Text>
+                          <Text style={styles.lateFeeValue}>
+                            + ${new Intl.NumberFormat('es-CO').format(installments.find(i => i.id === selectedInstallmentId)?.late_fee_accrued || 0)}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.detailRowDivider} />
+                      <View style={styles.detailRow}>
+                        <Text style={styles.totalLabel}>Total a Pagar en Cuota:</Text>
+                        <Text style={styles.totalValue}>
+                          ${new Intl.NumberFormat('es-CO').format(
+                          (installments.find(i => i.id === selectedInstallmentId)?.scheduled_amount || 0) +
+                          (installments.find(i => i.id === selectedInstallmentId)?.late_fee_accrued || 0) -
+                          (installments.find(i => i.id === selectedInstallmentId)?.amount_paid || 0)
+                        )}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.noInstallments}>No hay cuotas pendientes para este préstamo.</Text>
+              )}
+            </View>
 
-          {/* Método de pago */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Método de Pago</Text>
-            <CustomPicker
-              selectedValue={formData.payment_method}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, payment_method: value }))}
-              options={[
-                { label: "💵 Efectivo", value: "efectivo" },
-                { label: "💳 Tarjeta de Crédito/Débito", value: "tarjeta" },
-                { label: "🏦 Transferencia Bancaria", value: "transferencia" },
-                { label: "📄 Cheque", value: "cheque" },
-              ]}
-              placeholder="Seleccionar método"
-            />
-          </View>
-
-          {/* Número de referencia */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Número de Referencia</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.reference_number}
-              onChangeText={(value) => setFormData(prev => ({ ...prev, reference_number: value }))}
-              placeholder="Comprobante, recibo, etc."
-            />
-            <Text style={styles.hint}>
-              Opcional: número de recibo, comprobante, etc.
-            </Text>
-          </View>
-
-          {/* Fecha de pago */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Fecha del Pago</Text>
-            <TouchableOpacity
-              style={styles.input}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text>{formData.payment_date.toLocaleDateString()}</Text>
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={formData.payment_date}
-                mode="date"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowDatePicker(false);
-                  if (selectedDate) {
-                    setFormData(prev => ({ ...prev, payment_date: selectedDate }));
-                  }
-                }}
+            {/* Monto */}
+            <View style={styles.field}>
+              <Text style={styles.label}>Monto del Abono *</Text>
+              <TextInput
+                style={[styles.input, errors.amount && styles.inputError]}
+                value={displayAmount}
+                onChangeText={handleAmountChange}
+                placeholder="$ 0"
+                keyboardType="numeric"
               />
-            )}
-            <Text style={styles.hint}>
-              Por defecto: hoy
-            </Text>
+              {errors.amount && <Text style={styles.error}>{errors.amount}</Text>}
+              <Text style={styles.hint}>
+                Si el monto es mayor al total de la cuota, el excedente se aplicará a la siguiente.
+              </Text>
+            </View>
+
+
+            {/* Método de pago */}
+            <View style={styles.field}>
+              <Text style={styles.label}>Método de Pago</Text>
+              <CustomPicker
+                selectedValue={formData.payment_method}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, payment_method: value }))}
+                options={[
+                  { label: "💵 Efectivo", value: "efectivo" },
+                  { label: "💳 Tarjeta de Crédito/Débito", value: "tarjeta" },
+                  { label: "🏦 Transferencia Bancaria", value: "transferencia" },
+                  { label: "📄 Cheque", value: "cheque" },
+                ]}
+                placeholder="Seleccionar método"
+              />
+            </View>
+
+            {/* Número de referencia */}
+            <View style={styles.field}>
+              <Text style={styles.label}>Número de Referencia</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.reference_number}
+                onChangeText={(value) => setFormData(prev => ({ ...prev, reference_number: value }))}
+                placeholder="Comprobante, recibo, etc."
+              />
+              <Text style={styles.hint}>
+                Opcional: número de recibo, comprobante, etc.
+              </Text>
+            </View>
+
+            {/* Fecha de pago */}
+            <View style={styles.field}>
+              <Text style={styles.label}>Fecha del Pago</Text>
+              <TouchableOpacity
+                style={styles.input}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text>{formData.payment_date.toLocaleDateString()}</Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={formData.payment_date}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(false);
+                    if (selectedDate) {
+                      setFormData(prev => ({ ...prev, payment_date: selectedDate }));
+                    }
+                  }}
+                />
+              )}
+              <Text style={styles.hint}>
+                Por defecto: hoy
+              </Text>
+            </View>
           </View>
-        </View>
+        </ScrollView>
+
 
         <View style={styles.footer}>
           <TouchableOpacity
@@ -315,9 +437,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#6B7280',
   },
+  scrollContainer: {
+    flex: 1,
+  },
   form: {
     padding: 20,
   },
+
   field: {
     marginBottom: 20,
   },
@@ -414,7 +540,60 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 4,
   },
+  installmentDetail: {
+    marginTop: 10,
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  detailRowDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  lateFeeLabel: {
+    fontSize: 14,
+    color: '#DC2626',
+    fontWeight: '500',
+  },
+  lateFeeValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#DC2626',
+  },
+  totalLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  totalValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#13678A',
+  },
+  noInstallments: {
+    fontSize: 14,
+    color: '#EF4444',
+    fontStyle: 'italic',
+  },
   footer: {
+
     flexDirection: 'row',
     padding: 20,
     borderTopWidth: 1,

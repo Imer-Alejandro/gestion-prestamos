@@ -243,9 +243,9 @@ export default function PrestamosScreen() {
       key={abono.id}
       abono={abono}
       onPress={() => handleAbonoPress(abono)}
-      onMenuPress={() => handleAbonoMenu(abono)}
     />
   );
+
 
   return (
     <View className="flex-1 bg-gray-50">

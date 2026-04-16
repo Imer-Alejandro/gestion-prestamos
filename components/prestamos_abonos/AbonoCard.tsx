@@ -16,10 +16,11 @@ export interface Abono {
 interface AbonoCardProps {
   abono: Abono;
   onPress?: () => void;
-  onMenuPress?: () => void;
 }
 
-export function AbonoCard({ abono, onPress, onMenuPress }: AbonoCardProps) {
+
+export function AbonoCard({ abono, onPress }: AbonoCardProps) {
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -59,37 +60,35 @@ export function AbonoCard({ abono, onPress, onMenuPress }: AbonoCardProps) {
     <TouchableOpacity 
       style={styles.card} 
       onPress={onPress} 
-      activeOpacity={0.7}
+      activeOpacity={0.8}
     >
       <View style={styles.topRow}>
         <View style={styles.clientInfo}>
           <View style={styles.iconBadge}>
             <Ionicons 
               name={getPaymentMethodIcon(abono.payment_method)} 
-              size={20} 
-              color="#10B981" 
+              size={22} 
+              color="#13678A" 
             />
           </View>
           <View style={styles.textContainer}>
             <Text style={styles.clientName} numberOfLines={1}>
               {abono.client_name || 'Cliente Desconocido'}
             </Text>
-            <Text style={styles.loanInfo}>
-              Contrato: {abono.loan_contract_number || 'N/A'}
-            </Text>
+            <View style={styles.subInfoRow}>
+              <Ionicons name="document-text-outline" size={12} color="#9CA3AF" />
+              <Text style={styles.loanInfo}>
+                {abono.loan_contract_number || 'S/N'}
+              </Text>
+            </View>
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={(e) => {
-            e.stopPropagation();
-            onMenuPress && onMenuPress();
-          }}
-        >
-          <Ionicons name="ellipsis-vertical" size={20} color="#6B7280" />
-        </TouchableOpacity>
+        <View style={styles.chevronContainer}>
+          <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+        </View>
       </View>
+
 
       <View style={styles.amountRow}>
         <View>
@@ -120,23 +119,24 @@ export function AbonoCard({ abono, onPress, onMenuPress }: AbonoCardProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginVertical: 8,
+    borderRadius: 20,
+    padding: 18,
+    marginVertical: 6,
     marginHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#F3F4F6',
+    // Sombra premium
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
     elevation: 2,
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   clientInfo: {
     flexDirection: 'row',
@@ -144,13 +144,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#ECFDF5',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F0F9FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   textContainer: {
     flex: 1,
@@ -158,58 +158,73 @@ const styles = StyleSheet.create({
   clientName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1F2937',
+    letterSpacing: -0.3,
+  },
+  subInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
   },
   loanInfo: {
     fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
+    color: '#9CA3AF',
+    marginLeft: 4,
+    fontWeight: '500',
   },
-  menuButton: {
-    padding: 8,
+  chevronContainer: {
+    padding: 4,
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    paddingTop: 12,
+    borderTopColor: '#F9FAFB',
+    paddingTop: 14,
   },
   amountLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    fontWeight: '500',
+    color: '#9CA3AF',
     marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   amountValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#10B981',
+    letterSpacing: -0.5,
   },
   dateContainer: {
     alignItems: 'flex-end',
   },
   dateLabel: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#9CA3AF',
     marginBottom: 4,
+    textTransform: 'uppercase',
   },
   dateValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#4B5563',
   },
   referenceBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginTop: 12,
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
   },
   referenceText: {
     fontSize: 11,
-    color: '#4B5563',
-    fontWeight: '500',
+    color: '#166534',
+    fontWeight: '600',
   },
 });

@@ -195,10 +195,12 @@ export async function updateLoan(id, data) {
 /* GET LOANS BY CLIENT */
 export async function getLoansByClient(clientId) {
   const db = await getDb();
-  return await db.getAllAsync(`SELECT * FROM loans WHERE client_id = ?`, [
-    clientId,
-  ]);
+  return await db.getAllAsync(
+    `SELECT * FROM loans WHERE client_id = ? ORDER BY created_at DESC`, 
+    [clientId]
+  );
 }
+
 
 /* UPDATE CURRENT BALANCE */
 export async function updateCurrentBalance(loanId, newBalance) {
@@ -213,10 +215,11 @@ export async function updateCurrentBalance(loanId, newBalance) {
 export async function getLoansByStatus(userId, status) {
   const db = await getDb();
   return await db.getAllAsync(
-    `SELECT * FROM loans WHERE user_id = ? AND status = ?`,
+    `SELECT * FROM loans WHERE user_id = ? AND status = ? ORDER BY created_at DESC`,
     [userId, status],
   );
 }
+
 
 /* DELETE LOAN */
 export async function deleteLoan(id) {

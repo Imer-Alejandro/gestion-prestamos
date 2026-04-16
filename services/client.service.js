@@ -49,11 +49,14 @@ export async function createClient(data) {
 export async function getClients(userId) {
   const db = await getDb();
   
-  // Obtener todos los clientes del usuario
+  // Obtener todos los clientes del usuario (más recientes primero)
   const clients = await db.getAllAsync(
-    `SELECT * FROM clients WHERE user_id = ? AND is_active = 1`,
+    `SELECT * FROM clients 
+     WHERE user_id = ? AND is_active = 1 
+     ORDER BY created_at DESC`,
     [userId],
   );
+
 
   // Para cada cliente, calcular su información financiera
   const clientsWithFinancialInfo = await Promise.all(

@@ -347,3 +347,7 @@ const styles = StyleSheet.create({
 
   selectedOptionText: { color: COLORS.primary, fontWeight: 'bold' },
 });
+
+function setDisplayAmount(arg0: string) {
+  throw new Error('Function not implemented.');
+}

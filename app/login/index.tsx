@@ -125,113 +125,58 @@ export default function LoginScreen() {
           {/* Formulario de login */}
           <View className="mb-6">
             {/* Campo de correo electrónico - Solución iOS: TextInput invisible + Text visible */}
-            <View className="mb-5">
-              <Text className="text-white/70 text-base mb-2">
-                Correo electrónico
-              </Text>
-              {/* Contenedor con altura fija para evitar recalculos de layout */}
-              <View 
-                className="bg-white/10 border border-white/20 rounded-lg px-4" 
-                style={{ height: 56, justifyContent: 'center' }}
-              >
-                {/* Text visible que muestra el valor actual o placeholder */}
-                <Text 
-                  className="text-lg"
-                  style={{
-                    color: formData.email ? '#ffffff' : '#ffffff40',
-                    paddingVertical: 0,
-                  }}
-                  numberOfLines={1}
-                >
-                  {formData.email || 'ejemplo@correo.com'}
-                </Text>
-                
-                {/* TextInput invisible superpuesto que captura el input */}
-                <TextInput
-                  value={formData.email}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, email: text })
-                  }
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    color: 'transparent',
-                    paddingHorizontal: 12,
-                    fontSize: 18,
-                  }}
-                  cursorColor="#ffffff"
-                  selectionColor="#ffffff40"
-                />
-              </View>
-            </View>
+          <View className="mb-5">
+  <Text className="text-white/70 text-base mb-2">
+    Correo electrónico
+  </Text>
 
-            {/* Campo de contraseña con toggle de visibilidad - Solución iOS: TextInput invisible + Text visible */}
-            <View className="mb-5">
-              <Text className="text-white/70 text-base mb-2">Contraseña</Text>
-              <View className="relative">
-                {/* Contenedor con altura fija para evitar recalculos de layout */}
-                <View 
-                  className="bg-white/10 border border-white/20 rounded-lg px-4" 
-                  style={{ height: 56, justifyContent: 'center', paddingRight: 48 }}
-                >
-                  {/* Text visible que muestra el valor o placeholder */}
-                  <Text 
-                    className="text-lg"
-                    style={{
-                      color: formData.password ? '#ffffff' : '#ffffff40',
-                      paddingVertical: 0,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {formData.password 
-                      ? (showPassword ? formData.password : '•'.repeat(formData.password.length))
-                      : 'Ingrese su contraseña'
-                    }
-                  </Text>
-                  
-                  {/* TextInput invisible superpuesto que captura el input */}
-                  <TextInput
-                    value={formData.password}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, password: text })
-                    }
-                    secureTextEntry={!showPassword}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 48,
-                      bottom: 0,
-                      color: 'transparent',
-                      paddingHorizontal: 12,
-                      fontSize: 18,
-                    }}
-                    cursorColor="#ffffff"
-                    selectionColor="#ffffff40"
-                    onSubmitEditing={handleLogin}
-                  />
-                </View>
-                
-                {/* Botón para mostrar/ocultar contraseña */}
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  className="absolute right-4"
-                  style={{ top: 16 }}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={24}
-                    color="#ffffff90"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
+  <TextInput
+    value={formData.email}
+    onChangeText={(text) =>
+      setFormData({ ...formData, email: text })
+    }
+    placeholder="ejemplo@correo.com"
+    placeholderTextColor="#ffffff40"
+    keyboardType="email-address"
+    autoCapitalize="none"
+    autoComplete="email"
+    className="bg-white/10 border border-white/20 rounded-lg px-4 text-white text-lg"
+    style={{ height: 56 }}
+  />
+</View>
+
+           <View className="mb-5">
+  <Text className="text-white/70 text-base mb-2">
+    Contraseña
+  </Text>
+
+  <View className="relative">
+    <TextInput
+      value={formData.password}
+      onChangeText={(text) =>
+        setFormData({ ...formData, password: text })
+      }
+      placeholder="Ingrese su contraseña"
+      placeholderTextColor="#ffffff40"
+      secureTextEntry={!showPassword}
+      className="bg-white/10 border border-white/20 rounded-lg px-4 text-white text-lg pr-12"
+      style={{ height: 56 }}
+      onSubmitEditing={handleLogin}
+    />
+
+    <TouchableOpacity
+      onPress={() => setShowPassword(!showPassword)}
+      className="absolute right-4"
+      style={{ top: 16 }}
+    >
+      <Ionicons
+        name={showPassword ? "eye-off-outline" : "eye-outline"}
+        size={24}
+        color="#ffffff90"
+      />
+    </TouchableOpacity>
+  </View>
+</View>
 
             {/* Checkbox para guardar inicio de sesión */}
             <TouchableOpacity

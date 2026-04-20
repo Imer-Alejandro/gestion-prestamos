@@ -11,6 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Paleta de colores
 const COLORS = {
@@ -24,7 +25,14 @@ const COLORS = {
 };
 
 // Picker personalizado
-function CustomPicker({ selectedValue, onValueChange, options, placeholder }: any) {
+interface CustomPickerProps {
+  selectedValue: string | undefined;
+  onValueChange: (value: string) => void;
+  options: { label: string; value: string }[];
+  placeholder: string;
+}
+
+function CustomPicker({ selectedValue, onValueChange, options, placeholder }: CustomPickerProps) {
   const [showModal, setShowModal] = useState(false);
 
   const selectedOption = options.find((opt: any) => opt.value === selectedValue);
@@ -84,21 +92,30 @@ function CustomPicker({ selectedValue, onValueChange, options, placeholder }: an
   );
 }
 
+interface RegistroAbonoModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onSave: (abonoData: any) => void;
+  loanId?: number;
+  maxAmount?: number;
+}
+
 export default function RegistroAbonoModal({
   visible,
   onClose,
   onSave,
   loanId,
   maxAmount,
-}: any) {
+}: RegistroAbonoModalProps) {
 
   const [formData, setFormData] = useState({
     amount: '',
     metodoPago: 'Efectivo',
     referenciaPago: '',
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: new Date(),
   });
 
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState<any>({});
 
   // Validación
@@ -128,7 +145,7 @@ export default function RegistroAbonoModal({
       amount: parseFloat(formData.amount),
       payment_method: formData.metodoPago,
       reference_number: formData.referenciaPago || null,
-      payment_date: formData.payment_date,
+      payment_date: formData.payment_date.toISOString().split('T')[0],
       capital_portion: parseFloat(formData.amount),
       interest_portion: 0,
       late_fee_portion: 0,
@@ -144,9 +161,8 @@ export default function RegistroAbonoModal({
       amount: '',
       metodoPago: 'Efectivo',
       referenciaPago: '',
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: new Date(),
     });
-    setDisplayAmount('');
     setErrors({});
     Keyboard.dismiss();
     onClose();
@@ -181,13 +197,25 @@ export default function RegistroAbonoModal({
           {/* Fecha */}
           <View style={styles.field}>
             <Text style={styles.label}>Fecha</Text>
-            <TextInput
+            <TouchableOpacity
               style={styles.input}
-              value={formData.payment_date}
-              onChangeText={(value) =>
-                setFormData({ ...formData, payment_date: value })
-              }
-            />
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text>{formData.payment_date.toLocaleDateString()}</Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={formData.payment_date}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (selectedDate) {
+                    setFormData(prev => ({ ...prev, payment_date: selectedDate }));
+                  }
+                }}
+              />
+            )}
           </View>
 
           {/* Método */}

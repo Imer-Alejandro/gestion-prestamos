@@ -138,9 +138,9 @@ export default function PrestamosScreen() {
   };
 
   // Determinar si hay filtros activos (diferentes al defecto 'all')
-  const isFiltering = filters.status !== 'all' || 
-                      filters.payment_frequency !== 'all' || 
-                      filters.date !== null;
+  const isFiltering = filters.status !== 'all' ||
+    filters.payment_frequency !== 'all' ||
+    filters.date !== null;
 
 
   // Filtrar préstamos por búsqueda
@@ -275,7 +275,7 @@ export default function PrestamosScreen() {
       />
 
       {/* Total de deudas pendientes */}
-      <View className="bg-blue-600 mx-4 mt-4 mb-3 rounded-2xl p-6 shadow-md"
+      <View className="bg-[#14688A] mx-4 mt-4 mb-3 rounded-2xl p-6 shadow-md"
         style={{
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
@@ -331,9 +331,9 @@ export default function PrestamosScreen() {
             <View className="flex-row items-center justify-between mb-3">
               <Text className="text-gray-700 text-sm font-medium">
                 Préstamos - {
-                  filters.status === 'all' ? 'todos' : 
-                  filters.status === 'active' ? 'activos' : 
-                  filters.status === 'completed' ? 'completados' : 'en mora'
+                  filters.status === 'all' ? 'todos' :
+                    filters.status === 'active' ? 'activos' :
+                      filters.status === 'completed' ? 'completados' : 'en mora'
                 } ({filteredLoans.length})
               </Text>
 
@@ -342,13 +342,13 @@ export default function PrestamosScreen() {
                 className="w-10 h-10 items-center justify-center"
                 activeOpacity={0.7}
               >
-                <Ionicons 
-                  name={isFiltering ? "options" : "options-outline"} 
-                  size={24} 
-                  color={isFiltering ? "#13678A" : "#374151"} 
+                <Ionicons
+                  name={isFiltering ? "options" : "options-outline"}
+                  size={24}
+                  color={isFiltering ? "#13678A" : "#374151"}
                 />
                 {isFiltering && (
-                  <View 
+                  <View
                     style={{
                       position: 'absolute',
                       top: 8,

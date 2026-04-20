@@ -18,6 +18,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import { getDailyDashboardData } from "../../services/dashboard.service";
 import { getClients } from "../../services/client.service";
 import { getPendingNotificationsUI } from "../../services/notification.service";
+import { createLoan, getLoansByClient } from "../../services/loan.service";
+import { createPayment } from "../../services/payment.service";
+import { NuevoPrestamoModal } from "../../components/prestamos_abonos/NuevoPrestamoModal";
+import { RegistroAbonoModal } from "../../components/prestamos_abonos/RegistroAbonoModal";
+import { Modal, FlatList, Alert } from "react-native";
 
 /**
  * Dashboard/Home Principal
@@ -33,61 +38,86 @@ export default function HomeScreen() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
 
-  const [dailyTotals, setDailyTotals] = useState<any>({ loans: "0.00", payments: "0.00" });
+  const [summary, setSummary] = useState<any>({
+    portfolioValue: "0",
+    dailyCollection: "0",
+    activeLoans: 0,
+    pendingAgendaCount: 0
+  });
+  const [agenda, setAgenda] = useState<any[]>([]);
   const [operations, setOperations] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
 
+  // Modales de operación
+  const [showLoanModal, setShowLoanModal] = useState(false);
+  const [showAbonoModal, setShowAbonoModal] = useState(false);
+  const [showClientSelector, setShowClientSelector] = useState(false);
+  const [showLoanSelector, setShowLoanSelector] = useState(false);
+  
+  // Datos temporales para el flujo de abono
+  const [loansForClient, setLoansForClient] = useState<any[]>([]);
+  const [targetLoanId, setTargetLoanId] = useState<number | null>(null);
+  const [selectedClientForAbono, setSelectedClientForAbono] = useState<any>(null);
+
   // Cargar datos reales de la bd y refrescarlos cuando vuelve a entrar
   useFocusEffect(
     useCallback(() => {
       async function loadDashboardData() {
         if (user?.id) {
-          try {
-            const data = await getDailyDashboardData(user.id);
-            setDailyTotals(data.dailyTotals);
-            setOperations(data.operations);
-            const clientsData = await getClients(user.id);
-            setClients(clientsData);
-            
-            // Cargar notificaciones del centro de notificaciones de la UI
-            const uiNotifications = await getPendingNotificationsUI();
-            setNotifications(uiNotifications);
-          } catch (error) {
-            console.error("Error cargando dashboard:", error);
-          }
+          refreshDashboard();
         }
       }
       loadDashboardData();
     }, [user?.id])
   );
 
-  // Datos de ejemplo - en producción vendrían del backend
+  const refreshDashboard = async () => {
+    if (!user?.id) return;
+    try {
+      const data = await getDailyDashboardData(user.id);
+      setSummary(data.summary);
+      setAgenda(data.agenda);
+      setOperations(data.operations);
+
+      const clientsData = await getClients(user.id);
+      setClients(clientsData);
+
+      const uiNotifications = await getPendingNotificationsUI();
+      setNotifications(uiNotifications);
+    } catch (error) {
+      console.error("Error refrescando dashboard:", error);
+    }
+  };
+
+  // Datos del usuario para el header
   const userData = {
     name: user?.full_name || "Usuario",
     role: "Gestor operador",
     avatar: null,
   };
 
+  // Obtener saludo dinámico
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Buenos días";
+    if (hour < 18) return "Buenas tardes";
+    return "Buenas noches";
+  };
+
   // Maneja la búsqueda de clientes
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);
-    if (text.length > 0) {
-      setIsSearchActive(true);
-    } else {
-      setIsSearchActive(false);
-    }
+    setIsSearchActive(text.length > 0);
   };
 
   const handleSearchSubmit = () => {
-    if (searchQuery.length > 0) {
-      setIsSearchActive(true);
-    }
+    if (searchQuery.length > 0) setIsSearchActive(true);
   };
 
-  const filteredClients = clients.filter(c => 
+  const filteredClients = clients.filter(c =>
     (c.first_name + ' ' + c.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.document_number.includes(searchQuery)
   );
@@ -98,34 +128,71 @@ export default function HomeScreen() {
     setSelectedClient(client);
   };
 
-  // Navega al detalle de una operación
   const handleOperationPress = (operationId: string) => {
     console.log("Ver operación:", operationId);
-    // TODO: Navegar al detalle
   };
 
-  // Eliminar notificación
   const handleDeleteNotification = (notificationId: string) => {
     console.log("Eliminar notificación:", notificationId);
-    // TODO: Implementar eliminación de notificación
   };
 
-  // Navegar a nuevo abono
   const handleNuevoAbono = () => {
     setShowQuickActions(false);
-    console.log("Navegar a nuevo abono");
-    // TODO: Implementar navegación a nuevo abono
+    setShowClientSelector(true);
   };
 
-  // Navegar a nuevo préstamo
   const handleNuevoPrestamo = () => {
     setShowQuickActions(false);
-    console.log("Navegar a nuevo préstamo");
-    // TODO: Implementar navegación a nuevo préstamo
+    setShowLoanModal(true);
+  };
+
+  // Handlers para Guardar
+  const handleSaveLoan = async (data: any) => {
+    if (!user?.id) return;
+    try {
+      await createLoan({ ...data, user_id: user.id });
+      Alert.alert("Éxito", "Préstamo creado correctamente");
+      refreshDashboard();
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
+  const handleSaveAbono = async (data: any) => {
+    if (!user?.id) return;
+    try {
+      await createPayment({ ...data, user_id: user.id });
+      Alert.alert("Éxito", "Abono registrado correctamente");
+      refreshDashboard();
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
+  // Lógica flujo de abono
+  const handleSelectClientForAbono = async (client: any) => {
+    setSelectedClientForAbono(client);
+    setShowClientSelector(false);
+    try {
+      const clientLoans = await getLoansByClient(client.id);
+      const activeLoans = clientLoans.filter((l: any) => l.status === 'active');
+      
+      if (activeLoans.length === 0) {
+        Alert.alert("Sin préstamos", "Este cliente no tiene préstamos activos.");
+      } else if (activeLoans.length === 1) {
+        setTargetLoanId(activeLoans[0].id);
+        setShowAbonoModal(true);
+      } else {
+        setLoansForClient(activeLoans);
+        setShowLoanSelector(true);
+      }
+    } catch (error) {
+      Alert.alert("Error", "No se pudieron cargar los préstamos del cliente.");
+    }
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-white">
       <Stack.Screen options={{ headerShown: false, animation: "none" }} />
 
       {/* Header compartido */}
@@ -139,89 +206,167 @@ export default function HomeScreen() {
         hasNotifications={notifications.length > 0}
       />
 
-      <SearchResultsOverlay 
+      <SearchResultsOverlay
         isVisible={isSearchActive}
         results={filteredClients}
         onClose={() => setIsSearchActive(false)}
         onResultPress={handleResultPress}
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Banner de Promociones */}
-        <View className="px-6 pt-6 pb-4">
-          <Text className="text-gray-800 text-base font-semibold mb-3">
-            Promociones
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        {/* Bienvenida y Resumen Rápido */}
+        <View className="px-6 pt-6 pb-2">
+          <Text className="text-gray-400 text-sm font-medium uppercase tracking-widest">
+            ESTADO DIARIO
           </Text>
-          <View className="bg-white rounded-2xl p-4 shadow-sm">
-            {/* Ilustración de promociones */}
-            <View className="items-center py-6">
-              <View className="bg-[#13678A]/10 rounded-full p-6 mb-3">
-                <Ionicons name="megaphone" size={48} color="#13678A" />
-              </View>
-              <Text className="text-gray-600 text-xs text-center">
-                Aquí aparecerán las promociones activas
+
+          {summary.pendingAgendaCount > 0 && (
+            <View className="flex-row items-center mt-2 bg-amber-50 self-start px-3 py-1 rounded-full border border-amber-100">
+              <View className="w-2 h-2 rounded-full bg-amber-500 mr-2" />
+              <Text className="text-amber-800 text-xs font-semibold">
+                Hoy tienes {summary.pendingAgendaCount} cobros pendientes
               </Text>
             </View>
-          </View>
+          )}
         </View>
 
-        {/* Estado general - Totales */}
-        <View className="px-6 pb-4">
-          <Text className="text-gray-800 text-base font-semibold mb-3">
-            Estado general
-          </Text>
-          <View className="flex-row gap-3">
-            {/* Card Total de préstamos */}
-            <View className="flex-1 bg-[#13678A] rounded-2xl p-5 shadow-md">
-              <Text className="text-white/80 text-xs mb-2">
-                Total de préstamos
-              </Text>
-              <Text className="text-white text-3xl font-bold">
-                {dailyTotals.loans}
-              </Text>
+        {/* Carrusel de Métricas (KPIs) */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 16 }}
+          snapToInterval={280}
+          decelerationRate="fast"
+        >
+          {/* Card: Capital en Calle */}
+          <View className="bg-[#14688A] w-[260px] mr-4 rounded-3xl p-6 shadow-lg shadow-blue-900/20">
+            <View className="flex-row justify-between items-start mb-4">
+              <View className="bg-white/20 p-2 rounded-xl">
+                <Ionicons name="wallet" size={20} color="white" />
+              </View>
+              <View className="bg-white/20 px-2 py-1 rounded-lg">
+                <Text className="text-white text-[10px] font-bold">CARTERA</Text>
+              </View>
             </View>
-
-            {/* Card Total de abonos */}
-            <View className="flex-1 bg-[#0D8A7A] rounded-2xl p-5 shadow-md">
-              <Text className="text-white/80 text-xs mb-2">
-                Total de abonos
-              </Text>
-              <Text className="text-white text-3xl font-bold">
-                {dailyTotals.payments}
-              </Text>
-            </View>
+            <Text className="text-white/70 text-xs font-medium">Capital en calle</Text>
+            <Text className="text-white text-3xl font-bold mt-1">
+              ${summary.portfolioValue}
+            </Text>
           </View>
+
+          {/* Card: Recaudo Hoy */}
+          <View className="bg-[#0D8A7A] w-[260px] mr-4 rounded-3xl p-6 shadow-lg shadow-teal-900/20">
+            <View className="flex-row justify-between items-start mb-4">
+              <View className="bg-white/20 p-2 rounded-xl">
+                <Ionicons name="trending-up" size={20} color="white" />
+              </View>
+              <View className="bg-white/20 px-2 py-1 rounded-lg">
+                <Text className="text-white text-[10px] font-bold">HOY</Text>
+              </View>
+            </View>
+            <Text className="text-white/70 text-xs font-medium">Recaudado hoy</Text>
+            <Text className="text-white text-3xl font-bold mt-1">
+              ${summary.dailyCollection}
+            </Text>
+          </View>
+
+          {/* Card: Salud de Cartera */}
+          <View className="bg-slate-800 w-[260px] mr-4 rounded-3xl p-6 shadow-lg shadow-slate-900/20">
+            <View className="flex-row justify-between items-start mb-4">
+              <View className="bg-white/20 p-2 rounded-xl">
+                <Ionicons name="people" size={20} color="white" />
+              </View>
+              <View className="bg-white/20 px-2 py-1 rounded-lg">
+                <Text className="text-white text-[10px] font-bold">ESTADO</Text>
+              </View>
+            </View>
+            <Text className="text-white/70 text-xs font-medium">Clientes activos</Text>
+            <Text className="text-white text-3xl font-bold mt-1">
+              {summary.activeLoans}
+            </Text>
+          </View>
+        </ScrollView>
+
+        {/* Sección: Agenda de Cobros */}
+        <View className="px-6 mb-8">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-gray-900 text-lg font-bold">
+              Agenda de hoy
+            </Text>
+            <TouchableOpacity onPress={() => router.push("/prestamos_abonos")}>
+              <Text className="text-[#14688A] text-sm font-semibold">Ver todos</Text>
+            </TouchableOpacity>
+          </View>
+
+          {agenda.length === 0 ? (
+            <View className="bg-gray-50 rounded-3xl p-8 items-center border border-dashed border-gray-200">
+              <Ionicons name="calendar-outline" size={32} color="#9CA3AF" />
+              <Text className="text-gray-400 text-sm mt-2 text-center">
+                No tienes cobros programados para hoy.
+              </Text>
+            </View>
+          ) : (
+            <View className="gap-3">
+              {agenda.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  className="bg-white border border-gray-100 rounded-2xl p-4 flex-row items-center shadow-sm"
+                  onPress={() => router.push("/prestamos_abonos")}
+                >
+                  <View className="w-12 h-12 bg-gray-50 rounded-xl items-center justify-center mr-4">
+                    <Text className="text-gray-400 font-bold text-lg">
+                      {item.clientName.substring(0, 1)}
+                    </Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-gray-900 font-bold text-base leading-none mb-1">
+                      {item.clientName}
+                    </Text>
+                    <Text className="text-gray-500 text-xs">
+                      Cuota pendiente
+                    </Text>
+                  </View>
+                  <View className="items-end">
+                    <Text className="text-[#14688A] font-bold text-base">
+                      ${item.amount}
+                    </Text>
+                    <View className="bg-blue-50 px-2 py-0.5 rounded-md mt-1">
+                      <Text className="text-[#14688A] text-[9px] font-black uppercase">COBRAR</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Historial de operaciones */}
-        <View className="px-6 pb-24">
-          <Text className="text-gray-800 text-base font-semibold mb-3">
-            Historial de operaciones
+        <View className="px-6">
+          <Text className="text-gray-900 text-lg font-bold mb-4">
+            Actividad reciente
           </Text>
-          <View className="bg-white rounded-2xl shadow-sm overflow-hidden min-h-[100px]">
+          <View className="bg-gray-50 rounded-3xl p-2">
             {operations.length === 0 ? (
-              <View className="flex-1 items-center justify-center p-6">
-                <Text className="text-gray-400">No hay operaciones el día de hoy.</Text>
+              <View className="items-center justify-center p-8">
+                <Text className="text-gray-400 text-sm">Sin movimientos recientes.</Text>
               </View>
             ) : (
-              operations.map((operation, index) => (
+              operations.slice(0, 5).map((operation, index) => (
                 <TouchableOpacity
                   key={operation.id}
                   onPress={() => handleOperationPress(operation.id)}
-                  className={`flex-row items-center px-4 py-4 ${
-                    index !== operations.length - 1
-                      ? "border-b border-gray-100"
-                      : ""
-                  }`}
+                  className="flex-row items-center px-4 py-4"
                   activeOpacity={0.7}
                 >
-                  {/* Icono de operación */}
                   <View
-                    className={`w-12 h-12 rounded-full items-center justify-center mr-3 ${
-                      operation.type === "prestamo"
-                        ? "bg-[#13678A]"
-                        : "bg-[#0D8A7A]"
-                    }`}
+                    className={`w-10 h-10 rounded-xl items-center justify-center mr-4 ${operation.type === "prestamo"
+                      ? "bg-amber-100"
+                      : "bg-teal-100"
+                      }`}
                   >
                     <Ionicons
                       name={
@@ -229,24 +374,23 @@ export default function HomeScreen() {
                           ? "arrow-up"
                           : "arrow-down"
                       }
-                      size={24}
-                      color="#ffffff"
+                      size={20}
+                      color={operation.type === "prestamo" ? "#B45309" : "#0D8A7A"}
                     />
                   </View>
 
-                  {/* Información de la operación */}
                   <View className="flex-1">
-                    <Text className="text-gray-900 text-base font-bold mb-0.5">
-                      {operation.amount}
-                    </Text>
-                    <Text className="text-gray-500 text-xs">
+                    <Text className="text-gray-900 text-sm font-bold">
                       {operation.clientName}
+                    </Text>
+                    <Text className="text-gray-400 text-[10px] uppercase font-bold tracking-tighter">
+                      {operation.type === 'prestamo' ? 'Desembolso' : 'Recaudo'} • {operation.time}
                     </Text>
                   </View>
 
-                  {/* Hora */}
-                  <Text className="text-gray-400 text-xs">
-                    {operation.time}
+                  <Text className={`text-sm font-black ${operation.type === "prestamo" ? "text-amber-600" : "text-teal-600"
+                    }`}>
+                    {operation.type === "prestamo" ? "-" : "+"}${operation.amount}
                   </Text>
                 </TouchableOpacity>
               ))
@@ -258,77 +402,89 @@ export default function HomeScreen() {
       {/* Botones de acción rápida flotantes */}
       {showQuickActions && (
         <>
-          {/* Overlay para cerrar */}
+          {/* Overlay invisible para capturar el cierre (sin oscurecer el fondo) */}
           <TouchableOpacity
             activeOpacity={1}
             onPress={() => setShowQuickActions(false)}
-            className="absolute inset-0 bg-black/20"
+            className="absolute inset-0 bg-transparent"
+            style={{ zIndex: 10 }}
           />
 
-          {/* Botón Nuevo Abono */}
-          <TouchableOpacity
-            onPress={handleNuevoAbono}
-            className="absolute bottom-[150px] right-6 bg-[#10B981] rounded-full px-6 py-3 flex-row items-center shadow-lg"
-            activeOpacity={0.8}
-            style={{
-              shadowColor: "#10B981",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 8,
-            }}
+          {/* Menú de acciones rápidas */}
+          <View
+            className="absolute bottom-[180px] right-6 items-end gap-3"
+            style={{ zIndex: 20 }}
           >
-            <Ionicons name="arrow-down-circle-outline" size={24} color="#ffffff" />
-            <Text className="text-white font-semibold text-base ml-2">
-              nuevo abono
-            </Text>
-          </TouchableOpacity>
+            {/* Botón Nuevo Abono */}
+            <TouchableOpacity
+              onPress={handleNuevoAbono}
+              className="flex-row items-center bg-white rounded-2xl pl-5 pr-2 py-2"
+              activeOpacity={0.9}
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.15,
+                shadowRadius: 15,
+                elevation: 12,
+              }}
+            >
+              <Text className="text-gray-800 font-bold text-xs uppercase tracking-widest mr-3">
+                nuevo abono
+              </Text>
+              <View className="bg-teal-500 w-11 h-11 rounded-xl items-center justify-center">
+                <Ionicons name="arrow-down-outline" size={22} color="#ffffff" />
+              </View>
+            </TouchableOpacity>
 
-          {/* Botón Nuevo Préstamo */}
-          <TouchableOpacity
-            onPress={handleNuevoPrestamo}
-            className="absolute bottom-[110px] right-6 bg-[#0EA5E9] rounded-full px-6 py-3 flex-row items-center shadow-lg"
-            activeOpacity={0.8}
-            style={{
-              shadowColor: "#0EA5E9",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 8,
-            }}
-          >
-            <Ionicons name="arrow-up-circle-outline" size={24} color="#ffffff" />
-            <Text className="text-white font-semibold text-base ml-2">
-              nuevo prestamo
-            </Text>
-          </TouchableOpacity>
+            {/* Botón Nuevo Préstamo */}
+            <TouchableOpacity
+              onPress={handleNuevoPrestamo}
+              className="flex-row items-center bg-white rounded-2xl pl-5 pr-2 py-2"
+              activeOpacity={0.9}
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.15,
+                shadowRadius: 15,
+                elevation: 12,
+              }}
+            >
+              <Text className="text-gray-800 font-bold text-xs uppercase tracking-widest mr-3">
+                nuevo préstamo
+              </Text>
+              <View className="bg-[#14688A] w-11 h-11 rounded-xl items-center justify-center">
+                <Ionicons name="add-outline" size={26} color="#ffffff" />
+              </View>
+            </TouchableOpacity>
+          </View>
         </>
       )}
 
-      {/* Botón flotante de agregar */}
+      {/* Botón flotante Principal (Toggle) */}
       <TouchableOpacity
         onPress={() => setShowQuickActions(!showQuickActions)}
-        className="absolute bottom-32 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
-        activeOpacity={0.8}
+        className="absolute bottom-32 right-6 w-16 h-16 bg-[#14688A] rounded-2xl items-center justify-center"
+        activeOpacity={0.9}
         style={{
-          shadowColor: "#13678A",
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
+          zIndex: 30,
+          shadowColor: "#14688A",
+          shadowOffset: { width: 0, height: 12 },
+          shadowOpacity: 0.45,
+          shadowRadius: 18,
+          elevation: 15,
         }}
       >
-        <Ionicons 
-          name={showQuickActions ? "close" : "add"} 
-          size={32} 
-          color="#ffffff" 
+        <Ionicons
+          name={showQuickActions ? "close" : "add"}
+          size={32}
+          color="#ffffff"
         />
       </TouchableOpacity>
 
       {/* Bottom Navigation Bar - Respeta la barra de navegación del sistema en Android */}
       <View
         className="bg-white border-t border-gray-200 shadow-lg"
-        style={{ paddingBottom: insets.bottom - 14}} // Agrega padding respetando la barra del sistema
+        style={{ paddingBottom: insets.bottom - 14 }} // Agrega padding respetando la barra del sistema
       >
         <View className="flex-row items-center justify-around px-6 py-3">
           {/* Home */}
@@ -388,6 +544,8 @@ export default function HomeScreen() {
         visible={showDrawer}
         onClose={() => setShowDrawer(false)}
         userData={userData}
+        onNuevoAbono={handleNuevoAbono}
+        onNuevoPrestamo={handleNuevoPrestamo}
       />
 
       {/* Modal de Detalles del Cliente */}
@@ -396,6 +554,103 @@ export default function HomeScreen() {
         client={selectedClient}
         onClose={() => setSelectedClient(null)}
       />
+
+      {/* --- MODALES DE OPERACIÓN DIRECTA --- */}
+
+      {/* Nuevo Préstamo */}
+      <NuevoPrestamoModal
+        visible={showLoanModal}
+        onClose={() => setShowLoanModal(false)}
+        clients={clients}
+        onSave={handleSaveLoan}
+      />
+
+      {/* Registro de Abono */}
+      <RegistroAbonoModal
+        visible={showAbonoModal}
+        onClose={() => {
+          setShowAbonoModal(false);
+          setTargetLoanId(null);
+        }}
+        loanId={targetLoanId || undefined}
+        onSave={handleSaveAbono}
+      />
+
+      {/* Selector de Cliente para Abono */}
+      <Modal
+        visible={showClientSelector}
+        animationType="slide"
+        transparent={true}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl p-6 h-[70%]">
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className="text-xl font-bold text-gray-900">Seleccionar Cliente</Text>
+              <TouchableOpacity onPress={() => setShowClientSelector(false)} className="p-2">
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={clients}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => handleSelectClientForAbono(item)}
+                  className="py-4 border-b border-gray-100 flex-row items-center"
+                >
+                  <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center mr-4">
+                    <Text className="text-gray-500 font-bold">{item.first_name[0]}</Text>
+                  </View>
+                  <Text className="text-lg text-gray-800 font-medium">{item.first_name} {item.last_name}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Selector de Préstamo para Abono */}
+      <Modal
+        visible={showLoanSelector}
+        animationType="fade"
+        transparent={true}
+      >
+        <View className="flex-1 bg-black/50 justify-center px-6">
+          <View className="bg-white rounded-3xl p-6">
+            <Text className="text-xl font-bold text-gray-900 mb-2">Elegir Préstamo</Text>
+            <Text className="text-gray-500 text-sm mb-4">
+              {selectedClientForAbono?.first_name} tiene varios préstamos activos:
+            </Text>
+            
+            <View className="gap-3">
+              {loansForClient.map((loan) => (
+                <TouchableOpacity
+                  key={loan.id}
+                  onPress={() => {
+                    setTargetLoanId(loan.id);
+                    setShowLoanSelector(false);
+                    setShowAbonoModal(true);
+                  }}
+                  className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-row justify-between items-center"
+                >
+                  <View>
+                    <Text className="font-bold text-gray-800">Contrato: {loan.contract_number || 'S/N'}</Text>
+                    <Text className="text-xs text-gray-500">Saldo: ${loan.current_balance}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#14688A" />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              onPress={() => setShowLoanSelector(false)}
+              className="mt-6 py-3 items-center"
+            >
+              <Text className="text-gray-400 font-bold">Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

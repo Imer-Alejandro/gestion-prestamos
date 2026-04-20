@@ -7,15 +7,18 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Dimensions
+  Dimensions,
+  InteractionManager
 } from "react-native";
 import { Svg, Rect, Circle } from "react-native-svg";
 import AppHeader from "../../components/shared/AppHeader";
 import DrawerMenu from "../../components/home/DrawerMenu";
+import Skeleton from "../../components/shared/Skeleton";
 import NotificationModal from "../../components/home/NotificationModal";
 import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
 import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
 import { getClients } from "../../services/client.service";
+import { QuickActionFAB } from "../../components/shared/QuickActionFAB";
 import {
   formatCurrencyReportes,
   mockEstadisticasPrestamos,
@@ -49,14 +52,19 @@ export default function ReportesScreen() {
   const [clients, setClients] = useState<any[]>([]);
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
 
   useEffect(() => {
-    if (user?.id) {
-      getClients(user.id).then(setClients).catch(console.error);
-    }
+    // Diferir la carga inicial
+    InteractionManager.runAfterInteractions(() => {
+      if (user?.id) {
+        getClients(user.id).then(setClients).catch(console.error);
+      }
+      setIsLoading(false);
+    });
   }, [user]);
-  
+
   const userData = {
     name: user?.full_name || "Usuario",
     role: "Gestor operador",
@@ -106,7 +114,7 @@ export default function ReportesScreen() {
   };
 
   // Filtrar clientes para el overlay
-  const filteredClients = clients.filter(c => 
+  const filteredClients = clients.filter(c =>
     (c.first_name + ' ' + c.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.document_number && c.document_number.includes(searchQuery))
   );
@@ -166,7 +174,7 @@ export default function ReportesScreen() {
     const strokeWidth = 15;
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
-    
+
     const total = gananciaNeta + gananciaPorMora;
     const netaPercentage = (gananciaNeta / total) * 100;
     const moraPercentage = (gananciaPorMora / total) * 100;
@@ -188,7 +196,7 @@ export default function ReportesScreen() {
               strokeWidth={strokeWidth}
               fill="none"
             />
-            
+
             {/* Ganancia neta (verde) */}
             <Circle
               cx={size / 2}
@@ -202,7 +210,7 @@ export default function ReportesScreen() {
               rotation="-90"
               origin={`${size / 2}, ${size / 2}`}
             />
-            
+
             {/* Ganancia por mora (rojo) */}
             <Circle
               cx={size / 2}
@@ -249,7 +257,7 @@ export default function ReportesScreen() {
         hasNotifications={notifications.length > 0}
       />
 
-      <SearchResultsOverlay 
+      <SearchResultsOverlay
         isVisible={isSearchActive}
         results={filteredClients}
         onClose={() => setIsSearchActive(false)}
@@ -258,8 +266,8 @@ export default function ReportesScreen() {
 
       {/* Tabs horizontales */}
       <View className="px-4 mt-4 mb-4">
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 24 }}
         >
@@ -269,9 +277,8 @@ export default function ReportesScreen() {
             activeOpacity={0.7}
           >
             <Text
-              className={`text-sm font-medium ${
-                activeTab === "prestamos" ? "text-gray-900" : "text-gray-500"
-              }`}
+              className={`text-sm font-medium ${activeTab === "prestamos" ? "text-gray-900" : "text-gray-500"
+                }`}
             >
               préstamos
             </Text>
@@ -286,9 +293,8 @@ export default function ReportesScreen() {
             activeOpacity={0.7}
           >
             <Text
-              className={`text-sm font-medium ${
-                activeTab === "ganancias" ? "text-gray-900" : "text-gray-500"
-              }`}
+              className={`text-sm font-medium ${activeTab === "ganancias" ? "text-gray-900" : "text-gray-500"
+                }`}
             >
               ganancias
             </Text>
@@ -303,9 +309,8 @@ export default function ReportesScreen() {
             activeOpacity={0.7}
           >
             <Text
-              className={`text-sm font-medium ${
-                activeTab === "clientes" ? "text-gray-900" : "text-gray-500"
-              }`}
+              className={`text-sm font-medium ${activeTab === "clientes" ? "text-gray-900" : "text-gray-500"
+                }`}
             >
               clientes
             </Text>
@@ -320,9 +325,8 @@ export default function ReportesScreen() {
             activeOpacity={0.7}
           >
             <Text
-              className={`text-sm font-medium ${
-                activeTab === "empleados" ? "text-gray-900" : "text-gray-500"
-              }`}
+              className={`text-sm font-medium ${activeTab === "empleados" ? "text-gray-900" : "text-gray-500"
+                }`}
             >
               empleados
             </Text>
@@ -339,9 +343,9 @@ export default function ReportesScreen() {
         <View className="mb-4">
           <View className="flex-row items-center justify-between mb-2">
             <Text className="text-gray-600 text-xs font-medium">
-              {activeTab === "prestamos" ? "Estadísticas de préstamos" : 
-               activeTab === "ganancias" ? "Estadísticas de ganancias" :
-               `Estadísticas de ${activeTab}`}
+              {activeTab === "prestamos" ? "Estadísticas de préstamos" :
+                activeTab === "ganancias" ? "Estadísticas de ganancias" :
+                  `Estadísticas de ${activeTab}`}
             </Text>
             <TouchableOpacity
               onPress={() => setShowFiltros(!showFiltros)}
@@ -352,7 +356,11 @@ export default function ReportesScreen() {
             </TouchableOpacity>
           </View>
 
-          {renderBarChart(obtenerEstadisticas())}
+          {isLoading ? (
+            <Skeleton.Rect height={220} borderRadius={20} />
+          ) : (
+            renderBarChart(obtenerEstadisticas())
+          )}
         </View>
 
         {/* Historial de operaciones */}
@@ -373,36 +381,44 @@ export default function ReportesScreen() {
               </View>
             </View>
 
-            {mockHistorialOperaciones.map((operacion) => (
-              <View
-                key={operacion.id}
-                className="bg-white rounded-xl p-4 mb-3 flex-row items-center shadow-sm"
-                style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }}
-              >
-                <View className="w-10 h-10 bg-[#13678A] rounded-lg items-center justify-center mr-3">
-                  <Ionicons name="cash-outline" size={20} color="white" />
-                </View>
+            {isLoading ? (
+               <View className="gap-3">
+               {[1, 2, 3].map(i => (
+                 <Skeleton.Rect key={i} height={80} borderRadius={16} />
+               ))}
+             </View>
+            ) : (
+              mockHistorialOperaciones.map((operacion) => (
+                <View
+                  key={operacion.id}
+                  className="bg-white rounded-xl p-4 mb-3 flex-row items-center shadow-sm"
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }}
+                >
+                  <View className="w-10 h-10 bg-[#13678A] rounded-lg items-center justify-center mr-3">
+                    <Ionicons name="cash-outline" size={20} color="white" />
+                  </View>
 
-                <View className="flex-1">
-                  <Text className="text-[#13678A] text-base font-bold mb-1">
-                    {formatCurrencyReportes(operacion.monto)}
-                  </Text>
-                  <Text className="text-gray-500 text-xs">
-                    {operacion.descripcion}
+                  <View className="flex-1">
+                    <Text className="text-[#13678A] text-base font-bold mb-1">
+                      {formatCurrencyReportes(operacion.monto)}
+                    </Text>
+                    <Text className="text-gray-500 text-xs">
+                      {operacion.descripcion}
+                    </Text>
+                  </View>
+
+                  <Text className="text-gray-400 text-xs">
+                    fecha de pago{"\n"}{operacion.fecha}
                   </Text>
                 </View>
-
-                <Text className="text-gray-400 text-xs">
-                  fecha de pago{"\n"}{operacion.fecha}
-                </Text>
-              </View>
-            ))}
+              ))
+            )}
           </View>
         )}
 
@@ -437,26 +453,13 @@ export default function ReportesScreen() {
         <View className="h-24" />
       </ScrollView>
 
-      {/* Botón flotante para nuevo reporte */}
-      <TouchableOpacity
-        onPress={() => console.log("Nuevo reporte")}
-        className="absolute bottom-32 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
-        activeOpacity={0.8}
-        style={{
-          shadowColor: "#13678A",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 6,
-          elevation: 8,
-        }}
-      >
-        <Ionicons name="add" size={32} color="white" />
-      </TouchableOpacity>
+      {/* Botón flotante unificado con toda la lógica de registro */}
+      <QuickActionFAB />
 
       {/* Bottom Navigation Bar - Respeta la barra de navegación del sistema en Android */}
       <View
         className="bg-white border-t border-gray-200 shadow-lg"
-          style={{ paddingBottom: insets.bottom - 14}}   // Agrega padding respetando la barra del sistema
+        style={{ paddingBottom: insets.bottom - 14 }}   // Agrega padding respetando la barra del sistema
       >
         <View className="flex-row items-center justify-around px-6 py-3">
           {/* Home */}

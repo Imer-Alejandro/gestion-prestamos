@@ -19,29 +19,28 @@ interface AbonoCardProps {
 }
 
 
-export function AbonoCard({ abono, onPress }: AbonoCardProps) {
+const currencyFormatter = new Intl.NumberFormat('es-CO', {
+  style: 'currency',
+  currency: 'COP',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-CO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return dateString;
+  }
+};
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('es-CO', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    } catch {
-      return dateString;
-    }
-  };
+export const AbonoCard = React.memo(({ abono, onPress }: AbonoCardProps) => {
+  const formatCurrency = (amount: number) => currencyFormatter.format(amount);
 
   const getPaymentMethodIcon = (method?: string) => {
     switch (method?.toLowerCase()) {
@@ -114,7 +113,7 @@ export function AbonoCard({ abono, onPress }: AbonoCardProps) {
       )}
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

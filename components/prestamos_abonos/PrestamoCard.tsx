@@ -21,7 +21,15 @@ interface PrestamoCardProps {
 const BUTTON_WIDTH = 82;
 const SWIPE_THRESHOLD = 50;
 
-export function PrestamoCard({ prestamo, onPress, onMenuPress, onVoid }: PrestamoCardProps) {
+// Formateador fuera del componente para evitar re-crearlo en cada render
+const currencyFormatter = new Intl.NumberFormat('es-CO', {
+  style: 'currency',
+  currency: 'COP',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+export const PrestamoCard = React.memo(({ prestamo, onPress, onMenuPress, onVoid }: PrestamoCardProps) => {
   const translateX = useRef(new Animated.Value(0)).current;
   const isOpen = useRef(false);
 
@@ -44,13 +52,7 @@ export function PrestamoCard({ prestamo, onPress, onMenuPress, onVoid }: Prestam
     }
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const formatCurrency = (amount: number) => currencyFormatter.format(amount);
 
   /* ── animaciones ── */
   const snapOpen = () => {
@@ -287,7 +289,7 @@ export function PrestamoCard({ prestamo, onPress, onMenuPress, onVoid }: Prestam
       </Animated.View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

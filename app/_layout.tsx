@@ -149,14 +149,41 @@ export default function RootLayout() {
           />
 
           {/* Otras secciones de la app */}
-          <Stack.Screen name="home" options={{ headerShown: false }} />
-          <Stack.Screen name="clientes" options={{ headerShown: false }} />
           <Stack.Screen
-            name="prestamos_abonos"
-            options={{ headerShown: false }}
+            name="home/index"
+            options={{
+              headerShown: false,
+              animation: "fade",
+            }}
           />
-          <Stack.Screen name="reportes" options={{ headerShown: false }} />
-          <Stack.Screen name="configuracion" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="clientes/index"
+            options={{
+              headerShown: false,
+              animation: "fade",
+            }}
+          />
+          <Stack.Screen
+            name="prestamos_abonos/index"
+            options={{
+              headerShown: false,
+              animation: "fade",
+            }}
+          />
+          <Stack.Screen
+            name="reportes/index"
+            options={{
+              headerShown: false,
+              animation: "fade",
+            }}
+          />
+          <Stack.Screen
+            name="configuracion/index"
+            options={{
+              headerShown: false,
+              animation: "fade",
+            }}
+          />
         </Stack>
       </ThemeProvider>
     </AuthProvider>

@@ -6,10 +6,12 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
-  View
+  View,
+  InteractionManager
 } from "react-native";
 import AppHeader from "../../components/shared/AppHeader";
 import DrawerMenu from "../../components/home/DrawerMenu";
+import Skeleton from "../../components/shared/Skeleton";
 import NotificationModal from "../../components/home/NotificationModal";
 import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
 import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
@@ -18,10 +20,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { getDailyDashboardData } from "../../services/dashboard.service";
 import { getClients } from "../../services/client.service";
 import { getPendingNotificationsUI } from "../../services/notification.service";
-import { createLoan, getLoansByClient } from "../../services/loan.service";
-import { createPayment } from "../../services/payment.service";
-import { NuevoPrestamoModal } from "../../components/prestamos_abonos/NuevoPrestamoModal";
-import { RegistroAbonoModal } from "../../components/prestamos_abonos/RegistroAbonoModal";
+import { QuickActionFAB } from "../../components/shared/QuickActionFAB";
 import { Modal, FlatList, Alert } from "react-native";
 
 /**
@@ -37,6 +36,7 @@ export default function HomeScreen() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [summary, setSummary] = useState<any>({
     portfolioValue: "0",
@@ -51,17 +51,6 @@ export default function HomeScreen() {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
 
-  // Modales de operación
-  const [showLoanModal, setShowLoanModal] = useState(false);
-  const [showAbonoModal, setShowAbonoModal] = useState(false);
-  const [showClientSelector, setShowClientSelector] = useState(false);
-  const [showLoanSelector, setShowLoanSelector] = useState(false);
-  
-  // Datos temporales para el flujo de abono
-  const [loansForClient, setLoansForClient] = useState<any[]>([]);
-  const [targetLoanId, setTargetLoanId] = useState<number | null>(null);
-  const [selectedClientForAbono, setSelectedClientForAbono] = useState<any>(null);
-
   // Cargar datos reales de la bd y refrescarlos cuando vuelve a entrar
   useFocusEffect(
     useCallback(() => {
@@ -74,23 +63,30 @@ export default function HomeScreen() {
     }, [user?.id])
   );
 
-  const refreshDashboard = async () => {
+  const refreshDashboard = useCallback(async () => {
     if (!user?.id) return;
-    try {
-      const data = await getDailyDashboardData(user.id);
-      setSummary(data.summary);
-      setAgenda(data.agenda);
-      setOperations(data.operations);
+    
+    // Diferir la carga hasta después de la interacción/transición
+    InteractionManager.runAfterInteractions(async () => {
+      try {
+        const data = await getDailyDashboardData(user.id);
+        setSummary(data.summary);
+        setAgenda(data.agenda);
+        setOperations(data.operations);
 
-      const clientsData = await getClients(user.id);
-      setClients(clientsData);
+        const clientsData = await getClients(user.id);
+        setClients(clientsData);
 
-      const uiNotifications = await getPendingNotificationsUI();
-      setNotifications(uiNotifications);
-    } catch (error) {
-      console.error("Error refrescando dashboard:", error);
-    }
-  };
+        const uiNotifications = await getPendingNotificationsUI();
+        setNotifications(uiNotifications);
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error refrescando dashboard:", error);
+        setIsLoading(false);
+      }
+    });
+  }, [user?.id]);
 
   // Datos del usuario para el header
   const userData = {
@@ -136,60 +132,6 @@ export default function HomeScreen() {
     console.log("Eliminar notificación:", notificationId);
   };
 
-  const handleNuevoAbono = () => {
-    setShowQuickActions(false);
-    setShowClientSelector(true);
-  };
-
-  const handleNuevoPrestamo = () => {
-    setShowQuickActions(false);
-    setShowLoanModal(true);
-  };
-
-  // Handlers para Guardar
-  const handleSaveLoan = async (data: any) => {
-    if (!user?.id) return;
-    try {
-      await createLoan({ ...data, user_id: user.id });
-      Alert.alert("Éxito", "Préstamo creado correctamente");
-      refreshDashboard();
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    }
-  };
-
-  const handleSaveAbono = async (data: any) => {
-    if (!user?.id) return;
-    try {
-      await createPayment({ ...data, user_id: user.id });
-      Alert.alert("Éxito", "Abono registrado correctamente");
-      refreshDashboard();
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    }
-  };
-
-  // Lógica flujo de abono
-  const handleSelectClientForAbono = async (client: any) => {
-    setSelectedClientForAbono(client);
-    setShowClientSelector(false);
-    try {
-      const clientLoans = await getLoansByClient(client.id);
-      const activeLoans = clientLoans.filter((l: any) => l.status === 'active');
-      
-      if (activeLoans.length === 0) {
-        Alert.alert("Sin préstamos", "Este cliente no tiene préstamos activos.");
-      } else if (activeLoans.length === 1) {
-        setTargetLoanId(activeLoans[0].id);
-        setShowAbonoModal(true);
-      } else {
-        setLoansForClient(activeLoans);
-        setShowLoanSelector(true);
-      }
-    } catch (error) {
-      Alert.alert("Error", "No se pudieron cargar los préstamos del cliente.");
-    }
-  };
 
   return (
     <View className="flex-1 bg-white">
@@ -242,53 +184,63 @@ export default function HomeScreen() {
           snapToInterval={280}
           decelerationRate="fast"
         >
-          {/* Card: Capital en Calle */}
-          <View className="bg-[#14688A] w-[260px] mr-4 rounded-3xl p-6 shadow-lg shadow-blue-900/20">
-            <View className="flex-row justify-between items-start mb-4">
-              <View className="bg-white/20 p-2 rounded-xl">
-                <Ionicons name="wallet" size={20} color="white" />
-              </View>
-              <View className="bg-white/20 px-2 py-1 rounded-lg">
-                <Text className="text-white text-[10px] font-bold">CARTERA</Text>
-              </View>
+          {isLoading ? (
+            <View className="flex-row">
+              <Skeleton.Rect width={260} height={150} borderRadius={30} style={{ marginRight: 16 }} />
+              <Skeleton.Rect width={260} height={150} borderRadius={30} style={{ marginRight: 16 }} />
+              <Skeleton.Rect width={260} height={150} borderRadius={30} />
             </View>
-            <Text className="text-white/70 text-xs font-medium">Capital en calle</Text>
-            <Text className="text-white text-3xl font-bold mt-1">
-              ${summary.portfolioValue}
-            </Text>
-          </View>
+          ) : (
+            <>
+              {/* Card: Capital en Calle */}
+              <View className="bg-[#14688A] w-[260px] mr-4 rounded-3xl p-6 shadow-lg shadow-blue-900/20">
+                <View className="flex-row justify-between items-start mb-4">
+                  <View className="bg-white/20 p-2 rounded-xl">
+                    <Ionicons name="wallet" size={20} color="white" />
+                  </View>
+                  <View className="bg-white/20 px-2 py-1 rounded-lg">
+                    <Text className="text-white text-[10px] font-bold">CARTERA</Text>
+                  </View>
+                </View>
+                <Text className="text-white/70 text-xs font-medium">Capital en calle</Text>
+                <Text className="text-white text-3xl font-bold mt-1">
+                  ${summary.portfolioValue}
+                </Text>
+              </View>
 
-          {/* Card: Recaudo Hoy */}
-          <View className="bg-[#0D8A7A] w-[260px] mr-4 rounded-3xl p-6 shadow-lg shadow-teal-900/20">
-            <View className="flex-row justify-between items-start mb-4">
-              <View className="bg-white/20 p-2 rounded-xl">
-                <Ionicons name="trending-up" size={20} color="white" />
+              {/* Card: Recaudo Hoy */}
+              <View className="bg-[#0D8A7A] w-[260px] mr-4 rounded-3xl p-6 shadow-lg shadow-teal-900/20">
+                <View className="flex-row justify-between items-start mb-4">
+                  <View className="bg-white/20 p-2 rounded-xl">
+                    <Ionicons name="trending-up" size={20} color="white" />
+                  </View>
+                  <View className="bg-white/20 px-2 py-1 rounded-lg">
+                    <Text className="text-white text-[10px] font-bold">HOY</Text>
+                  </View>
+                </View>
+                <Text className="text-white/70 text-xs font-medium">Recaudado hoy</Text>
+                <Text className="text-white text-3xl font-bold mt-1">
+                  ${summary.dailyCollection}
+                </Text>
               </View>
-              <View className="bg-white/20 px-2 py-1 rounded-lg">
-                <Text className="text-white text-[10px] font-bold">HOY</Text>
-              </View>
-            </View>
-            <Text className="text-white/70 text-xs font-medium">Recaudado hoy</Text>
-            <Text className="text-white text-3xl font-bold mt-1">
-              ${summary.dailyCollection}
-            </Text>
-          </View>
 
-          {/* Card: Salud de Cartera */}
-          <View className="bg-slate-800 w-[260px] mr-4 rounded-3xl p-6 shadow-lg shadow-slate-900/20">
-            <View className="flex-row justify-between items-start mb-4">
-              <View className="bg-white/20 p-2 rounded-xl">
-                <Ionicons name="people" size={20} color="white" />
+              {/* Card: Salud de Cartera */}
+              <View className="bg-slate-800 w-[260px] mr-4 rounded-3xl p-6 shadow-lg shadow-slate-900/20">
+                <View className="flex-row justify-between items-start mb-4">
+                  <View className="bg-white/20 p-2 rounded-xl">
+                    <Ionicons name="people" size={20} color="white" />
+                  </View>
+                  <View className="bg-white/20 px-2 py-1 rounded-lg">
+                    <Text className="text-white text-[10px] font-bold">ESTADO</Text>
+                  </View>
+                </View>
+                <Text className="text-white/70 text-xs font-medium">Clientes activos</Text>
+                <Text className="text-white text-3xl font-bold mt-1">
+                  {summary.activeLoans}
+                </Text>
               </View>
-              <View className="bg-white/20 px-2 py-1 rounded-lg">
-                <Text className="text-white text-[10px] font-bold">ESTADO</Text>
-              </View>
-            </View>
-            <Text className="text-white/70 text-xs font-medium">Clientes activos</Text>
-            <Text className="text-white text-3xl font-bold mt-1">
-              {summary.activeLoans}
-            </Text>
-          </View>
+            </>
+          )}
         </ScrollView>
 
         {/* Sección: Agenda de Cobros */}
@@ -302,7 +254,13 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {agenda.length === 0 ? (
+          {isLoading ? (
+            <View className="gap-3">
+              {[1, 2, 3].map(i => (
+                <Skeleton.Rect key={i} height={80} borderRadius={20} />
+              ))}
+            </View>
+          ) : agenda.length === 0 ? (
             <View className="bg-gray-50 rounded-3xl p-8 items-center border border-dashed border-gray-200">
               <Ionicons name="calendar-outline" size={32} color="#9CA3AF" />
               <Text className="text-gray-400 text-sm mt-2 text-center">
@@ -350,7 +308,20 @@ export default function HomeScreen() {
             Actividad reciente
           </Text>
           <View className="bg-gray-50 rounded-3xl p-2">
-            {operations.length === 0 ? (
+            {isLoading ? (
+              <View className="gap-2 p-2">
+                {[1, 2, 3, 4].map(i => (
+                  <View key={i} className="flex-row items-center p-2">
+                    <Skeleton.Circle height={40} style={{ marginRight: 12 }} />
+                    <View className="flex-1">
+                      <Skeleton.Rect width="60%" height={14} style={{ marginBottom: 6 }} />
+                      <Skeleton.Rect width="40%" height={10} />
+                    </View>
+                    <Skeleton.Rect width={60} height={20} />
+                  </View>
+                ))}
+              </View>
+            ) : operations.length === 0 ? (
               <View className="items-center justify-center p-8">
                 <Text className="text-gray-400 text-sm">Sin movimientos recientes.</Text>
               </View>
@@ -399,87 +370,8 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Botones de acción rápida flotantes */}
-      {showQuickActions && (
-        <>
-          {/* Overlay invisible para capturar el cierre (sin oscurecer el fondo) */}
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setShowQuickActions(false)}
-            className="absolute inset-0 bg-transparent"
-            style={{ zIndex: 10 }}
-          />
-
-          {/* Menú de acciones rápidas */}
-          <View
-            className="absolute bottom-[180px] right-6 items-end gap-3"
-            style={{ zIndex: 20 }}
-          >
-            {/* Botón Nuevo Abono */}
-            <TouchableOpacity
-              onPress={handleNuevoAbono}
-              className="flex-row items-center bg-white rounded-2xl pl-5 pr-2 py-2"
-              activeOpacity={0.9}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.15,
-                shadowRadius: 15,
-                elevation: 12,
-              }}
-            >
-              <Text className="text-gray-800 font-bold text-xs uppercase tracking-widest mr-3">
-                nuevo abono
-              </Text>
-              <View className="bg-teal-500 w-11 h-11 rounded-xl items-center justify-center">
-                <Ionicons name="arrow-down-outline" size={22} color="#ffffff" />
-              </View>
-            </TouchableOpacity>
-
-            {/* Botón Nuevo Préstamo */}
-            <TouchableOpacity
-              onPress={handleNuevoPrestamo}
-              className="flex-row items-center bg-white rounded-2xl pl-5 pr-2 py-2"
-              activeOpacity={0.9}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.15,
-                shadowRadius: 15,
-                elevation: 12,
-              }}
-            >
-              <Text className="text-gray-800 font-bold text-xs uppercase tracking-widest mr-3">
-                nuevo préstamo
-              </Text>
-              <View className="bg-[#14688A] w-11 h-11 rounded-xl items-center justify-center">
-                <Ionicons name="add-outline" size={26} color="#ffffff" />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
-
-      {/* Botón flotante Principal (Toggle) */}
-      <TouchableOpacity
-        onPress={() => setShowQuickActions(!showQuickActions)}
-        className="absolute bottom-32 right-6 w-16 h-16 bg-[#14688A] rounded-2xl items-center justify-center"
-        activeOpacity={0.9}
-        style={{
-          zIndex: 30,
-          shadowColor: "#14688A",
-          shadowOffset: { width: 0, height: 12 },
-          shadowOpacity: 0.45,
-          shadowRadius: 18,
-          elevation: 15,
-        }}
-      >
-        <Ionicons
-          name={showQuickActions ? "close" : "add"}
-          size={32}
-          color="#ffffff"
-        />
-      </TouchableOpacity>
+      {/* Botón flotante unificado con toda la lógica de registro */}
+      <QuickActionFAB onRefresh={refreshDashboard} />
 
       {/* Bottom Navigation Bar - Respeta la barra de navegación del sistema en Android */}
       <View
@@ -544,8 +436,6 @@ export default function HomeScreen() {
         visible={showDrawer}
         onClose={() => setShowDrawer(false)}
         userData={userData}
-        onNuevoAbono={handleNuevoAbono}
-        onNuevoPrestamo={handleNuevoPrestamo}
       />
 
       {/* Modal de Detalles del Cliente */}
@@ -555,102 +445,7 @@ export default function HomeScreen() {
         onClose={() => setSelectedClient(null)}
       />
 
-      {/* --- MODALES DE OPERACIÓN DIRECTA --- */}
-
-      {/* Nuevo Préstamo */}
-      <NuevoPrestamoModal
-        visible={showLoanModal}
-        onClose={() => setShowLoanModal(false)}
-        clients={clients}
-        onSave={handleSaveLoan}
-      />
-
-      {/* Registro de Abono */}
-      <RegistroAbonoModal
-        visible={showAbonoModal}
-        onClose={() => {
-          setShowAbonoModal(false);
-          setTargetLoanId(null);
-        }}
-        loanId={targetLoanId || undefined}
-        onSave={handleSaveAbono}
-      />
-
-      {/* Selector de Cliente para Abono */}
-      <Modal
-        visible={showClientSelector}
-        animationType="slide"
-        transparent={true}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6 h-[70%]">
-            <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-xl font-bold text-gray-900">Seleccionar Cliente</Text>
-              <TouchableOpacity onPress={() => setShowClientSelector(false)} className="p-2">
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={clients}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => handleSelectClientForAbono(item)}
-                  className="py-4 border-b border-gray-100 flex-row items-center"
-                >
-                  <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center mr-4">
-                    <Text className="text-gray-500 font-bold">{item.first_name[0]}</Text>
-                  </View>
-                  <Text className="text-lg text-gray-800 font-medium">{item.first_name} {item.last_name}</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
-
-      {/* Selector de Préstamo para Abono */}
-      <Modal
-        visible={showLoanSelector}
-        animationType="fade"
-        transparent={true}
-      >
-        <View className="flex-1 bg-black/50 justify-center px-6">
-          <View className="bg-white rounded-3xl p-6">
-            <Text className="text-xl font-bold text-gray-900 mb-2">Elegir Préstamo</Text>
-            <Text className="text-gray-500 text-sm mb-4">
-              {selectedClientForAbono?.first_name} tiene varios préstamos activos:
-            </Text>
-            
-            <View className="gap-3">
-              {loansForClient.map((loan) => (
-                <TouchableOpacity
-                  key={loan.id}
-                  onPress={() => {
-                    setTargetLoanId(loan.id);
-                    setShowLoanSelector(false);
-                    setShowAbonoModal(true);
-                  }}
-                  className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-row justify-between items-center"
-                >
-                  <View>
-                    <Text className="font-bold text-gray-800">Contrato: {loan.contract_number || 'S/N'}</Text>
-                    <Text className="text-xs text-gray-500">Saldo: ${loan.current_balance}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#14688A" />
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              onPress={() => setShowLoanSelector(false)}
-              className="mt-6 py-3 items-center"
-            >
-              <Text className="text-gray-400 font-bold">Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      {/* Los modales ahora se gestionan internamente en QuickActionFAB */}
     </View>
   );
 }

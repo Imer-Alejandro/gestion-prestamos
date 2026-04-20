@@ -1,15 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ScrollView,
   Text,
   TouchableOpacity,
   View,
   Alert,
+  InteractionManager
 } from "react-native";
 import AppHeader from "../../components/shared/AppHeader";
 import DrawerMenu from "../../components/home/DrawerMenu";
+import Skeleton from "../../components/shared/Skeleton";
 import NotificationModal from "../../components/home/NotificationModal";
 import { PrestamoCard } from "../../components/prestamos_abonos/PrestamoCard";
 import { AbonoCard } from "../../components/prestamos_abonos/AbonoCard";
@@ -19,6 +21,7 @@ import { DetallesPrestamoModal } from "../../components/prestamos_abonos/Detalle
 import { DetallesAbonoModal } from "../../components/prestamos_abonos/DetallesAbonoModal";
 import { FiltrosPrestamoModal } from "../../components/prestamos_abonos/FiltrosPrestamoModal";
 import { Abono } from "../../components/prestamos_abonos/AbonoCard";
+import { QuickActionFAB } from "../../components/shared/QuickActionFAB";
 
 import {
   formatCurrencyPrestamos,
@@ -56,6 +59,7 @@ export default function PrestamosScreen() {
   const [loans, setLoans] = useState<Prestamo[]>([]);
   const [abonos, setAbonos] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const userData = {
     name: user?.full_name || "Usuario",
@@ -83,43 +87,49 @@ export default function PrestamosScreen() {
   }, [user, filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
-  const loadData = async () => {
-    try {
-      const [loansData, clientsData] = await Promise.all([
-        getLoans(user!.id, filters),
-        getClients(user!.id)
-      ]);
+  const loadData = useCallback(async () => {
+    // Diferir la carga hasta después de la interacción/transición
+    InteractionManager.runAfterInteractions(async () => {
+      try {
+        const [loansData, clientsData] = await Promise.all([
+          getLoans(user!.id, filters),
+          getClients(user!.id)
+        ]);
 
 
-      // Transformar datos de loans al formato Prestamo
-      const transformedLoans: Prestamo[] = loansData.map((loan: any) => ({
-        id: loan.id.toString(),
-        clienteId: loan.client_id.toString(),
-        clienteNombre: clientsData.find((c: any) => c.id === loan.client_id)?.first_name + ' ' +
-          clientsData.find((c: any) => c.id === loan.client_id)?.last_name || 'Cliente',
-        clienteIniciales: (clientsData.find((c: any) => c.id === loan.client_id)?.first_name?.[0] || '') +
-          (clientsData.find((c: any) => c.id === loan.client_id)?.last_name?.[0] || ''),
-        totalPrestamo: loan.principal_amount,
-        totalAbonado: loan.total_paid,
-        deudaPendiente: loan.current_balance,
-        deudaPendientePorcentaje: loan.current_balance / loan.principal_amount,
-        cuotas: loan.installments,
-        estado: loan.status === 'active' ? 'activo' as const :
-          loan.status === 'completed' ? 'completado' as const : 'mora' as const,
-        fechaCreacion: loan.created_at,
-      }));
+        // Transformar datos de loans al formato Prestamo
+        const transformedLoans: Prestamo[] = loansData.map((loan: any) => ({
+          id: loan.id.toString(),
+          clienteId: loan.client_id.toString(),
+          clienteNombre: clientsData.find((c: any) => c.id === loan.client_id)?.first_name + ' ' +
+            clientsData.find((c: any) => c.id === loan.client_id)?.last_name || 'Cliente',
+          clienteIniciales: (clientsData.find((c: any) => c.id === loan.client_id)?.first_name?.[0] || '') +
+            (clientsData.find((c: any) => c.id === loan.client_id)?.last_name?.[0] || ''),
+          totalPrestamo: loan.principal_amount,
+          totalAbonado: loan.total_paid,
+          deudaPendiente: loan.current_balance,
+          deudaPendientePorcentaje: loan.current_balance / loan.principal_amount,
+          cuotas: loan.installments,
+          estado: loan.status === 'active' ? 'activo' as const :
+            loan.status === 'completed' ? 'completado' as const : 'mora' as const,
+          fechaCreacion: loan.created_at,
+        }));
 
-      setLoans(transformedLoans);
-      setClients(clientsData);
+        setLoans(transformedLoans);
+        setClients(clientsData);
 
-      // Cargar todos los abonos
-      const abonosData = await getAllPayments(user!.id);
-      setAbonos(abonosData);
-    } catch (error) {
-      console.error("Error cargando datos:", error);
-      Alert.alert('Error', 'No se pudieron cargar los datos');
-    }
-  };
+        // Cargar todos los abonos
+        const abonosData = await getAllPayments(user!.id);
+        setAbonos(abonosData);
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error cargando datos:", error);
+        Alert.alert('Error', 'No se pudieron cargar los datos');
+        setIsLoading(false);
+      }
+    });
+  }, [user?.id, filters]);
 
   // Calcular total de deudas pendientes
   const totalDeudasPendientes = loans.reduce(
@@ -367,12 +377,28 @@ export default function PrestamosScreen() {
             </View>
 
             {/* Lista de préstamos */}
-            {filteredLoans.map(renderPrestamoCard)}
+            {isLoading ? (
+              <View className="gap-2">
+                {[1, 2, 3, 4].map(i => (
+                  <Skeleton.Rect key={i} height={180} borderRadius={22} style={{ marginHorizontal: 0, marginVertical: 10 }} />
+                ))}
+              </View>
+            ) : (
+              filteredLoans.map(renderPrestamoCard)
+            )}
           </>
         ) : (
           /* Lista de abonos */
           <View className="pb-6">
-            {abonos.map(renderAbonoCard)}
+            {isLoading ? (
+              <View className="gap-2">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <Skeleton.Rect key={i} height={120} borderRadius={20} style={{ marginHorizontal: 0, marginVertical: 6 }} />
+                ))}
+              </View>
+            ) : (
+              abonos.map(renderAbonoCard)
+            )}
           </View>
         )}
 
@@ -380,21 +406,8 @@ export default function PrestamosScreen() {
         <View className="h-24" />
       </ScrollView>
 
-      {/* Botón flotante para nuevo préstamo */}
-      <TouchableOpacity
-        onPress={() => setShowNuevoPrestamo(true)}
-        className="absolute bottom-24 right-6 w-14 h-14 bg-[#13678A] rounded-full items-center justify-center shadow-lg"
-        activeOpacity={0.8}
-        style={{
-          shadowColor: "#13678A",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 6,
-          elevation: 8,
-        }}
-      >
-        <Ionicons name="add" size={32} color="white" />
-      </TouchableOpacity>
+      {/* Botón flotante unificado con toda la lógica de registro */}
+      <QuickActionFAB onRefresh={loadData} />
 
       {/* Bottom Navigation Bar */}
       <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
@@ -449,13 +462,7 @@ export default function PrestamosScreen() {
         onDeleteNotification={handleDeleteNotification}
       />
 
-      {/* Modal Nuevo Préstamo */}
-      <NuevoPrestamoModal
-        visible={showNuevoPrestamo}
-        onClose={() => setShowNuevoPrestamo(false)}
-        onSave={handleCreateLoan}
-        clients={clients}
-      />
+      {/* El nuevo préstamo ahora se gestiona desde el QuickActionFAB */}
 
       {/* Modal Detalles Préstamo */}
       <DetallesPrestamoModal

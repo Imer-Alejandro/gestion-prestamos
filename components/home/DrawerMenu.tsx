@@ -3,15 +3,15 @@ import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Modal,
-    PanResponder,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Modal,
+  PanResponder,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
 import { sendLocalNotification } from "../../services/notification.service";
@@ -54,7 +54,7 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
     { id: "clientes", label: "Clientes", icon: "people-outline", route: "/clientes" },
     { id: "prestamos", label: "Préstamos y abonos", icon: "cash-outline", route: "/prestamos_abonos" },
     { id: "reportes", label: "Reportes y consultas", icon: "bar-chart-outline", route: "/reportes" },
-  //  {id: "empleados", label: "Empleados", icon: "briefcase-outline", route: "/empleados" }
+    //  {id: "empleados", label: "Empleados", icon: "briefcase-outline", route: "/empleados" }
   ];
 
   // Menú inferior
@@ -132,9 +132,7 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
   // Navegar a una sección
   const handleNavigate = (route: string) => {
     onClose();
-    setTimeout(() => {
-      router.push(route as any);
-    }, 300);
+    router.push(route as any);
   };
 
   // Registrar abono
@@ -193,7 +191,7 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
     >
       <View className="flex-1">
         {/* Blur Background */}
-        <Animated.View 
+        <Animated.View
           style={[
             { flex: 1 },
             { opacity: opacityAnim }
@@ -220,8 +218,8 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
             transform: [{ translateX: slideAnim }],
           }}
         >
-            <View className="flex-1 bg-white shadow-2xl">
-              <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <View className="flex-1 bg-white shadow-2xl">
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
               {/* Header con perfil */}
               <View className="bg-[#13678A] px-6 pt-16 pb-6">
                 <View className="flex-row items-center mb-4">
@@ -252,10 +250,10 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
                     className="flex-row items-center px-6 py-4 active:bg-gray-50"
                     activeOpacity={0.7}
                   >
-                    <Ionicons 
-                      name={item.icon} 
-                      size={24} 
-                      color="#13678A" 
+                    <Ionicons
+                      name={item.icon}
+                      size={24}
+                      color="#13678A"
                     />
                     <Text className="text-gray-700 text-base ml-4 flex-1">
                       {item.label}
@@ -267,7 +265,7 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
               {/* Separador */}
               <View className="h-px bg-gray-200 mx-6 my-2" />
 
-              {/* Botones de acción rápida 
+
               <View className="px-6 py-4">
                 <TouchableOpacity
                   onPress={handleRegistrarAbono}
@@ -291,8 +289,8 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
                   </Text>
                 </TouchableOpacity>
               </View>
-*/}
-             
+
+
 
               {/* Menú inferior */}
               <View className="py-2">
@@ -303,10 +301,10 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
                     className="flex-row items-center px-6 py-4 active:bg-gray-50"
                     activeOpacity={0.7}
                   >
-                    <Ionicons 
-                      name={item.icon} 
-                      size={24} 
-                      color="#13678A" 
+                    <Ionicons
+                      name={item.icon}
+                      size={24}
+                      color="#13678A"
                     />
                     <Text className="text-gray-700 text-base ml-4 flex-1">
                       {item.label}

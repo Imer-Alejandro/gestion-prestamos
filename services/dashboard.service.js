@@ -1,41 +1,61 @@
 import { getDb } from "../database/db.js";
 
+/* GET DAILY DASHBOARD DATA */
 export async function getDailyDashboardData(userId) {
   const db = await getDb();
   
-  // Prefix for today's date (YYYY-MM-DD), compatible with toISOString() 
-  // which is how the existing services save created_at
   const todayStr = new Date().toISOString().split("T")[0];
   const datePattern = `${todayStr}%`;
 
-  // 1. Total loans (general)
-  const loansResult = await db.getFirstAsync(
-    `SELECT SUM(disbursed_amount) as total FROM loans WHERE user_id = ?`,
+  // 1. Capital en la Calle (Saldo total pendiente de préstamos activos/mora)
+  const portfolioResult = await db.getFirstAsync(
+    `SELECT SUM(current_balance) as total FROM loans WHERE user_id = ? AND status != 'voided' AND status != 'completed'`,
     [userId]
   );
   
-  // 2. Total payments (general)
-  const paymentsResult = await db.getFirstAsync(
-    `SELECT SUM(amount) as total FROM payments WHERE user_id = ?`,
+  // 2. Recaudo de Hoy (Lo cobrado efectivamente hoy)
+  const paymentsTodayResult = await db.getFirstAsync(
+    `SELECT SUM(amount) as total FROM payments WHERE user_id = ? AND created_at LIKE ?`,
+    [userId, datePattern]
+  );
+
+  // 3. Agenda del Día (Cuotas que vencen hoy y no han sido pagadas)
+  const agendaResult = await db.getAllAsync(
+    `SELECT 
+      li.id,
+      li.scheduled_amount as amount,
+      li.status,
+      c.first_name || ' ' || c.last_name as clientName,
+      l.id as loanId
+     FROM loan_installments li
+     JOIN loans l ON li.loan_id = l.id
+     JOIN clients c ON l.client_id = c.id
+     WHERE l.user_id = ? AND li.due_date = ? AND li.status IN ('pending', 'partial', 'overdue')`,
+    [userId, todayStr]
+  );
+
+  // 4. Conteo de Préstamos Activos
+  const activeLoansCount = await db.getFirstAsync(
+    `SELECT COUNT(*) as count FROM loans WHERE user_id = ? AND status IN ('active', 'mora')`,
     [userId]
   );
 
-  const totalLoans = loansResult?.total || 0;
-  const totalPayments = paymentsResult?.total || 0;
+  const totalPortfolio = portfolioResult?.total || 0;
+  const totalPaymentsToday = paymentsTodayResult?.total || 0;
 
-  // Format currency
+  // Format currency helper
   const formatMoney = (amount) => {
     return amount.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     });
   };
 
-  // 3. Combined operations (loans and payments)
+  // 5. Historial de operaciones de hoy (Combinado prestamos y pagos)
   const loansForOps = await db.getAllAsync(
     `SELECT 
       l.id as raw_id,
-      l.disbursed_amount as amount,
+      l.principal_amount as amount,
       c.first_name || ' ' || c.last_name as clientName,
       l.created_at as timeRaw,
       'prestamo' as type
@@ -59,35 +79,34 @@ export async function getDailyDashboardData(userId) {
     [userId, datePattern]
   );
 
-  // Combine and sort by recent time
-  const combined = [...loansForOps, ...paymentsForOps].sort((a, b) => {
-    return new Date(b.timeRaw) - new Date(a.timeRaw);
-  });
+  const combined = [...loansForOps, ...paymentsForOps].sort((a, b) => new Date(b.timeRaw) - new Date(a.timeRaw));
 
-  // Map to UI shape
   const operations = combined.map(op => {
     const d = new Date(op.timeRaw);
     let hours = d.getHours();
     const ampm = hours >= 12 ? 'pm' : 'am';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
+    hours = hours % 12 || 12;
     const mins = d.getMinutes().toString().padStart(2, '0');
-    const timeStr = `${hours}:${mins} ${ampm}`;
-
     return {
       id: `${op.type}-${op.raw_id}`,
       amount: formatMoney(op.amount),
       clientName: op.clientName,
-      time: timeStr,
+      time: `${hours}:${mins} ${ampm}`,
       type: op.type
     };
   });
 
   return {
-    dailyTotals: {
-      loans: formatMoney(totalLoans),
-      payments: formatMoney(totalPayments),
+    summary: {
+      portfolioValue: formatMoney(totalPortfolio),
+      dailyCollection: formatMoney(totalPaymentsToday),
+      activeLoans: activeLoansCount?.count || 0,
+      pendingAgendaCount: agendaResult.length
     },
+    agenda: agendaResult.map(item => ({
+      ...item,
+      amount: formatMoney(item.amount)
+    })),
     operations
   };
 }

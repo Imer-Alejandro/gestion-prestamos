@@ -34,7 +34,16 @@ export default function AppHeader({
   hasNotifications = true,
 }: AppHeaderProps) {
   return (
-    <View className="bg-[#13678A] px-6 pt-16 pb-6 rounded-b-3xl shadow-lg">
+    <View 
+      className="bg-[#13678A] px-6 pt-16 pb-6 rounded-b-3xl"
+      style={{
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.12,
+        shadowRadius: 15,
+        elevation: 8,
+      }}
+    >
       <View className="flex-row items-center justify-between mb-6">
         {/* Perfil de usuario */}
         <View className="flex-row items-center">
@@ -79,26 +88,25 @@ export default function AppHeader({
         </View>
       </View>
 
-      {/* Buscador */}
-      <View className="flex-row items-center gap-3">
-        <View className="flex-1 bg-white/95 rounded-xl px-4 py-3 flex-row items-center">
-          <Ionicons name="search" size={20} color="#999" />
+      {/* Buscador Dinámico */}
+      <View className="flex-row items-center bg-white/10 p-1 rounded-2xl">
+        <View className="flex-1 bg-white/95 rounded-xl px-4 py-2.5 flex-row items-center border border-white/20">
+          <Ionicons name="search-outline" size={18} color="#666" />
           <TextInput
             value={searchQuery}
             onChangeText={onSearchChange}
-            placeholder="Buscar clientes..."
+            placeholder="Buscar por nombre o documento..."
             placeholderTextColor="#999"
-            className="flex-1 ml-2 text-gray-800 text-sm"
+            className="flex-1 ml-2 text-gray-800 text-sm font-medium"
             onSubmitEditing={onSearchSubmit}
+            returnKeyType="search"
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => onSearchChange("")}>
+              <Ionicons name="close-circle" size={18} color="#999" />
+            </TouchableOpacity>
+          )}
         </View>
-        <TouchableOpacity
-          onPress={onSearchSubmit}
-          className="bg-[#0D4D68] rounded-xl px-5 py-3.5"
-          activeOpacity={0.8}
-        >
-          <Ionicons name="search" size={22} color="#ffffff" />
-        </TouchableOpacity>
       </View>
     </View>
   );

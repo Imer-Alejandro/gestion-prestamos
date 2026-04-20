@@ -1,12 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-interface Abono {
+export interface Abono {
   id: string | number;
-  monto: number;
-  fechaPago: string;
-  metodoPago?: string;
-  referencia?: string;
+  amount: number;
+  payment_date: string;
+  payment_method?: string;
+  reference_number?: string;
+  client_name?: string;
+  loan_contract_number?: string;
+  loan_id?: number;
 }
 
 interface AbonoCardProps {
@@ -14,7 +18,9 @@ interface AbonoCardProps {
   onPress?: () => void;
 }
 
+
 export function AbonoCard({ abono, onPress }: AbonoCardProps) {
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -40,113 +46,185 @@ export function AbonoCard({ abono, onPress }: AbonoCardProps) {
   const getPaymentMethodIcon = (method?: string) => {
     switch (method?.toLowerCase()) {
       case 'efectivo':
-        return '💵';
+        return 'cash-outline';
       case 'tarjeta':
-        return '💳';
+        return 'card-outline';
       case 'transferencia':
-        return '🏦';
+        return 'business-outline';
       default:
-        return '💰';
+        return 'wallet-outline';
     }
   };
 
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <View style={styles.amountContainer}>
-          <Text style={styles.amount}>
-            {formatCurrency(abono.monto)}
-          </Text>
-          <Text style={styles.paymentIcon}>
-            {getPaymentMethodIcon(abono.metodoPago)}
-          </Text>
+    <TouchableOpacity 
+      style={styles.card} 
+      onPress={onPress} 
+      activeOpacity={0.8}
+    >
+      <View style={styles.topRow}>
+        <View style={styles.clientInfo}>
+          <View style={styles.iconBadge}>
+            <Ionicons 
+              name={getPaymentMethodIcon(abono.payment_method)} 
+              size={22} 
+              color="#13678A" 
+            />
+          </View>
+          <View style={styles.textContainer}>
+            <Text style={styles.clientName} numberOfLines={1}>
+              {abono.client_name || 'Cliente Desconocido'}
+            </Text>
+            <View style={styles.subInfoRow}>
+              <Ionicons name="document-text-outline" size={12} color="#9CA3AF" />
+              <Text style={styles.loanInfo}>
+                {abono.loan_contract_number || 'S/N'}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.dateContainer}>
-          <Text style={styles.date}>
-            {formatDate(abono.fechaPago)}
-          </Text>
-          {abono.metodoPago && (
-            <Text style={styles.paymentMethod}>
-              {abono.metodoPago}
-            </Text>
-          )}
+        <View style={styles.chevronContainer}>
+          <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
         </View>
       </View>
 
-      {abono.referencia && (
-        <View style={styles.referenceContainer}>
-          <Text style={styles.referenceLabel}>Ref:</Text>
-          <Text style={styles.reference} numberOfLines={1}>
-            {abono.referencia}
+
+      <View style={styles.amountRow}>
+        <View>
+          <Text style={styles.amountLabel}>Monto Pagado</Text>
+          <Text style={styles.amountValue}>
+            {formatCurrency(abono.amount)}
+          </Text>
+        </View>
+        <View style={styles.dateContainer}>
+          <Text style={styles.dateLabel}>Fecha</Text>
+          <Text style={styles.dateValue}>
+            {formatDate(abono.payment_date)}
+          </Text>
+        </View>
+      </View>
+
+      {abono.reference_number && (
+        <View style={styles.referenceBadge}>
+          <Text style={styles.referenceText}>
+            Ref: {abono.reference_number}
           </Text>
         </View>
       )}
-
-      <View style={styles.divider} />
-    </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    marginVertical: 2,
+    borderRadius: 20,
+    padding: 18,
+    marginVertical: 6,
     marginHorizontal: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    // Sombra premium
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  header: {
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 14,
   },
-  amountContainer: {
+  clientInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
-  amount: {
+  iconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F0F9FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  clientName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#10B981',
-    marginRight: 8,
+    fontWeight: '700',
+    color: '#1F2937',
+    letterSpacing: -0.3,
   },
-  paymentIcon: {
-    fontSize: 18,
+  subInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  loanInfo: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  chevronContainer: {
+    padding: 4,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: '#F9FAFB',
+    paddingTop: 14,
+  },
+  amountLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#9CA3AF',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  amountValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#10B981',
+    letterSpacing: -0.5,
   },
   dateContainer: {
     alignItems: 'flex-end',
   },
-  date: {
+  dateLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#9CA3AF',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  dateValue: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  paymentMethod: {
-    fontSize: 12,
-    color: '#6B7280',
-    textTransform: 'capitalize',
-  },
-  referenceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  referenceLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginRight: 4,
-    fontWeight: '500',
-  },
-  reference: {
-    fontSize: 12,
+    fontWeight: '600',
     color: '#4B5563',
-    flex: 1,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    marginTop: 12,
+  referenceBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
+  referenceText: {
+    fontSize: 11,
+    color: '#166534',
+    fontWeight: '600',
   },
 });

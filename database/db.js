@@ -157,10 +157,28 @@ export async function initializeDatabase() {
 
       payment_date TEXT NOT NULL,
       created_at TEXT NOT NULL,
+      updated_at TEXT,
+      status TEXT DEFAULT 'active', -- active | voided | replaced
+
 
       FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE RESTRICT,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
     );
+
+    -------------------------------------------------------
+    -- payment_distributions
+    -------------------------------------------------------
+    CREATE TABLE IF NOT EXISTS payment_distributions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      payment_id INTEGER NOT NULL,
+      installment_id INTEGER NOT NULL,
+      amount REAL NOT NULL,
+      created_at TEXT NOT NULL,
+
+      FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE CASCADE,
+      FOREIGN KEY (installment_id) REFERENCES loan_installments(id) ON DELETE RESTRICT
+    );
+
 
     CREATE INDEX IF NOT EXISTS idx_payments_loan
     ON payments(loan_id);
@@ -263,6 +281,13 @@ export async function initializeDatabase() {
     { name: 'created_at', type: 'TEXT', defaultValue: "''" },
     { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
   ]);
+
+  await ensureColumns('payments', [
+    { name: 'status', type: 'TEXT', defaultValue: "'active'" },
+    { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
+  ]);
+
+
 
   console.log("✅ Database initialized successfully");
 }

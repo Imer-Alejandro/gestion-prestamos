@@ -23,6 +23,8 @@ interface DrawerMenuProps {
     name: string;
     role: string;
   };
+  onNuevoAbono?: () => void;
+  onNuevoPrestamo?: () => void;
 }
 
 interface MenuItem {
@@ -40,7 +42,7 @@ const DRAWER_WIDTH = 320;
  * Se abre de derecha a izquierda con blur en el fondo
  * Soporta cierre por swipe y toque fuera
  */
-export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuProps) {
+export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, onNuevoPrestamo }: DrawerMenuProps) {
   const router = useRouter();
   const { logout } = useAuth();
   const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
@@ -138,15 +140,17 @@ export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuPro
   // Registrar abono
   const handleRegistrarAbono = () => {
     onClose();
-    console.log("Registrar abono");
-    // TODO: Navegar a pantalla de registro de abono
+    if (onNuevoAbono) {
+      setTimeout(onNuevoAbono, 300);
+    }
   };
 
   // Registrar préstamo
   const handleRegistrarPrestamo = () => {
     onClose();
-    console.log("Registrar préstamo");
-    // TODO: Navegar a pantalla de registro de préstamo
+    if (onNuevoPrestamo) {
+      setTimeout(onNuevoPrestamo, 300);
+    }
   };
 
   // Cerrar sesión

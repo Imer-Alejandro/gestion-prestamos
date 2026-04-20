@@ -28,7 +28,7 @@ import { mockNotifications } from "../../data/homeData";
 import { useAuth } from "../../contexts/AuthContext";
 
 // Importar servicios
-import { getLoans, createLoan } from "../../services/loan.service";
+import { getLoans, createLoan, voidLoan } from "../../services/loan.service";
 import { createPayment, getAllPayments } from "../../services/payment.service";
 
 import { getClients } from "../../services/client.service";
@@ -215,6 +215,17 @@ export default function PrestamosScreen() {
   };
 
 
+  // Anular préstamo (soft-delete)
+  const handleVoidLoan = async (prestamoId: string) => {
+    try {
+      await voidLoan(parseInt(prestamoId));
+      await loadData(); // Recargar para que desaparezca de la lista
+    } catch (error) {
+      console.error("Error anulando préstamo:", error);
+      Alert.alert('Error', 'No se pudo anular el préstamo. Intenta nuevamente.');
+    }
+  };
+
   // Crear nuevo préstamo
   const handleCreateLoan = async (loanData: any) => {
     try {
@@ -234,6 +245,7 @@ export default function PrestamosScreen() {
       prestamo={prestamo}
       onPress={() => handlePrestamoPress(prestamo.id)}
       onMenuPress={() => handlePrestamoMenu(prestamo.id)}
+      onVoid={handleVoidLoan}
     />
   );
 

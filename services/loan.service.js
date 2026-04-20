@@ -226,15 +226,28 @@ export async function deleteLoan(id) {
   const db = await getDb();
   await db.runAsync(`DELETE FROM loans WHERE id = ?`, [id]);
 }
+
+/* VOID LOAN (soft-delete) */
+export async function voidLoan(id) {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE loans SET status = 'voided', updated_at = ?, closed_at = ? WHERE id = ?`,
+    [new Date().toISOString(), new Date().toISOString(), id]
+  );
+}
 /* GET LOANS WITH FILTERS */
 export async function getLoans(userId, filters = {}) {
   const db = await getDb();
   let query = `SELECT * FROM loans WHERE user_id = ?`;
   const params = [userId];
 
+  // Siempre excluir préstamos anulados (a menos que se pida explícitamente)
   if (filters.status && filters.status !== 'all') {
     query += ` AND status = ?`;
     params.push(filters.status);
+  } else {
+    // Por defecto, nunca mostrar préstamos anulados
+    query += ` AND status != 'voided'`;
   }
 
   if (filters.payment_frequency && filters.payment_frequency !== 'all') {

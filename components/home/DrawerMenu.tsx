@@ -267,7 +267,7 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
               {/* Separador */}
               <View className="h-px bg-gray-200 mx-6 my-2" />
 
-              {/* Botones de acción rápida */}
+              {/* Botones de acción rápida 
               <View className="px-6 py-4">
                 <TouchableOpacity
                   onPress={handleRegistrarAbono}
@@ -291,9 +291,8 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
                   </Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Separador */}
-              <View className="h-px bg-gray-200 mx-6 my-2" />
+*/}
+             
 
               {/* Menú inferior */}
               <View className="py-2">

@@ -9,6 +9,7 @@ import * as StorageService from "../services/storage.service";
 
 // Tipos de datos
 export interface User {
+  displayName: string;
   id: number;
   full_name: string;
   email: string | null;
@@ -33,6 +34,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateUserName: (newName: string) => Promise<void>;
 }
 
 // Claves para SecureStore
@@ -177,6 +179,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Actualizar nombre del usuario
+  const updateUserName = async (newName: string) => {
+    if (!user) {
+      throw new Error("No hay usuario autenticado");
+    }
+
+    try {
+      const { updateUser } = await import("../services/user.service.js");
+      
+      await updateUser(user.id, {
+        full_name: newName,
+        phone: user.phone,
+        is_active: user.is_active,
+      });
+
+      // Actualizar el estado local
+      const updatedUser = await getUserById(user.id);
+      if (updatedUser) {
+        setUser(updatedUser);
+        console.log("✅ Nombre actualizado:", newName);
+      }
+    } catch (error) {
+      console.error("❌ Error actualizando nombre:", error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -185,6 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     register,
     logout,
     refreshUser,
+    updateUserName,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

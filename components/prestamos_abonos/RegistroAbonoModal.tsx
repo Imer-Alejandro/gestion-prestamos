@@ -231,7 +231,6 @@ export function RegistroAbonoModal({
       reference_number: '',
       payment_date: new Date(),
     });
-    setDisplayAmount('');
     setErrors({});
     onClose();
   };

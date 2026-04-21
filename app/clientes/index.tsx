@@ -17,7 +17,6 @@ import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
 import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
 import RegistroClienteModal, { type ClienteFormData } from "../../components/clientes/RegistroClienteModal";
 import ProgressBar from "../../components/clientes/ProgressBar";
-import { FiltrosClienteModal, DEFAULT_CLIENTE_FILTERS, type ClienteFilters } from "../../components/clientes/FiltrosClienteModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { getClients, createClient } from "../../services/client.service";
 
@@ -38,8 +37,6 @@ export default function ClientesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
-  const [showFiltros, setShowFiltros] = useState(false);
-  const [filters, setFilters] = useState<ClienteFilters>(DEFAULT_CLIENTE_FILTERS);
 
   const userData = {
     name: user?.full_name || "Usuario",
@@ -100,40 +97,19 @@ export default function ClientesScreen() {
     setSelectedClient(client);
   };
 
-  // Determinar si hay filtros activos
-  const isFiltering =
-    filters.status !== 'all' ||
-    filters.hasActiveLoans !== 'all' ||
-    filters.registeredFrom !== null;
-
-  // Filtrar clientes según búsqueda Y filtros
-  const clientesFiltrados = clientes.filter(cliente => {
-    // Búsqueda de texto
-    if (searchQuery.trim()) {
+  // Filtrar clientes según búsqueda
+  const clientesFiltrados = searchQuery.trim()
+    ? clientes.filter(cliente => {
       const query = searchQuery.toLowerCase();
       const nombreCompleto = `${cliente.first_name} ${cliente.last_name}`.toLowerCase();
       const documento = cliente.document_number?.toLowerCase() || "";
-      const telefono = (cliente.phone_primary || "").toLowerCase();
-      const coincide = nombreCompleto.includes(query) || documento.includes(query) || telefono.includes(query);
-      if (!coincide) return false;
-    }
+      const telefono = cliente.phones?.[0]?.number || "";
 
-    // Filtro por estado
-    if (filters.status !== 'all' && cliente.status !== filters.status) return false;
-
-    // Filtro por préstamos activos
-    if (filters.hasActiveLoans === 'yes' && !(cliente.activeLoansCount > 0)) return false;
-    if (filters.hasActiveLoans === 'no' && cliente.activeLoansCount > 0) return false;
-
-    // Filtro por fecha de registro desde
-    if (filters.registeredFrom) {
-      const registrado = new Date(cliente.created_at);
-      const desde = new Date(filters.registeredFrom);
-      if (registrado < desde) return false;
-    }
-
-    return true;
-  });
+      return nombreCompleto.includes(query) ||
+        documento.includes(query) ||
+        telefono.includes(query);
+    })
+    : clientes;
 
   // Navegar al detalle del cliente
   const handleClientePress = (clienteId: string) => {
@@ -319,15 +295,15 @@ export default function ClientesScreen() {
               </Text>
             </View>
           </View>
-          
+
           <View className="mt-1">
-            <ProgressBar 
-              percentage={cliente.totalDebt > 0 ? (cliente.totalPaid / cliente.totalDebt) * 100 : 0} 
-              color="#10B981" 
+            <ProgressBar
+              percentage={cliente.totalDebt > 0 ? (cliente.totalPaid / cliente.totalDebt) * 100 : 0}
+              color="#10B981"
             />
             <View className="flex-row justify-between mt-1.5">
-               <Text className="text-slate-400 text-[10px]">Total abonado</Text>
-               <Text className="text-emerald-600 font-medium text-[10px]">{formatCurrency(cliente.totalPaid)}</Text>
+              <Text className="text-slate-400 text-[10px]">Total abonado</Text>
+              <Text className="text-emerald-600 font-medium text-[10px]">{formatCurrency(cliente.totalPaid)}</Text>
             </View>
           </View>
         </View>
@@ -481,42 +457,12 @@ export default function ClientesScreen() {
         <View className="mb-6">
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-gray-800 text-lg font-bold">
-              {searchQuery.trim() ? "Resultados" : isFiltering ? "Filtrado" : "Mis Clientes"}
+              {searchQuery.trim() ? "Resultados" : "Mis Clientes"}
             </Text>
-            <View className="flex-row items-center gap-2">
-              {/* Contador */}
-              <View className="bg-blue-100 px-3 py-1 rounded-full">
-                <Text className="text-blue-600 text-sm font-semibold">
-                  {clientesFiltrados.length}
-                </Text>
-              </View>
-              {/* Botón de filtros */}
-              <TouchableOpacity
-                onPress={() => setShowFiltros(true)}
-                className="w-9 h-9 items-center justify-center"
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={isFiltering ? "options" : "options-outline"}
-                  size={22}
-                  color={isFiltering ? "#13678A" : "#374151"}
-                />
-                {isFiltering && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      top: 6,
-                      right: 6,
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: '#EF4444',
-                      borderWidth: 1,
-                      borderColor: '#F9FAFB',
-                    }}
-                  />
-                )}
-              </TouchableOpacity>
+            <View className="bg-blue-100 px-3 py-1 rounded-full">
+              <Text className="text-blue-600 text-sm font-semibold">
+                {clientesFiltrados.length}
+              </Text>
             </View>
           </View>
 
@@ -610,15 +556,6 @@ export default function ClientesScreen() {
         visible={showRegistroCliente}
         onClose={() => setShowRegistroCliente(false)}
         onSubmit={handleRegistroCliente}
-      />
-
-      {/* Modal de Filtros de Clientes */}
-      <FiltrosClienteModal
-        visible={showFiltros}
-        onClose={() => setShowFiltros(false)}
-        currentFilters={filters}
-        onApply={(newFilters) => setFilters(newFilters)}
-        onClear={() => setFilters(DEFAULT_CLIENTE_FILTERS)}
       />
 
       {/* Drawer Menu */}

@@ -196,7 +196,7 @@ export async function updateLoan(id, data) {
 export async function getLoansByClient(clientId) {
   const db = await getDb();
   return await db.getAllAsync(
-    `SELECT * FROM loans WHERE client_id = ? ORDER BY created_at DESC`, 
+    `SELECT * FROM loans WHERE client_id = ? ORDER BY created_at DESC`,
     [clientId]
   );
 }

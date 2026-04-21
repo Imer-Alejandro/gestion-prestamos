@@ -134,28 +134,26 @@ export default function ClientDetailsModal({
                       Doc: {client.document_number}
                     </Text>
                     <View
-                      className={`px-2 py-1 rounded-md self-start mt-2 ${
-                        client.status === "al-dia"
-                          ? "bg-green-100"
-                          : client.status === "proximo-mora"
+                      className={`px-2 py-1 rounded-md self-start mt-2 ${client.status === "al-dia"
+                        ? "bg-green-100"
+                        : client.status === "proximo-mora"
                           ? "bg-yellow-100"
                           : "bg-red-100"
-                      }`}
+                        }`}
                     >
                       <Text
-                        className={`text-[10px] font-bold ${
-                          client.status === "al-dia"
-                            ? "text-green-700"
-                            : client.status === "proximo-mora"
+                        className={`text-[10px] font-bold ${client.status === "al-dia"
+                          ? "text-green-700"
+                          : client.status === "proximo-mora"
                             ? "text-yellow-700"
                             : "text-red-700"
-                        }`}
+                          }`}
                       >
                         {client.status === "al-dia"
                           ? "AL DÍA"
                           : client.status === "proximo-mora"
-                          ? "AVISO"
-                          : "MORA"}
+                            ? "AVISO"
+                            : "MORA"}
                       </Text>
                     </View>
                   </View>
@@ -250,18 +248,16 @@ export default function ClientDetailsModal({
                             Contrato #{loan.contract_number}
                           </Text>
                           <View
-                            className={`px-2 py-0.5 rounded ${
-                              loan.status === "active"
-                                ? "bg-green-100"
-                                : "bg-gray-100"
-                            }`}
+                            className={`px-2 py-0.5 rounded ${loan.status === "active"
+                              ? "bg-green-100"
+                              : "bg-gray-100"
+                              }`}
                           >
                             <Text
-                              className={`text-[10px] font-bold ${
-                                loan.status === "active"
-                                  ? "text-green-700"
-                                  : "text-gray-600"
-                              }`}
+                              className={`text-[10px] font-bold ${loan.status === "active"
+                                ? "text-green-700"
+                                : "text-gray-600"
+                                }`}
                             >
                               {loan.status.toUpperCase()}
                             </Text>

@@ -48,7 +48,7 @@ export async function createClient(data) {
 /* GET ALL CLIENTS BY USER WITH FINANCIAL INFO */
 export async function getClients(userId) {
   const db = await getDb();
-  
+
   // Obtener todos los clientes del usuario (más recientes primero)
   const clients = await db.getAllAsync(
     `SELECT * FROM clients 
@@ -77,7 +77,7 @@ export async function getClients(userId) {
       for (const loan of loans) {
         const principalAmount = loan.principal_amount || 0;
         const paidAmount = loan.total_paid || 0;
-        
+
         totalDebt += principalAmount;
         totalPaid += paidAmount;
         pendingDebt += (principalAmount - paidAmount);
@@ -87,15 +87,15 @@ export async function getClients(userId) {
           const dueDate = new Date(loan.due_date);
           const today = new Date();
           const graceDays = loan.grace_days || 0;
-          
+
           // Fecha límite considerando días de gracia
           const graceDate = new Date(dueDate);
           graceDate.setDate(graceDate.getDate() + graceDays);
-          
+
           // En mora: ya pasó la fecha con días de gracia
           if (today > graceDate) {
             hasOverdueLoans = true;
-          } 
+          }
           // Próximo a mora: faltan 7 días o menos para vencer
           else {
             const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));

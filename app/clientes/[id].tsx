@@ -13,6 +13,7 @@ import {
 import RegistroAbonoModal, { type AbonoFormData } from "../../components/clientes/RegistroAbonoModal";
 import DetallesAbonoModal from "../../components/clientes/DetallesAbonoModal";
 import DetallesClienteModal from "../../components/clientes/DetallesClienteModal";
+import ProgressBar from "../../components/clientes/ProgressBar";
 import { getClientById } from "../../services/client.service";
 import { getLoansByClient } from "../../services/loan.service";
 import { getPaymentsByLoan } from "../../services/payment.service";
@@ -24,7 +25,7 @@ const COLORS = {
   secondary: '#0D8A7A',      // Verde azulado
   warning: '#F59E0B',        // Amarillo para pendiente
   danger: '#EF4444',         // Rojo para mora
-  light: '#F3F4F6',          // Gris claro
+  light: '#F3F4F6',          // gris claro 
   text: '#111827',           // Texto oscuro
   textSecondary: '#6B7280',  // Texto gris
   border: '#E5E7EB',         // Borde gris
@@ -195,51 +196,40 @@ export default function ClienteDetalleScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.light }}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Card de información del cliente con datos reales */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
+      {/* Card de información del cliente con datos reales - Rediseñada */}
+      <View className="px-4 pt-4 pb-3" style={{ marginTop: 24 }}>
         <View
+          className="bg-[#13678A] rounded-3xl p-5 overflow-hidden relative"
           style={{
-            backgroundColor: COLORS.primary,
-            borderRadius: 20,
-            padding: 20,
-            shadowColor: COLORS.primary,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.2,
-            shadowRadius: 8,
-            elevation: 4,
+            shadowColor: "#13678A",
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.25,
+            shadowRadius: 15,
+            elevation: 8,
           }}
         >
+          {/* Elementos decorativos de fondo */}
+          <View className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
+          <View className="absolute -left-10 -bottom-10 w-40 h-40 bg-black/10 rounded-full" />
+
           {/* Header con avatar, nombre y botón cerrar */}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <View className="flex-row items-start justify-between mb-5">
+            <View className="flex-row items-center flex-1">
               {/* Avatar con iniciales */}
-              <View style={{
-                width: 56,
-                height: 56,
-                borderRadius: 28,
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12,
-              }}>
-                <Text style={{ color: 'white', fontSize: 20, fontWeight: '700' }}>
+              <View className="w-14 h-14 rounded-full bg-white/20 items-center justify-center mr-3 border-2 border-white/30">
+                <Text className="text-white text-lg font-bold tracking-wider">
                   {iniciales}
                 </Text>
               </View>
 
               {/* Nombre completo y estado */}
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: 'white', fontSize: 18, fontWeight: '700', marginBottom: 6 }}>
+              <View className="flex-1">
+                <Text className="text-white text-lg font-bold mb-1.5" numberOfLines={1}>
                   {cliente.first_name} {cliente.last_name}
                 </Text>
-                <View style={{
-                  backgroundColor: estado.color,
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                  borderRadius: 20,
-                  alignSelf: 'flex-start',
-                }}>
-                  <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>
+
+                <View className="self-start px-2.5 py-1 rounded-full border border-white/50" style={{ backgroundColor: estado.color }}>
+                  <Text className="text-white text-[10px] font-bold uppercase tracking-wider">
                     {estado.text}
                   </Text>
                 </View>
@@ -249,175 +239,101 @@ export default function ClienteDetalleScreen() {
             {/* Botón cerrar */}
             <TouchableOpacity
               onPress={() => router.back()}
-              style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}
+              className="w-8 h-8 rounded-full bg-white/10 items-center justify-center"
               activeOpacity={0.7}
             >
-              <Ionicons name="close" size={28} color="white" />
+              <Ionicons name="close" size={20} color="white" />
             </TouchableOpacity>
           </View>
 
           {/* Resumen financiero con datos reales */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginBottom: 6 }}>
-                Total en deudas
-              </Text>
-              <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
-                {formatCurrency(totalDeuda)}
-              </Text>
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginBottom: 6 }}>
-                Total abonado
-              </Text>
-              <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
-                {formatCurrency(totalAbonado)}
-              </Text>
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginBottom: 6 }}>
-                Deuda pendiente
-              </Text>
-              <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
-                {formatCurrency(deudaPendiente)}
-              </Text>
+          <View className="bg-white/10 rounded-2xl p-4 mb-5 border border-white/10">
+            <View className="flex-row justify-between mb-2">
+              <View>
+                <Text className="text-white/70 text-[10px] uppercase font-bold tracking-wider mb-1">
+                  Crédito Activo
+                </Text>
+                <Text className="text-white text-lg font-black">
+                  {formatCurrency(totalDeuda)}
+                </Text>
+              </View>
+              <View className="items-end">
+                <Text className="text-white/70 text-[10px] uppercase font-bold tracking-wider mb-1">
+                  Pendiente
+                </Text>
+                <Text className="text-red-300 text-lg font-black">
+                  {formatCurrency(deudaPendiente)}
+                </Text>
+              </View>
             </View>
           </View>
 
-          {/* Botones de acción rápida */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          {/* Botones de acción rápida - Flotantes Modernos */}
+          <View className="flex-row justify-center gap-12 px-1">
             {/* Abonar */}
             <TouchableOpacity
-              style={{ alignItems: 'center', flex: 1 }}
+              className="items-center"
               activeOpacity={0.7}
               onPress={() => setShowRegistroAbono(true)}
             >
-              <View style={{
-                width: 48,
-                height: 48,
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 6,
-              }}>
-                <Ionicons name="add-circle-outline" size={24} color="white" />
+              <View className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center mb-1.5 border border-white/10">
+                <Ionicons name="add" size={28} color="white" />
               </View>
-              <Text style={{ color: 'white', fontSize: 12 }}>Abonar</Text>
+              <Text className="text-white/90 text-[11px] font-semibold tracking-wide">Abonar</Text>
             </TouchableOpacity>
 
-            {/* Detalles */}
+            {/* Editar */}
             <TouchableOpacity
-              style={{ alignItems: 'center', flex: 1 }}
+              className="items-center"
               activeOpacity={0.7}
               onPress={() => setShowDetallesCliente(true)}
             >
-              <View style={{
-                width: 48,
-                height: 48,
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 6,
-              }}>
-                <Ionicons name="document-text-outline" size={24} color="white" />
+              <View className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center mb-1.5 border border-white/10">
+                <Ionicons name="create" size={24} color="white" />
               </View>
-              <Text style={{ color: 'white', fontSize: 12 }}>Detalles</Text>
-            </TouchableOpacity>
-
-            {/* Llamar */}
-            <TouchableOpacity
-              style={{ alignItems: 'center', flex: 1 }}
-              activeOpacity={0.7}
-              onPress={() => console.log("Llamar cliente")}
-            >
-              <View style={{
-                width: 48,
-                height: 48,
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 6,
-              }}>
-                <Ionicons name="call-outline" size={24} color="white" />
-              </View>
-              <Text style={{ color: 'white', fontSize: 12 }}>Llamar</Text>
-            </TouchableOpacity>
-
-            {/* Mensajes */}
-            <TouchableOpacity
-              style={{ alignItems: 'center', flex: 1 }}
-              activeOpacity={0.7}
-              onPress={() => console.log("Enviar mensaje")}
-            >
-              <View style={{
-                width: 48,
-                height: 48,
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 6,
-              }}>
-                <Ionicons name="chatbubble-outline" size={24} color="white" />
-              </View>
-              <Text style={{ color: 'white', fontSize: 12 }}>Chat</Text>
+              <Text className="text-white/90 text-[11px] font-semibold tracking-wide">Editar</Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      {/* Tabs de Préstamos y Abonos */}
-      <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}>
-        <TouchableOpacity
-          onPress={() => setActiveTab("prestamos")}
-          style={{
-            flex: 1,
-            paddingVertical: 12,
-            borderRadius: 10,
-            backgroundColor: activeTab === "prestamos" ? 'white' : 'transparent',
-            borderBottomWidth: activeTab === "prestamos" ? 3 : 0,
-            borderBottomColor: COLORS.primary,
-          }}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={{
-              textAlign: 'center',
-              fontWeight: '600',
-              color: activeTab === "prestamos" ? COLORS.primary : COLORS.textSecondary,
-            }}
+      {/* Tabs Modernos Segmentados */}
+      <View className="px-4 pb-4">
+        <View className="flex-row bg-slate-200/60 p-1 rounded-2xl">
+          <TouchableOpacity
+            onPress={() => setActiveTab("prestamos")}
+            className={`flex-1 py-3 rounded-xl items-center justify-center ${activeTab === "prestamos" ? "bg-white shadow-sm" : ""}`}
+            activeOpacity={0.7}
+            style={activeTab === "prestamos" ? {
+              shadowColor: "#0f172a",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 5,
+              elevation: 2,
+            } : {}}
           >
-            Préstamos ({prestamos.length})
-          </Text>
-        </TouchableOpacity>
+            <Text className={`font-bold ${activeTab === "prestamos" ? "text-slate-800" : "text-slate-500"}`}>
+              Préstamos ({prestamos.length})
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => setActiveTab("abonos")}
-          style={{
-            flex: 1,
-            paddingVertical: 12,
-            borderRadius: 10,
-            backgroundColor: activeTab === "abonos" ? 'white' : 'transparent',
-            borderBottomWidth: activeTab === "abonos" ? 3 : 0,
-            borderBottomColor: COLORS.primary,
-          }}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={{
-              textAlign: 'center',
-              fontWeight: '600',
-              color: activeTab === "abonos" ? COLORS.primary : COLORS.textSecondary,
-            }}
+          <TouchableOpacity
+            onPress={() => setActiveTab("abonos")}
+            className={`flex-1 py-3 rounded-xl items-center justify-center ${activeTab === "abonos" ? "bg-white shadow-sm" : ""}`}
+            activeOpacity={0.7}
+            style={activeTab === "abonos" ? {
+              shadowColor: "#0f172a",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 5,
+              elevation: 2,
+            } : {}}
           >
-            Abonos ({abonos.length})
-          </Text>
-        </TouchableOpacity>
+            <Text className={`font-bold ${activeTab === "abonos" ? "text-slate-800" : "text-slate-500"}`}>
+              Abonos ({abonos.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Contenido con scroll - Préstamos o Abonos */}
@@ -433,53 +349,60 @@ export default function ClienteDetalleScreen() {
               prestamos.map((prestamo) => (
                 <TouchableOpacity
                   key={prestamo.id}
+                  className="bg-white rounded-[20px] p-4 mb-4 border border-slate-100/60"
+                  activeOpacity={0.7}
                   style={{
-                    backgroundColor: 'white',
-                    borderRadius: 12,
-                    padding: 14,
-                    marginBottom: 10,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 4,
+                    shadowColor: "#0f172a",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 10,
                     elevation: 2,
                   }}
-                  activeOpacity={0.7}
                   onPress={() => console.log("Ver préstamo", prestamo.id)}
                 >
-                  {/* Icono y estado */}
-                  <View style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: COLORS.primary,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 12,
-                  }}>
-                    <Ionicons name="wallet-outline" size={20} color="white" />
+                  <View className="flex-row items-center mb-3">
+                    {/* Icono soft */}
+                    <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3">
+                      <Ionicons name="wallet" size={18} color="#3b82f6" />
+                    </View>
+
+                    {/* Información cabecera */}
+                    <View className="flex-1">
+                      <Text className="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                        Préstamo Capital
+                      </Text>
+                      <Text className="text-slate-800 text-base font-black">
+                        {formatCurrency(prestamo.principal_amount)}
+                      </Text>
+                    </View>
+
+                    <View className="items-end bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                      <Text className="text-slate-500 text-[10px] font-bold">
+                        {prestamo.interest_rate}% INT
+                      </Text>
+                      <Text className="text-slate-400 text-[10px]">
+                        {prestamo.installments} cuotas
+                      </Text>
+                    </View>
                   </View>
 
-                  {/* Información del préstamo */}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '700', marginBottom: 2 }}>
-                      {formatCurrency(prestamo.principal_amount)}
-                    </Text>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>
-                      Interés: {prestamo.interest_rate}% • Cuotas: {prestamo.installments}
-                    </Text>
+                  {/* Barra e info de deuda */}
+                  <View className="bg-slate-50/80 rounded-xl p-3 border border-slate-100">
+                    <View className="flex-row justify-between items-center mb-2">
+                      <Text className="text-slate-500 text-[11px] font-medium">Deuda Actual</Text>
+                      <Text className="text-red-500 font-bold">{formatCurrency(prestamo.current_balance)}</Text>
+                    </View>
+                    <ProgressBar
+                      percentage={prestamo.principal_amount > 0 ? ((prestamo.principal_amount - prestamo.current_balance) / prestamo.principal_amount) * 100 : 0}
+                      color="#10B981"
+                    />
                   </View>
 
-                  {/* Saldo pendiente */}
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ color: COLORS.danger, fontSize: 13, fontWeight: '700' }}>
-                      {formatCurrency(prestamo.current_balance)}
-                    </Text>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 2 }}>
-                      {formatDate(prestamo.created_at)}
-                    </Text>
+                  <View className="mt-3 flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <Ionicons name="calendar-outline" size={12} color="#94a3b8" />
+                      <Text className="text-slate-400 text-[10px] ml-1">{formatDate(prestamo.created_at)}</Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))
@@ -501,53 +424,47 @@ export default function ClienteDetalleScreen() {
               abonos.map((abono) => (
                 <TouchableOpacity
                   key={abono.id}
-                  style={{
-                    backgroundColor: 'white',
-                    borderRadius: 12,
-                    padding: 14,
-                    marginBottom: 10,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 4,
-                    elevation: 2,
-                  }}
+                  className="bg-white rounded-2xl p-4 mb-3 border border-slate-100/60"
                   activeOpacity={0.7}
+                  style={{
+                    shadowColor: "#0f172a",
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: 0.03,
+                    shadowRadius: 8,
+                    elevation: 1,
+                  }}
                   onPress={() => setShowDetallesAbono(true)}
                 >
-                  {/* Icono de pago exitoso */}
-                  <View style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: COLORS.success,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 12,
-                  }}>
-                    <Ionicons name="checkmark-circle" size={20} color="white" />
-                  </View>
+                  <View className="flex-row items-center">
+                    {/* Icono de pago exitoso soft */}
+                    <View className="w-10 h-10 rounded-full bg-emerald-50 items-center justify-center mr-3">
+                      <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                    </View>
 
-                  {/* Información del abono */}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '700', marginBottom: 2 }}>
-                      {formatCurrency(abono.amount)}
-                    </Text>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>
-                      {abono.payment_method || 'Método no especificado'}
-                    </Text>
-                  </View>
+                    {/* Información del abono */}
+                    <View className="flex-1">
+                      <Text className="text-slate-800 text-[15px] font-bold mb-0.5">
+                        {formatCurrency(abono.amount)}
+                      </Text>
+                      <View className="flex-row items-center">
+                        <Ionicons name="card" size={10} color="#94a3b8" />
+                        <Text className="text-slate-500 text-[11px] ml-1">
+                          {abono.payment_method || 'Método no especificado'}
+                        </Text>
+                      </View>
+                    </View>
 
-                  {/* Fecha del abono */}
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ color: COLORS.success, fontSize: 13, fontWeight: '700' }}>
-                      Pagado
-                    </Text>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 2 }}>
-                      {formatDate(abono.payment_date)}
-                    </Text>
+                    {/* Fecha del abono */}
+                    <View className="items-end">
+                      <View className="bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 mb-1">
+                        <Text className="text-emerald-700 text-[10px] font-bold uppercase">
+                          Pagado
+                        </Text>
+                      </View>
+                      <Text className="text-slate-400 text-[10px]">
+                        {formatDate(abono.payment_date)}
+                      </Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))

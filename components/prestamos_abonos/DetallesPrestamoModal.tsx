@@ -94,7 +94,7 @@ export function DetallesPrestamoModal({
       }
 
       const client = await getClientById(loan.client_id);
-      
+
       // Actualizar mora de las cuotas antes de mostrarlas
       const rawInstallments = await getInstallmentsByLoan(loanId);
       for (const inst of rawInstallments) {
@@ -102,7 +102,7 @@ export function DetallesPrestamoModal({
           await refreshInstallmentMora(inst.id);
         }
       }
-      
+
       const installmentsData = await getInstallmentsByLoan(loanId);
       const paymentsData = await getPaymentsByLoan(loanId);
 
@@ -242,7 +242,7 @@ export function DetallesPrestamoModal({
               {formatCurrency(loanDetails.total_paid)}
             </Text>
           </View>
- 
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Ganancias Estimadas:</Text>
             <Text style={[styles.infoValue, { color: '#2563EB' }]}>
@@ -268,7 +268,7 @@ export function DetallesPrestamoModal({
             <Text style={styles.infoLabel}>Frecuencia:</Text>
             <Text style={styles.infoValue}>
               {loanDetails.payment_frequency === 'monthly' ? 'Mensual' :
-               loanDetails.payment_frequency === 'weekly' ? 'Semanal' : 'Quincenal'}
+                loanDetails.payment_frequency === 'weekly' ? 'Semanal' : 'Quincenal'}
             </Text>
           </View>
 
@@ -315,7 +315,7 @@ export function DetallesPrestamoModal({
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Pagado</Text>
-                <Text style={[styles.detailValue, { color: '#10B981' }]}> 
+                <Text style={[styles.detailValue, { color: '#10B981' }]}>
                   {formatCurrency(installment.amount_paid)}
                 </Text>
               </View>
@@ -330,7 +330,7 @@ export function DetallesPrestamoModal({
               {installment.late_fee_accrued > 0 && (
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Mora</Text>
-                  <Text style={[styles.detailValue, { color: '#EF4444' }]}> 
+                  <Text style={[styles.detailValue, { color: '#EF4444' }]}>
                     {formatCurrency(installment.late_fee_accrued)}
                   </Text>
                 </View>
@@ -355,8 +355,8 @@ export function DetallesPrestamoModal({
       "¿Estás seguro de que deseas anular este pago? El dinero se devolverá al saldo del préstamo y las cuotas volverán a estar pendientes. Esta acción no se puede deshacer.",
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Anular Pago", 
+        {
+          text: "Anular Pago",
           style: "destructive",
           onPress: async () => {
             try {
@@ -378,8 +378,8 @@ export function DetallesPrestamoModal({
       "Vas a editar este pago. El registro original se mantendrá activo hasta que confirmes los nuevos cambios en el siguiente paso. ¿Deseas continuar?",
       [
         { text: "No", style: "cancel" },
-        { 
-          text: "Sí, Editar", 
+        {
+          text: "Sí, Editar",
           onPress: () => {
             // 1. Cerrar y reabrir con datos pre-cargados e ID de reemplazo
             onClose();
@@ -422,13 +422,13 @@ export function DetallesPrestamoModal({
                   </Text>
                   {canAction && (
                     <View style={styles.actionButtons}>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => handleEditPayment(payment)}
                         style={styles.actionBtn}
                       >
                         <Ionicons name="pencil" size={18} color="#3B82F6" />
                       </TouchableOpacity>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => handleVoidPayment(payment.id)}
                         style={styles.actionBtn}
                       >
@@ -726,4 +726,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-});
+});

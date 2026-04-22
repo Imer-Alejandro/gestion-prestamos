@@ -147,9 +147,12 @@ export default function ClientesScreen() {
     return true;
   });
 
-  // Navegar al detalle del cliente
+  // Abrir detalle del cliente en el modal (mismo componente que en búsqueda)
   const handleClientePress = (clienteId: string) => {
-    router.push(`/clientes/${clienteId}`);
+    const cliente = clientes.find(c => c.id.toString() === clienteId);
+    if (cliente) {
+      setSelectedClient(cliente);
+    }
   };
 
   // Navegar a registrar nuevo cliente

@@ -19,6 +19,7 @@ import RegistroClienteModal, { type ClienteFormData } from "../../components/cli
 import ProgressBar from "../../components/clientes/ProgressBar";
 import { useAuth } from "../../contexts/AuthContext";
 import { getClients, createClient } from "../../services/client.service";
+import { FiltrosClienteModal, type ClienteFilters, DEFAULT_CLIENTE_FILTERS } from "../../components/clientes/FiltrosClienteModal";
 
 /**
  * Pantalla de Clientes
@@ -32,6 +33,8 @@ export default function ClientesScreen() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showRegistroCliente, setShowRegistroCliente] = useState(false);
+  const [showFiltros, setShowFiltros] = useState(false);
+  const [filters, setFilters] = useState<ClienteFilters>(DEFAULT_CLIENTE_FILTERS);
   const [clientes, setClientes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -97,19 +100,52 @@ export default function ClientesScreen() {
     setSelectedClient(client);
   };
 
-  // Filtrar clientes según búsqueda
-  const clientesFiltrados = searchQuery.trim()
-    ? clientes.filter(cliente => {
+  // Determinar si hay filtros activos
+  const isFiltering = filters.status !== 'all' || 
+    filters.hasActiveLoans !== 'all' || 
+    filters.registeredFrom !== null;
+
+  // Filtrar clientes según búsqueda y filtros
+  const clientesFiltrados = clientes.filter(cliente => {
+    // Filtro por búsqueda
+    if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       const nombreCompleto = `${cliente.first_name} ${cliente.last_name}`.toLowerCase();
       const documento = cliente.document_number?.toLowerCase() || "";
-      const telefono = cliente.phones?.[0]?.number || "";
+      const telefono = cliente.phone_primary?.toLowerCase() || cliente.phones?.[0]?.number || "";
 
-      return nombreCompleto.includes(query) ||
+      const matchSearch = nombreCompleto.includes(query) ||
         documento.includes(query) ||
         telefono.includes(query);
-    })
-    : clientes;
+        
+      if (!matchSearch) return false;
+    }
+
+    // Filtro por estado
+    if (filters.status !== 'all') {
+      const statusToMatch = !cliente.status ? 'al-dia' : cliente.status;
+      if (statusToMatch !== filters.status) return false;
+    }
+
+    // Filtro por préstamos activos
+    if (filters.hasActiveLoans !== 'all') {
+      const hasLoans = (cliente.activeLoansCount || 0) > 0;
+      if (filters.hasActiveLoans === 'yes' && !hasLoans) return false;
+      if (filters.hasActiveLoans === 'no' && hasLoans) return false;
+    }
+
+    // Filtro por fecha de registro desde
+    if (filters.registeredFrom) {
+      const clientDate = new Date(cliente.created_at);
+      const filterDate = new Date(filters.registeredFrom);
+      clientDate.setHours(0,0,0,0);
+      filterDate.setHours(0,0,0,0);
+      
+      if (clientDate < filterDate) return false;
+    }
+
+    return true;
+  });
 
   // Navegar al detalle del cliente
   const handleClientePress = (clienteId: string) => {
@@ -457,12 +493,40 @@ export default function ClientesScreen() {
         <View className="mb-6">
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-gray-800 text-lg font-bold">
-              {searchQuery.trim() ? "Resultados" : "Mis Clientes"}
+              {searchQuery.trim() || isFiltering ? "Resultados" : "Mis Clientes"}
             </Text>
-            <View className="bg-blue-100 px-3 py-1 rounded-full">
-              <Text className="text-blue-600 text-sm font-semibold">
-                {clientesFiltrados.length}
-              </Text>
+            <View className="flex-row items-center">
+              <View className="bg-blue-100 px-3 py-1 rounded-full mr-2">
+                <Text className="text-blue-600 text-sm font-semibold">
+                  {clientesFiltrados.length}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowFiltros(true)}
+                className="w-10 h-10 items-center justify-center"
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={isFiltering ? "options" : "options-outline"}
+                  size={24}
+                  color={isFiltering ? "#13678A" : "#374151"}
+                />
+                {isFiltering && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: '#EF4444',
+                      borderWidth: 1,
+                      borderColor: '#F9FAFB'
+                    }}
+                  />
+                )}
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -556,6 +620,15 @@ export default function ClientesScreen() {
         visible={showRegistroCliente}
         onClose={() => setShowRegistroCliente(false)}
         onSubmit={handleRegistroCliente}
+      />
+
+      {/* Modal de Filtros de Cliente */}
+      <FiltrosClienteModal
+        visible={showFiltros}
+        onClose={() => setShowFiltros(false)}
+        currentFilters={filters}
+        onApply={(newFilters) => setFilters(newFilters)}
+        onClear={() => setFilters(DEFAULT_CLIENTE_FILTERS)}
       />
 
       {/* Drawer Menu */}

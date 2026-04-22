@@ -15,7 +15,9 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { getLoansByClient } from "../../services/loan.service";
 import { createPayment } from "../../services/payment.service";
+import { updateClient } from "../../services/client.service";
 import { RegistroAbonoModal } from "../prestamos_abonos/RegistroAbonoModal";
+import RegistroClienteModal from "../clientes/RegistroClienteModal";
 
 interface ClientDetailsModalProps {
   visible: boolean;
@@ -104,22 +106,33 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
   const translateY = useRef(new Animated.Value(0)).current;
   const [loans, setLoans] = useState<any[]>([]);
 
+  // Estado local del cliente para reflejar cambios inmediatos tras edición
+  const [clientData, setClientData] = useState<any>(client);
+
   // Estados para flujo Abonar
   const [showLoanSelector, setShowLoanSelector] = useState(false);
   const [showAbonoModal, setShowAbonoModal] = useState(false);
   const [targetLoanId, setTargetLoanId] = useState<number | null>(null);
   const [targetLoan, setTargetLoan] = useState<any>(null);
 
+  // Estado para flujo Editar
+  const [showEditModal, setShowEditModal] = useState(false);
+
   const loadLoans = async () => {
-    if (!client?.id) return;
+    if (!clientData?.id) return;
     try {
-      const data = await getLoansByClient(client.id);
+      const data = await getLoansByClient(clientData.id);
       setLoans(data);
     } catch (err) {
       console.error("Error fetching loans:", err);
       setLoans([]);
     }
   };
+
+  // Sincronizar clientData con la prop client cuando cambia
+  useEffect(() => {
+    if (client) setClientData(client);
+  }, [client]);
 
   useEffect(() => {
     if (visible) {
@@ -131,14 +144,15 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
       setShowAbonoModal(false);
       setTargetLoanId(null);
       setTargetLoan(null);
+      setShowEditModal(false);
     }
-  }, [visible, client?.id]);
+  }, [visible, clientData?.id]);
 
   // Botón Abonar
   const handleAbonarPress = () => {
     const activeLoans = loans.filter((l) => l.status === "active");
     if (activeLoans.length === 0) {
-      Alert.alert("Sin préstamos activos", `${client?.first_name} no tiene préstamos activos en este momento.`, [{ text: "Entendido" }]);
+      Alert.alert("Sin préstamos activos", `${clientData?.first_name} no tiene préstamos activos en este momento.`, [{ text: "Entendido" }]);
       return;
     }
     if (activeLoans.length === 1) {
@@ -165,6 +179,49 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
     }
   };
 
+  // Handler guardar edición del cliente
+  const handleEditarSubmit = async (formData: any) => {
+    if (!clientData?.id) return;
+    try {
+      const nombres = formData.nombreCompleto.trim().split(" ");
+      const firstName = nombres[0];
+      const lastName = nombres.slice(1).join(" ") || firstName;
+
+      const updatedFields = {
+        first_name: firstName,
+        last_name: lastName,
+        document_type: formData.tipoDocumento,
+        document_number: formData.numeroDocumento,
+        birth_date: formData.fechaNacimiento || null,
+        gender: formData.sexo || null,
+        phone_primary: formData.celularWhatsapp,
+        phone_secondary: formData.telefonoCasa || null,
+        email: formData.email || null,
+        address_line: formData.direccion || "",
+        city: formData.municipio || null,
+        province: formData.provincia || null,
+        country: formData.nacionalidad || null,
+        occupation: formData.ocupacion || null,
+        workplace: formData.direccionTrabajo || null,
+        monthly_income: formData.ingresos ? parseFloat(formData.ingresos) : null,
+        reference_name: formData.recomendadoPor || null,
+        reference_phone: formData.telefonoOtro || null,
+        notes: formData.nota || null,
+      };
+
+      await updateClient(clientData.id, updatedFields);
+
+      // Actualizar datos locales inmediatamente para reflejar cambios en la UI
+      setClientData((prev: any) => ({ ...prev, ...updatedFields }));
+
+      Alert.alert("Éxito", "Cliente actualizado correctamente.");
+      setShowEditModal(false);
+      if (onRefresh) onRefresh();
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "No se pudo actualizar el cliente.");
+    }
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -180,14 +237,14 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
     })
   ).current;
 
-  if (!client && !visible) return null;
+  if (!clientData && !visible) return null;
 
   const statusConfig: any = {
     "al-dia": { bg: "#D1FAE5", text: "#065F46", label: "AL DÍA" },
     "proximo-mora": { bg: "#FEF3C7", text: "#92400E", label: "AVISO" },
     "en-mora": { bg: "#FEE2E2", text: "#991B1B", label: "EN MORA" },
   };
-  const status = statusConfig[client?.status] ?? statusConfig["al-dia"];
+  const status = statusConfig[clientData?.status] ?? statusConfig["al-dia"];
 
   const loanStatusLabel = (s: string) => s === "active" ? "ACTIVO" : s === "completed" ? "COMPLETADO" : s.toUpperCase();
 
@@ -216,19 +273,19 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
                 </TouchableOpacity>
               </View>
 
-              {client && (
+              {clientData && (
                 <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
 
                   {/* Perfil */}
                   <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20, backgroundColor: "#F8FAFC", padding: 14, borderRadius: 18, borderWidth: 1, borderColor: "#E2E8F0" }}>
                     <View style={{ width: 56, height: 56, backgroundColor: "#1E3A5F", borderRadius: 28, alignItems: "center", justifyContent: "center", marginRight: 14 }}>
                       <Text style={{ color: "#fff", fontWeight: "700", fontSize: 18, letterSpacing: 1 }}>
-                        {(client.first_name?.[0] || "").toUpperCase()}{(client.last_name?.[0] || "").toUpperCase()}
+                        {(clientData.first_name?.[0] || "").toUpperCase()}{(clientData.last_name?.[0] || "").toUpperCase()}
                       </Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 17, fontWeight: "700", color: "#111827" }}>{client.first_name} {client.last_name}</Text>
-                      <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>{client.document_type} • {client.document_number}</Text>
+                      <Text style={{ fontSize: 17, fontWeight: "700", color: "#111827" }}>{clientData.first_name} {clientData.last_name}</Text>
+                      <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>{clientData.document_type} • {clientData.document_number}</Text>
                       <View style={{ marginTop: 6, alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: status.bg }}>
                         <Text style={{ fontSize: 10, fontWeight: "700", color: status.text }}>{status.label}</Text>
                       </View>
@@ -252,6 +309,7 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
                     {/* Editar */}
                     <TouchableOpacity
                       activeOpacity={0.75}
+                      onPress={() => setShowEditModal(true)}
                       style={{ flex: 1, backgroundColor: "#14688A", borderRadius: 14, paddingVertical: 13, alignItems: "center", justifyContent: "center", shadowColor: "#14688A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 8, elevation: 5, gap: 4 }}
                     >
                       <View style={{ width: 32, height: 32, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 10, alignItems: "center", justifyContent: "center" }}>
@@ -273,23 +331,23 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
                   </View>
 
                   {/* Acordeón Datos Personales */}
-                  <PersonalDataAccordion client={client} />
+                  <PersonalDataAccordion client={clientData} />
 
                   {/* Resumen Financiero */}
                   <Text style={{ fontSize: 14, fontWeight: "700", color: "#111827", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Resumen Financiero</Text>
                   <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
                     <View style={{ flex: 1, backgroundColor: "#13678A", borderRadius: 14, padding: 14 }}>
                       <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, marginBottom: 4, fontWeight: "600" }}>DEUDA TOTAL</Text>
-                      <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>{formatCurrency(client.totalDebt)}</Text>
+                      <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>{formatCurrency(clientData.totalDebt)}</Text>
                     </View>
                     <View style={{ flex: 1, backgroundColor: "#0D8A7A", borderRadius: 14, padding: 14 }}>
                       <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, marginBottom: 4, fontWeight: "600" }}>TOTAL PAGADO</Text>
-                      <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>{formatCurrency(client.totalPaid)}</Text>
+                      <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>{formatCurrency(clientData.totalPaid)}</Text>
                     </View>
                   </View>
                   <View style={{ backgroundColor: "#FFF7ED", borderWidth: 1, borderColor: "#FED7AA", borderRadius: 14, padding: 14, marginBottom: 20 }}>
                     <Text style={{ color: "#9A3412", fontSize: 10, fontWeight: "600", marginBottom: 4 }}>SALDO PENDIENTE</Text>
-                    <Text style={{ color: "#7C2D12", fontSize: 20, fontWeight: "800" }}>{formatCurrency(client.pendingDebt)}</Text>
+                    <Text style={{ color: "#7C2D12", fontSize: 20, fontWeight: "800" }}>{formatCurrency(clientData.pendingDebt)}</Text>
                   </View>
 
                   {/* Historial Préstamos */}
@@ -336,7 +394,7 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
             <View style={{ backgroundColor: "#0D8A7A", paddingHorizontal: 20, paddingVertical: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <View>
                 <Text style={{ color: "#fff", fontSize: 17, fontWeight: "700" }}>Elegir Préstamo</Text>
-                <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 2 }}>{client?.first_name} tiene varios préstamos activos</Text>
+                <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 2 }}>{clientData?.first_name} tiene varios préstamos activos</Text>
               </View>
               <TouchableOpacity onPress={() => setShowLoanSelector(false)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }}>
                 <Ionicons name="close" size={18} color="#fff" />
@@ -382,7 +440,15 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
         maxAmount={targetLoan?.current_balance}
         onSave={handleSaveAbono}
       />
+
+      {/* ── Editar Cliente ── */}
+      <RegistroClienteModal
+        visible={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSubmit={handleEditarSubmit}
+        initialData={clientData}
+        isEditMode={true}
+      />
     </>
   )
 };
-

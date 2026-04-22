@@ -646,6 +646,7 @@ export default function ClientesScreen() {
         visible={!!selectedClient}
         client={selectedClient}
         onClose={() => setSelectedClient(null)}
+        onRefresh={loadClientes}
       />
     </View>
   );

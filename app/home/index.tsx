@@ -443,6 +443,7 @@ export default function HomeScreen() {
         visible={!!selectedClient}
         client={selectedClient}
         onClose={() => setSelectedClient(null)}
+        onRefresh={refreshDashboard}
       />
 
       {/* Los modales ahora se gestionan internamente en QuickActionFAB */}

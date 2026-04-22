@@ -19,6 +19,8 @@ interface RegistroClienteModalProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (clienteData: ClienteFormData) => void;
+  initialData?: any;   // datos del cliente existente (modo edición)
+  isEditMode?: boolean;
 }
 
 export interface ClienteFormData {
@@ -75,6 +77,8 @@ export default function RegistroClienteModal({
   visible,
   onClose,
   onSubmit,
+  initialData,
+  isEditMode = false,
 }: RegistroClienteModalProps) {
   const translateY = useRef(new Animated.Value(0)).current;
   const [showTipoDocPicker, setShowTipoDocPicker] = useState(false);
@@ -111,37 +115,68 @@ export default function RegistroClienteModal({
     nota: "",
   });
 
-  // Resetear animación cuando el modal se abre
+  // Resetear / pre-poblar formulario cuando el modal se abre
   useEffect(() => {
     if (visible) {
-      // Iniciar desde abajo
       translateY.setValue(1000);
-      // Limpiar formulario al abrir
-      setFormData({
-        nombreCompleto: "",
-        tipoDocumento: "Cédula",
-        numeroDocumento: "",
-        fechaNacimiento: "",
-        nacionalidad: "Dominicana",
-        sexo: "Masculino",
-        celularWhatsapp: "",
-        telefonoCasa: "",
-        telefonoOtro: "",
-        email: "",
-        direccion: "",
-        provincia: "",
-        municipio: "",
-        sector: "",
-        rutaCobro: "",
-        ocupacion: "",
-        situacionLaboral: "Empleado",
-        direccionTrabajo: "",
-        ingresos: "",
-        tipoVivienda: "Propia",
-        recomendadoPor: "",
-        firma: null,
-        nota: "",
-      });
+
+      if (isEditMode && initialData) {
+        // Modo edición: pre-poblar con datos del cliente
+        const nombreCompleto = `${initialData.first_name || ''} ${initialData.last_name || ''}`.trim();
+        setFormData({
+          nombreCompleto,
+          tipoDocumento: initialData.document_type || "Cédula",
+          numeroDocumento: initialData.document_number || "",
+          fechaNacimiento: initialData.birth_date || "",
+          nacionalidad: initialData.country || "Dominicana",
+          sexo: initialData.gender || "Masculino",
+          celularWhatsapp: initialData.phone_primary || "",
+          telefonoCasa: initialData.phone_secondary || "",
+          telefonoOtro: initialData.reference_phone || "",
+          email: initialData.email || "",
+          direccion: initialData.address_line || "",
+          provincia: initialData.province || "",
+          municipio: initialData.city || "",
+          sector: "",
+          rutaCobro: "",
+          ocupacion: initialData.occupation || "",
+          situacionLaboral: "Empleado",
+          direccionTrabajo: initialData.workplace || "",
+          ingresos: initialData.monthly_income ? String(initialData.monthly_income) : "",
+          tipoVivienda: "Propia",
+          recomendadoPor: initialData.reference_name || "",
+          firma: null,
+          nota: initialData.notes || "",
+        });
+      } else {
+        // Modo registro: limpiar formulario
+        setFormData({
+          nombreCompleto: "",
+          tipoDocumento: "Cédula",
+          numeroDocumento: "",
+          fechaNacimiento: "",
+          nacionalidad: "Dominicana",
+          sexo: "Masculino",
+          celularWhatsapp: "",
+          telefonoCasa: "",
+          telefonoOtro: "",
+          email: "",
+          direccion: "",
+          provincia: "",
+          municipio: "",
+          sector: "",
+          rutaCobro: "",
+          ocupacion: "",
+          situacionLaboral: "Empleado",
+          direccionTrabajo: "",
+          ingresos: "",
+          tipoVivienda: "Propia",
+          recomendadoPor: "",
+          firma: null,
+          nota: "",
+        });
+      }
+
       setShowTipoDocPicker(false);
       setShowSexoPicker(false);
       setShowViviendaPicker(false);
@@ -149,7 +184,6 @@ export default function RegistroClienteModal({
       setShowDatePicker(false);
       setDateNacimiento(new Date());
 
-      // Animar entrada
       Animated.spring(translateY, {
         toValue: 0,
         useNativeDriver: true,
@@ -243,7 +277,7 @@ export default function RegistroClienteModal({
               {/* Header del modal */}
               <View className="px-6 pb-4 border-b border-gray-100 flex-row items-center justify-between">
                 <Text className="text-gray-800 text-xl font-bold">
-                  Registro de cliente
+                  {isEditMode ? "Editar Cliente" : "Registro de cliente"}
                 </Text>
                 <TouchableOpacity
                   onPress={onClose}

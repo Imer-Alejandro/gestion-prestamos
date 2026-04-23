@@ -63,7 +63,7 @@ export default function HomeScreen() {
 
   const refreshDashboard = useCallback(async () => {
     if (!user?.id) return;
-    
+
     // Diferir la carga hasta después de la interacción/transición
     InteractionManager.runAfterInteractions(async () => {
       try {
@@ -77,7 +77,7 @@ export default function HomeScreen() {
 
         const uiNotifications = await getPendingNotificationsUI();
         setNotifications(uiNotifications);
-        
+
         setIsLoading(false);
       } catch (error) {
         console.error("Error refrescando dashboard:", error);
@@ -126,8 +126,14 @@ export default function HomeScreen() {
     console.log("Ver operación:", operationId);
   };
 
-  const handleDeleteNotification = (notificationId: string) => {
-    console.log("Eliminar notificación:", notificationId);
+  const handleDeleteNotification = async (notificationId: string) => {
+    try {
+      const { dismissNotification } = await import("../../services/notification.service");
+      await dismissNotification(notificationId);
+      refreshDashboard();
+    } catch (error) {
+      console.error("Error eliminando notificación:", error);
+    }
   };
 
 

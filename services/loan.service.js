@@ -88,6 +88,7 @@ export async function createLoan(data) {
     ],
   );
 
+
   const loanId = result.lastInsertRowId;
 
   // Guardar cuotas generadas
@@ -97,6 +98,21 @@ export async function createLoan(data) {
     } catch (error) {
       console.error("Error saving installments:", error);
     }
+  }
+
+  // Notificación de éxito (Feedback inmediato silencioso)
+  try {
+    const { sendLocalNotification } = await import("./notification.service");
+    await sendLocalNotification(
+      "🎉 Préstamo Creado",
+      `El préstamo por $${data.principal_amount.toLocaleString()} ha sido registrado correctamente.`,
+      { screen: '/prestamos_abonos', params: { initialTab: 'prestamos' } },
+      data.user_id,
+      'success',
+      true // Silent: solo interna
+    );
+  } catch (error) {
+    console.error("Error enviando notificación de préstamo:", error);
   }
 
   return loanId;
@@ -264,3 +280,4 @@ export async function getLoans(userId, filters = {}) {
 
   return await db.getAllAsync(query, params);
 }
+

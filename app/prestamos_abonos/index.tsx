@@ -58,6 +58,7 @@ export default function PrestamosScreen() {
   const [abonos, setAbonos] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   const userData = {
     name: user?.full_name || "Usuario",
@@ -72,10 +73,6 @@ export default function PrestamosScreen() {
     payment_frequency: 'all',
     date: null
   });
-
-
-
-  const notifications = mockNotifications;
 
   // Cargar datos al cambiar filtros o usuario
   useEffect(() => {
@@ -120,6 +117,11 @@ export default function PrestamosScreen() {
         const abonosData = await getAllPayments(user!.id);
         setAbonos(abonosData);
 
+        // Cargar notificaciones reales de la base de datos
+        const { getPendingNotificationsUI } = await import("../../services/notification.service");
+        const uiNotifications = await getPendingNotificationsUI();
+        setNotifications(uiNotifications);
+
         setIsLoading(false);
       } catch (error) {
         console.error("Error cargando datos:", error);
@@ -129,15 +131,26 @@ export default function PrestamosScreen() {
     });
   }, [user?.id, filters]);
 
-  // Calcular total de deudas pendientes
+  // Calcular métricas para la tarjeta de resumen
   const totalDeudasPendientes = loans.reduce(
     (sum, prestamo) => sum + prestamo.deudaPendiente,
     0
   );
+  
+  const prestamosActivos = loans.filter(l => l.status === 'activo').length;
+  const prestamosAtrasados = loans.filter(l => l.status === 'atrasado').length;
+  const totalPrestamos = loans.length;
 
   // Maneja la eliminación de notificaciones
-  const handleDeleteNotification = (notificationId: string) => {
-    console.log("Eliminar notificación:", notificationId);
+  const handleDeleteNotification = async (notificationId: string) => {
+    try {
+      const { dismissNotification, getPendingNotificationsUI } = await import("../../services/notification.service");
+      await dismissNotification(notificationId);
+      const updated = await getPendingNotificationsUI();
+      setNotifications(updated);
+    } catch (error) {
+      console.error("Error eliminando notificación:", error);
+    }
   };
 
   // Maneja la búsqueda
@@ -282,22 +295,59 @@ export default function PrestamosScreen() {
         hasNotifications={notifications.length > 0}
       />
 
-      {/* Total de deudas pendientes */}
-      <View className="bg-[#14688A] mx-4 mt-4 mb-3 rounded-2xl p-6 shadow-md"
+      {/* Info Card - Resumen de Préstamos (Versión Compacta) */}
+      <View
+        className="bg-[#13678A] rounded-3xl p-4 mx-4 mt-3 mb-4 overflow-hidden relative"
         style={{
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 3,
+          shadowColor: "#13678A",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.2,
+          shadowRadius: 10,
+          elevation: 5,
         }}
       >
-        <Text className="text-white/80 text-sm mb-2">
-          Total de deudas pendientes
-        </Text>
-        <Text className="text-white text-3xl font-bold">
-          {formatCurrencyPrestamos(totalDeudasPendientes)}
-        </Text>
+        {/* Elementos decorativos */}
+        <View className="absolute -right-8 -top-8 w-24 h-24 bg-white/10 rounded-full" />
+        <View className="absolute -left-10 -bottom-10 w-32 h-32 bg-black/10 rounded-full" />
+
+        <View className="flex-row items-center mb-3">
+          <View className="bg-white/20 p-1.5 rounded-lg mr-2">
+            <Ionicons name="stats-chart" size={14} color="#ffffff" />
+          </View>
+          <Text className="text-white/90 text-[10px] uppercase tracking-widest font-bold">
+            Resumen de Préstamos
+          </Text>
+        </View>
+
+        <View className="flex-row justify-between items-center bg-white/10 rounded-xl p-3 mb-3 border border-white/10">
+          <View className="items-center flex-1">
+            <Text className="text-white/80 text-[9px] uppercase font-bold mb-0.5">Total</Text>
+            <Text className="text-white text-lg font-black">{totalPrestamos}</Text>
+          </View>
+
+          <View className="w-px h-8 bg-white/20" />
+
+          <View className="items-center flex-1">
+            <Text className="text-red-200/90 text-[9px] uppercase font-bold mb-0.5">Atrasados</Text>
+            <Text className="text-red-300 text-lg font-black">{prestamosAtrasados}</Text>
+          </View>
+
+          <View className="w-px h-8 bg-white/20" />
+
+          <View className="items-center flex-1">
+            <Text className="text-green-200/90 text-[9px] uppercase font-bold mb-0.5">Al día</Text>
+            <Text className="text-green-300 text-lg font-black">{prestamosActivos}</Text>
+          </View>
+        </View>
+
+        <View className="items-center">
+          <Text className="text-white/70 text-[10px] uppercase tracking-wider font-medium">
+            Deuda Total Pendiente
+          </Text>
+          <Text className="text-white text-2xl font-black tracking-tight">
+            {formatCurrencyPrestamos(totalDeudasPendientes)}
+          </Text>
+        </View>
       </View>
 
       {/* Tabs de Préstamos y Abonos */}

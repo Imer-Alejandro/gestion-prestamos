@@ -1,28 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useEffect, useRef } from "react";
-import { 
-  Animated, 
-  Modal, 
-  PanResponder, 
-  ScrollView, 
-  Text, 
-  TouchableOpacity, 
-  View 
+import {
+  Animated,
+  Modal,
+  PanResponder,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { Notification } from "../../data/homeData";
 
 interface NotificationModalProps {
   visible: boolean;
-  notifications: Notification[];
+  notifications: any[];
   onClose: () => void;
   onDeleteNotification: (id: string) => void;
 }
 
 /**
- * Modal de Centro de Notificaciones
- * Muestra todas las notificaciones del usuario con opciones para eliminar
- * Con fondo blur para mejor UX y cierre con swipe hacia abajo
+ * Modal de Centro de Notificaciones - Rediseño Premium
  */
 export default function NotificationModal({
   visible,
@@ -32,140 +29,132 @@ export default function NotificationModal({
 }: NotificationModalProps) {
   const translateY = useRef(new Animated.Value(0)).current;
 
-  // Resetear animación cuando el modal se abre
   useEffect(() => {
     if (visible) {
       translateY.setValue(0);
     }
   }, [visible]);
 
-  // PanResponder para detectar swipe hacia abajo
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 5; // Solo si se mueve hacia abajo
-      },
+      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
       onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          translateY.setValue(gestureState.dy);
-        }
+        if (gestureState.dy > 0) translateY.setValue(gestureState.dy);
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dy > 100 || gestureState.vy > 0.5) {
-          // Cerrar si se desliza más de 100px o con velocidad alta
           Animated.timing(translateY, {
             toValue: 1000,
             duration: 200,
             useNativeDriver: true,
-          }).start(() => {
-            onClose();
-          });
+          }).start(onClose);
         } else {
-          // Volver a la posición original
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
         }
       },
     })
   ).current;
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="none"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      <View className="flex-1">
-        <BlurView intensity={20} tint="dark" style={{ flex: 1 }}>
-          <TouchableOpacity
-            className="flex-1"
-            activeOpacity={1}
-            onPress={onClose}
-          />
+  // Helper para formatear tiempo relativo de forma simple
+  const getTimeAgo = (dateStr: string) => {
+    const now = new Date();
+    const date = new Date(dateStr);
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
+    
+    if (diffInMinutes < 1) return "Ahora";
+    if (diffInMinutes < 60) return `Hace ${diffInMinutes} min`;
+    const hours = Math.floor(diffInMinutes / 60);
+    if (hours < 24) return `Hace ${hours} h`;
+    return date.toLocaleDateString();
+  };
 
-          <Animated.View 
-            className="bg-white rounded-t-3xl h-4/5 shadow-2xl"
-            style={{
-              transform: [{ translateY }]
-            }}
+  return (
+    <Modal visible={visible} animationType="none" transparent onRequestClose={onClose}>
+      <View className="flex-1">
+        <BlurView intensity={30} tint="dark" style={{ flex: 1 }}>
+          <TouchableOpacity className="flex-1" activeOpacity={1} onPress={onClose} />
+
+          <Animated.View
+            className="bg-gray-50 rounded-t-[40px] h-[85%] shadow-2xl"
+            style={{ transform: [{ translateY }] }}
           >
-            {/* Indicador de arrastre */}
-            <View 
-              {...panResponder.panHandlers}
-              className="py-3 items-center"
-            >
-              <View className="w-12 h-1 bg-gray-300 rounded-full" />
+            {/* Tirador */}
+            <View {...panResponder.panHandlers} className="py-4 items-center">
+              <View className="w-10 h-1.5 bg-gray-300 rounded-full" />
             </View>
 
-            {/* Header del modal */}
-            <View className="px-6 pb-4 border-b border-gray-100 flex-row items-center justify-between">
-              <Text className="text-gray-800 text-xl font-bold">
-                Centro de notificaciones
-              </Text>
+            {/* Header */}
+            <View className="px-8 pb-6 flex-row items-center justify-between">
+              <View>
+                <Text className="text-gray-900 text-2xl font-black">Notificaciones</Text>
+                <Text className="text-gray-500 text-sm font-medium">
+                  {notifications.length} alertas pendientes
+                </Text>
+              </View>
               <TouchableOpacity
                 onPress={onClose}
-                className="w-10 h-10 items-center justify-center"
-                activeOpacity={0.7}
+                className="w-10 h-10 bg-gray-200 rounded-full items-center justify-center"
               >
-                <Ionicons name="close" size={28} color="#374151" />
+                <Ionicons name="close" size={24} color="#1F2937" />
               </TouchableOpacity>
             </View>
 
-            {/* Lista de notificaciones */}
-            <ScrollView className="flex-1 px-6 py-4" showsVerticalScrollIndicator={false}>
+            {/* Contenido */}
+            <ScrollView 
+              className="flex-1 px-6" 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40 }}
+            >
               {notifications.length === 0 ? (
-                <View className="flex-1 items-center justify-center py-12">
-                  <Ionicons name="notifications-off-outline" size={64} color="#D1D5DB" />
-                  <Text className="text-gray-400 text-base mt-4">
-                    No tienes notificaciones
-                  </Text>
+                <View className="flex-1 items-center justify-center py-20">
+                  <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">
+                    <Ionicons name="notifications-off-outline" size={32} color="#9CA3AF" />
+                  </View>
+                  <Text className="text-gray-400 text-lg font-bold">Todo al día</Text>
+                  <Text className="text-gray-400 text-sm">No tienes alertas nuevas</Text>
                 </View>
               ) : (
-                notifications.map((notification) => (
+                notifications.map((item) => (
                   <View
-                    key={notification.id}
-                    className="mb-3 p-4 rounded-xl border bg-blue-50 border-blue-200"
+                    key={item.id}
+                    className="mb-4 bg-white rounded-3xl overflow-hidden border border-gray-100"
+                    style={{
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 8,
+                      elevation: 2,
+                    }}
                   >
-                    <View className="flex-row items-start">
-                      {/* Icono según el tipo */}
-                      <View
-                        className={`w-10 h-10 rounded-full items-center justify-center mr-3`}
-                        style={{ backgroundColor: notification.iconBg }}
-                      >
-                        <Ionicons
-                          name={
-                            notification.icon === "person"
-                              ? "person"
-                              : notification.icon === "person-add"
-                              ? "person-add"
-                              : "notifications"
-                          }
-                          size={20}
-                          color="#ffffff"
-                        />
-                      </View>
+                    <View className="flex-row items-center p-4">
+                      {/* Barra indicadora lateral */}
+                      <View 
+                        className="w-1.5 h-12 rounded-full mr-4" 
+                        style={{ backgroundColor: item.iconBg || '#3B82F6' }} 
+                      />
 
-                      {/* Contenido */}
                       <View className="flex-1">
-                        <Text className="text-gray-800 text-sm font-semibold mb-1">
-                          {notification.title}
-                        </Text>
-                        <Text className="text-gray-600 text-sm mb-2">
-                          {notification.clientName}
+                        <View className="flex-row justify-between items-start mb-1">
+                          <Text className="text-gray-900 text-[15px] font-bold flex-1 mr-2" numberOfLines={1}>
+                            {item.title}
+                          </Text>
+                          <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">
+                            {getTimeAgo(item.createdAt)}
+                          </Text>
+                        </View>
+                        
+                        <Text className="text-gray-500 text-[13px] leading-5" numberOfLines={2}>
+                          {item.body}
                         </Text>
                       </View>
 
-                      {/* Botón de eliminar */}
+                      {/* Acción de eliminar */}
                       <TouchableOpacity
-                        onPress={() => onDeleteNotification(notification.id)}
-                        className="ml-2 w-8 h-8 items-center justify-center"
-                        activeOpacity={0.7}
+                        onPress={() => onDeleteNotification(item.id)}
+                        className="ml-4 w-10 h-10 bg-gray-50 rounded-2xl items-center justify-center"
                       >
-                        <Ionicons name="trash-outline" size={20} color="#9CA3AF" />
+                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
                       </TouchableOpacity>
                     </View>
                   </View>

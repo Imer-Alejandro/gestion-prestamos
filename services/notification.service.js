@@ -2,21 +2,43 @@ import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundFetch from 'expo-background-fetch';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getDb } from '../database/db';
+import { getDb, initializeDatabase } from '../database/db';
+import { router } from 'expo-router';
 
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
 
-// Configurar cómo se comportan las notificaciones cuando la app está en primer plano
+// Configurar comportamiento de notificaciones en primer plano
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
-    shouldShowList: true,
     shouldPlaySound: true,
-    shouldSetBadge: true,
+    shouldSetBadge: false,
   }),
 });
 
-// Función para pedir permisos
+// Listener para interacciones (Deep Linking)
+Notifications.addNotificationResponseReceivedListener(response => {
+  const data = response.notification.request.content.data;
+  console.log('🔔 Interacción con notificación:', data);
+  
+  if (data?.screen) {
+    // Pequeño delay para asegurar que el sistema de navegación esté listo
+    setTimeout(() => {
+      try {
+        router.push({
+          pathname: data.screen,
+          params: data.params || {}
+        });
+      } catch (err) {
+        console.error('Error al navegar desde notificación:', err);
+      }
+    }, 500);
+  }
+});
+
+/**
+ * Inicializa permisos y registra la tarea de fondo
+ */
 export async function setupNotifications() {
   try {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -28,133 +50,173 @@ export async function setupNotifications() {
     }
     
     if (finalStatus !== 'granted') {
-      console.warn('Los permisos de notificación no fueron concedidos.');
+      console.warn('Permisos de notificación denegados.');
       return;
     }
 
-    console.log('✅ Permisos de notificación configurados.');
-    
-    // Registrar la tarea en segundo plano (cada ~15 minutos mínimo)
+    // Registrar tarea de fondo (mínimo cada 15 min)
     await BackgroundFetch.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK, {
-      minimumInterval: 15 * 60, // 15 minutos en segundos
+      minimumInterval: 15 * 60,
       stopOnTerminate: false, 
       startOnBoot: true,      
     });
-    console.log('✅ Background Fetch para Notificaciones Registrado');
+    console.log('✅ Sistema de notificaciones e interacción configurado');
   } catch (error) {
-    console.error('❌ Error en setupNotifications:', error);
+    console.error('Error en setupNotifications:', error);
   }
 }
 
-// Función auxiliar para enviar notificación local inmediata
-export async function sendLocalNotification(title, body, data = {}) {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      sound: true,
-      data,
-    },
-    trigger: null, // dispara inmediatamente
-  });
+/**
+ * Guarda una notificación en la base de datos
+ */
+export async function saveNotificationToDb({ userId, type, title, body, data = {} }) {
+  try {
+    const db = await getDb();
+    const createdAt = new Date().toISOString();
+    const dataStr = JSON.stringify(data);
+
+    // Guardar como no leída (is_read=0) y no descartada (is_dismissed=0)
+    await db.runAsync(
+      `INSERT INTO notifications (user_id, type, title, body, data, created_at, is_read, is_dismissed) 
+       VALUES (?, ?, ?, ?, ?, ?, 0, 0)`,
+      [userId, type, title, body, dataStr, createdAt]
+    );
+    return true;
+  } catch (error) {
+    console.error('Error guardando notificación en DB:', error);
+    return false;
+  }
 }
 
-// Helper de fechas
+/**
+ * Envía una notificación (local al sistema y/o interna en la app)
+ */
+export async function sendLocalNotification(title, body, data = {}, userId = null, type = 'general', silent = false) {
+  // 1. Notificación NATIVA (Banner/Sonido en el teléfono)
+  if (!silent) {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: true,
+        data,
+      },
+      trigger: null,
+    });
+  }
+
+  // 2. Notificación INTERNA (Base de datos para la Campana)
+  if (userId) {
+    await saveNotificationToDb({ userId, type, title, body, data });
+  }
+}
+
+/**
+ * Obtiene notificaciones para la UI (Campana)
+ */
+export async function getPendingNotificationsUI() {
+  try {
+    const db = await getDb();
+    const rows = await db.getAllAsync(
+      `SELECT * FROM notifications 
+       WHERE is_dismissed = 0 
+       ORDER BY created_at DESC 
+       LIMIT 50`
+    );
+
+    return rows.map(row => ({
+      id: row.id.toString(),
+      type: row.type,
+      title: row.title,
+      body: row.body,
+      data: JSON.parse(row.data || '{}'),
+      isRead: row.is_read === 1,
+      createdAt: row.created_at,
+      icon: getIconForType(row.type),
+      iconBg: getBgForType(row.type),
+    }));
+  } catch (error) {
+    console.error('Error obteniendo notificaciones UI:', error);
+    return [];
+  }
+}
+
+/**
+ * Marca una notificación como descartada
+ */
+export async function dismissNotification(id) {
+  try {
+    const db = await getDb();
+    await db.runAsync(`UPDATE notifications SET is_dismissed = 1 WHERE id = ?`, [id]);
+    return true;
+  } catch (error) {
+    console.error('Error descartando notificación:', error);
+    return false;
+  }
+}
+
+// Helpers de diseño
+function getIconForType(type) {
+  switch (type) {
+    case 'mora': return 'alert-circle';
+    case 'cobro_hoy': return 'calendar';
+    case 'recaudo': return 'cash';
+    case 'cumple': return 'gift';
+    case 'success': return 'checkmark-circle';
+    default: return 'notifications';
+  }
+}
+
+function getBgForType(type) {
+  switch (type) {
+    case 'mora': return '#EF4444'; 
+    case 'cobro_hoy': return '#F59E0B'; 
+    case 'recaudo': return '#10B981'; 
+    case 'cumple': return '#EC4899'; 
+    case 'success': return '#3B82F6'; 
+    default: return '#6B7280'; 
+  }
+}
+
 const formatDate = (d) => d.toISOString().split('T')[0];
 
-// Definición de la lógica del Background Fetch
+// Tarea de fondo
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async () => {
   try {
-    console.log('[ BACKGROUND FETCH ] Iniciando verificación de eventos...');
-    const db = await getDb();
-    const now = new Date();
-    const todayStr = formatDate(now);
+    // Asegurar que la DB esté lista antes de operar en segundo plano
+    await initializeDatabase();
     
-    const tomorrow = new Date();
-    tomorrow.setDate(now.getDate() + 1);
-    const tomorrowStr = formatDate(tomorrow);
+    const db = await getDb();
+    const user = await db.getFirstAsync('SELECT id FROM users LIMIT 1');
+    if (!user) return BackgroundFetch.BackgroundFetchResult.NoData;
 
-    // 1. Agenda de Cobros de Hoy
+    const userId = user.id;
+    const todayStr = formatDate(new Date());
+
+    // 1. Cobros de Hoy
     const agendaKey = `agenda_${todayStr}`;
-    const agendaNotified = await AsyncStorage.getItem(agendaKey);
-    if (!agendaNotified) {
+    if (!(await AsyncStorage.getItem(agendaKey))) {
       const agenda = await db.getAllAsync(
-        `SELECT SUM(scheduled_amount - amount_paid) as total 
-         FROM loan_installments 
+        `SELECT SUM(scheduled_amount - amount_paid) as total FROM loan_installments 
          WHERE due_date LIKE ? AND status IN ('pending', 'partial')`,
         [`${todayStr}%`]
       );
       if (agenda[0]?.total > 0) {
         await sendLocalNotification(
           "📅 Agenda de Cobros de Hoy",
-          `Tienes cuotas programadas por cobrar hoy por un total aproximado de $${agenda[0].total.toLocaleString()}`
+          `Tienes cobros programados por $${agenda[0].total.toLocaleString()}`,
+          { screen: '/prestamos_abonos' },
+          userId,
+          'cobro_hoy'
         );
       }
       await AsyncStorage.setItem(agendaKey, 'true');
     }
 
-    // 2. Corte del Día (A partir de las 8:30 PM)
-    if (now.getHours() >= 20 || (now.getHours() === 20 && now.getMinutes() >= 30)) {
-      const corteKey = `corte_${todayStr}`;
-      const corteNotified = await AsyncStorage.getItem(corteKey);
-      if (!corteNotified) {
-        const corte = await db.getAllAsync(
-          `SELECT SUM(amount) as total FROM payments WHERE created_at LIKE ?`,
-          [`${todayStr}%`]
-        );
-        const total = corte[0]?.total || 0;
-        await sendLocalNotification(
-          "🧾 Corte del Día",
-          `Hoy registraste cobros por un total de $${total.toLocaleString()}. ¡Buen trabajo!`
-        );
-        await AsyncStorage.setItem(corteKey, 'true');
-      }
-    }
-
-    // 3. Cumpleaños de hoy
-    const bdayKey = `bday_${todayStr}`;
-    const bdayNotified = await AsyncStorage.getItem(bdayKey);
-    if (!bdayNotified) {
-      // Comparar el -MM-DD
-      const mmdd = todayStr.substring(4); 
-      const cumpleaneros = await db.getAllAsync(
-        `SELECT first_name, last_name FROM clients WHERE birth_date LIKE ?`,
-        [`%${mmdd}%`]
-      );
-      if (cumpleaneros.length > 0) {
-        const nombres = cumpleaneros.map(c => `${c.first_name} ${c.last_name}`).join(', ');
-        await sendLocalNotification(
-          "🎂 ¡Cumpleaños de Cliente!",
-          `Hoy celebran su cumpleaños: ${nombres}. ¡Envíales una felicitación!`
-        );
-      }
-      await AsyncStorage.setItem(bdayKey, 'true');
-    }
-
-    // 4. Recordatorios Preventivos (Vencen mañana)
-    const prevKey = `prev_${tomorrowStr}`;
-    const prevNotified = await AsyncStorage.getItem(prevKey);
-    if (!prevNotified) {
-      const prev = await db.getAllAsync(
-        `SELECT COUNT(id) as count, SUM(scheduled_amount - amount_paid) as total 
-         FROM loan_installments 
-         WHERE due_date LIKE ? AND status IN ('pending', 'partial')`,
-        [`${tomorrowStr}%`]
-      );
-      if (prev[0]?.count > 0) {
-        await sendLocalNotification(
-          "⏳ Recordatorio Preventivo",
-          `Mañana vencen ${prev[0].count} cuota(s) por un valor de $${prev[0].total.toLocaleString()}.`
-        );
-      }
-      await AsyncStorage.setItem(prevKey, 'true');
-    }
-
-    // 5. Análisis Individuos - Mora Leve y Renovación
+    // 2. Mora
     const pendingInstallments = await db.getAllAsync(`
-      SELECT li.id as installment_id, li.due_date, l.grace_days, 
-             c.first_name, c.last_name, 
-             (li.scheduled_amount - li.amount_paid) as debt
+      SELECT li.id as installment_id, li.due_date, l.grace_days, c.first_name, c.last_name, 
+             (li.scheduled_amount - li.amount_paid) as debt, l.id as loan_id
       FROM loan_installments li
       JOIN loans l ON li.loan_id = l.id
       JOIN clients c ON l.client_id = c.id
@@ -163,115 +225,25 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async () => {
 
     for (const inst of pendingInstallments) {
       const d = new Date(inst.due_date);
-      // Sumar días de gracia a la fecha de vencimiento
       d.setDate(d.getDate() + (inst.grace_days || 0));
-      const limitStr = formatDate(d);
-
-      if (limitStr < todayStr) {
-        // Superó días de gracia y no ha pagado -> MORA
-        const moraKey = `mora_inst_${inst.installment_id}_notified`;
-        const moraNotified = await AsyncStorage.getItem(moraKey);
-        
-        if (!moraNotified) {
+      if (formatDate(d) < todayStr) {
+        const moraKey = `mora_inst_${inst.installment_id}`;
+        if (!(await AsyncStorage.getItem(moraKey))) {
           await sendLocalNotification(
             "⚠️ ¡Cliente en Mora!",
-            `La cuota de ${inst.first_name} ${inst.last_name} ha vencido el período de gracia. Pendiente por cobrar: $${inst.debt.toLocaleString()}`
+            `${inst.first_name} ${inst.last_name} tiene un atraso. Pendiente: $${inst.debt.toLocaleString()}`,
+            { screen: '/prestamos_abonos', loanId: inst.loan_id },
+            userId,
+            'mora'
           );
           await AsyncStorage.setItem(moraKey, 'true');
         }
       }
     }
 
-    // 6. Renovaciones Préstamos Liquidados Hoy (estado paid)
-    const renovadasKey = `renovadas_${todayStr}`;
-    const renovadasNotified = await AsyncStorage.getItem(renovadasKey);
-    if (!renovadasNotified) {
-        // En tu db.js, closed_at es TEXT. Asumimos tiene fecha hoy
-        const loansClosedToday = await db.getAllAsync(`
-          SELECT c.first_name, c.last_name
-          FROM loans l
-          JOIN clients c ON l.client_id = c.id
-          WHERE l.status = 'paid' AND l.closed_at LIKE ?
-        `, [`${todayStr}%`]);
-
-        if (loansClosedToday.length > 0) {
-           const names = loansClosedToday.map((c) => c.first_name).join(', ');
-           await sendLocalNotification(
-             "✅ Préstamos Liquidados",
-             `${names} han liquidado sus préstamos hoy. ¡Ofréceles una renovación u otro producto!`
-           );
-        }
-        await AsyncStorage.setItem(renovadasKey, 'true');
-    }
-
-    console.log('[ BACKGROUND FETCH ] Iteración exitosa.');
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (error) {
-    console.error('[ BACKGROUND FETCH ERROR ]:', error);
+    console.error('Error en Background Task:', error);
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });
-
-// Función para obtener las alertas a mostrar en la interfaz de usuario (la campana de notificaciones)
-export async function getPendingNotificationsUI() {
-  const db = await getDb();
-  const notifications = [];
-  let idCounter = 1;
-  const now = new Date();
-  const todayStr = formatDate(now);
-  
-  const tomorrow = new Date();
-  tomorrow.setDate(now.getDate() + 1);
-  const tomorrowStr = formatDate(tomorrow);
-
-  // 1. Mora Leve (vencidos superando gracia)
-  const pendingInstallments = await db.getAllAsync(`
-    SELECT li.id as installment_id, li.due_date, l.grace_days, 
-           c.first_name, c.last_name, 
-           (li.scheduled_amount - li.amount_paid) as debt
-    FROM loan_installments li
-    JOIN loans l ON li.loan_id = l.id
-    JOIN clients c ON l.client_id = c.id
-    WHERE li.status IN ('pending', 'partial')
-  `);
-
-  pendingInstallments.forEach((inst) => {
-    const d = new Date(inst.due_date);
-    d.setDate(d.getDate() + (inst.grace_days || 0));
-    const limitStr = formatDate(d);
-
-    if (limitStr < todayStr) {
-      // En Mora
-      notifications.push({
-        id: `uimora_${idCounter++}`,
-        type: "client-late",
-        title: "Cliente en mora",
-        clientName: `${inst.first_name} ${inst.last_name} ($ ${inst.debt})`,
-        icon: "person",
-        iconBg: "#EF4444",
-      });
-    } else if (inst.due_date === todayStr) {
-      // Vence Hoy
-      notifications.push({
-        id: `uidue_${idCounter++}`,
-        type: "client-entry",
-        title: "Cobrar hoy",
-        clientName: `${inst.first_name} ${inst.last_name}`,
-        icon: "person-add",
-        iconBg: "#F59E0B",
-      });
-    } else if (inst.due_date === tomorrowStr) {
-      // Vence Mañana
-      notifications.push({
-        id: `uiprev_${idCounter++}`,
-        type: "payment-reminder",
-        title: "Recordatorio: Cobro mañana",
-        clientName: `${inst.first_name} ${inst.last_name}`,
-        icon: "notifications",
-        iconBg: "#0D8A7A", // Usa tu teal
-      });
-    }
-  });
-
-  return notifications;
-}

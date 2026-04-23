@@ -44,7 +44,7 @@ export default function ClientesScreen() {
     role: "Gestor operador",
     avatar: null,
   };
-  const notifications: any[] = [];
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   // Cargar clientes del usuario desde la BD
   const loadClientes = useCallback(async () => {
@@ -54,7 +54,13 @@ export default function ClientesScreen() {
       setIsLoading(true);
       const clientesData = await getClients(user.id);
       setClientes(clientesData || []);
-      console.log(`✅ ${clientesData?.length || 0} clientes cargados para ${user.full_name}`);
+      
+      // Cargar notificaciones reales
+      const { getPendingNotificationsUI } = await import("../../services/notification.service");
+      const uiNotifications = await getPendingNotificationsUI();
+      setNotifications(uiNotifications);
+      
+      console.log(`✅ ${clientesData?.length || 0} clientes cargados`);
     } catch (error) {
       console.error("Error cargando clientes:", error);
       Alert.alert("Error", "No se pudieron cargar los clientes");
@@ -77,9 +83,16 @@ export default function ClientesScreen() {
     setRefreshing(false);
   };
 
-  // Maneja la eliminación de notificaciones
-  const handleDeleteNotification = useCallback((notificationId: string) => {
-    console.log("Eliminar notificación:", notificationId);
+  // Maneja la eliminación de notificaciones de forma persistente
+  const handleDeleteNotification = useCallback(async (notificationId: string) => {
+    try {
+      const { dismissNotification, getPendingNotificationsUI } = await import("../../services/notification.service");
+      await dismissNotification(notificationId);
+      const updated = await getPendingNotificationsUI();
+      setNotifications(updated);
+    } catch (error) {
+      console.error("Error eliminando notificación:", error);
+    }
   }, []);
 
   // Maneja la búsqueda de clientes (Overlay)
@@ -417,71 +430,60 @@ export default function ClientesScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* Info Card - Resumen general */}
+        {/* Info Card - Resumen de Cartera (Versión Compacta) */}
         <View
-          className="bg-[#13678A] rounded-3xl p-5 mb-6 overflow-hidden relative"
+          className="bg-[#13678A] rounded-3xl p-4 mb-4 overflow-hidden relative"
           style={{
             shadowColor: "#13678A",
-            shadowOffset: { width: 0, height: 10 },
-            shadowOpacity: 0.25,
-            shadowRadius: 15,
-            elevation: 8,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.2,
+            shadowRadius: 10,
+            elevation: 5,
           }}
         >
           {/* Decorative background elements */}
-          <View className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
-          <View className="absolute -left-10 -bottom-10 w-40 h-40 bg-black/10 rounded-full" />
+          <View className="absolute -right-8 -top-8 w-24 h-24 bg-white/10 rounded-full" />
+          <View className="absolute -left-10 -bottom-10 w-32 h-32 bg-black/10 rounded-full" />
 
-          <View className="flex-row items-center justify-between mb-5">
-            <View className="flex-row items-center">
-              <View className="bg-white/20 p-2 rounded-xl mr-3">
-                <Ionicons name="pie-chart" size={18} color="#ffffff" />
-              </View>
-              <Text className="text-white/90 text-xs uppercase tracking-widest font-semibold">
-                Resumen de Cartera
-              </Text>
+          <View className="flex-row items-center mb-3">
+            <View className="bg-white/20 p-1.5 rounded-lg mr-2">
+              <Ionicons name="pie-chart" size={14} color="#ffffff" />
             </View>
+            <Text className="text-white/90 text-[10px] uppercase tracking-widest font-bold">
+              Resumen de Cartera
+            </Text>
           </View>
 
-          <View className="flex-row justify-between items-center bg-white/10 rounded-2xl p-4 mb-4 border border-white/10">
+          <View className="flex-row justify-between items-center bg-white/10 rounded-xl p-3 mb-3 border border-white/10">
             <View className="items-center flex-1">
-              <View className="flex-row items-center mb-1">
-                <Ionicons name="people" size={12} color="#ffffff" style={{ opacity: 0.8 }} />
-                <Text className="text-white/80 text-[10px] uppercase font-bold ml-1">Total</Text>
-              </View>
-              <Text className="text-white text-xl font-black">{clientes.length}</Text>
+              <Text className="text-white/80 text-[9px] uppercase font-bold mb-0.5">Total</Text>
+              <Text className="text-white text-lg font-black">{clientes.length}</Text>
             </View>
 
-            <View className="w-px h-10 bg-white/20" />
+            <View className="w-px h-8 bg-white/20" />
 
             <View className="items-center flex-1">
-              <View className="flex-row items-center mb-1">
-                <Ionicons name="warning" size={12} color="#fca5a5" />
-                <Text className="text-red-200/90 text-[10px] uppercase font-bold ml-1">En mora</Text>
-              </View>
-              <Text className="text-red-300 text-xl font-black">
+              <Text className="text-red-200/90 text-[9px] uppercase font-bold mb-0.5">En mora</Text>
+              <Text className="text-red-300 text-lg font-black">
                 {clientes.filter(c => c.status === 'en-mora').length}
               </Text>
             </View>
 
-            <View className="w-px h-10 bg-white/20" />
+            <View className="w-px h-8 bg-white/20" />
 
             <View className="items-center flex-1">
-              <View className="flex-row items-center mb-1">
-                <Ionicons name="checkmark-circle" size={12} color="#86efac" />
-                <Text className="text-green-200/90 text-[10px] uppercase font-bold ml-1">Al día</Text>
-              </View>
-              <Text className="text-green-300 text-xl font-black">
+              <Text className="text-green-200/90 text-[9px] uppercase font-bold mb-0.5">Al día</Text>
+              <Text className="text-green-300 text-lg font-black">
                 {clientes.filter(c => c.status === 'al-dia').length}
               </Text>
             </View>
           </View>
 
-          <View className="items-center mt-1">
-            <Text className="text-white/70 text-[11px] uppercase tracking-wider mb-1 font-medium">
+          <View className="items-center">
+            <Text className="text-white/70 text-[10px] uppercase tracking-wider font-medium">
               Crédito Activo (Pendiente)
             </Text>
-            <Text className="text-white text-3xl font-black tracking-tight drop-shadow-md">
+            <Text className="text-white text-2xl font-black tracking-tight">
               {new Intl.NumberFormat('es-DO', {
                 style: 'currency',
                 currency: 'DOP',

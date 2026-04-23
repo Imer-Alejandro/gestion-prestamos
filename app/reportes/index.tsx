@@ -51,15 +51,27 @@ export default function ReportesScreen() {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
 
   useEffect(() => {
     // Diferir la carga inicial
-    InteractionManager.runAfterInteractions(() => {
-      if (user?.id) {
-        getClients(user.id).then(setClients).catch(console.error);
+    InteractionManager.runAfterInteractions(async () => {
+      try {
+        if (user?.id) {
+          const clientsData = await getClients(user.id);
+          setClients(clientsData);
+          
+          // Cargar notificaciones reales
+          const { getPendingNotificationsUI } = await import("../../services/notification.service");
+          const uiNotifications = await getPendingNotificationsUI();
+          setNotifications(uiNotifications);
+        }
+      } catch (error) {
+        console.error("Error cargando datos en Reportes:", error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
   }, [user]);
 
@@ -68,7 +80,6 @@ export default function ReportesScreen() {
     role: "Gestor operador",
     avatar: null,
   };
-  const notifications = mockNotifications;
 
   // Calcular monto total según el tab activo
   const calcularMontoTotal = () => {
@@ -90,9 +101,16 @@ export default function ReportesScreen() {
     return [];
   };
 
-  // Maneja la eliminación de notificaciones
-  const handleDeleteNotification = (notificationId: string) => {
-    console.log("Eliminar notificación:", notificationId);
+  // Maneja la eliminación de notificaciones de forma persistente
+  const handleDeleteNotification = async (notificationId: string) => {
+    try {
+      const { dismissNotification, getPendingNotificationsUI } = await import("../../services/notification.service");
+      await dismissNotification(notificationId);
+      const updated = await getPendingNotificationsUI();
+      setNotifications(updated);
+    } catch (error) {
+      console.error("Error eliminando notificación:", error);
+    }
   };
 
   // Manejar búsqueda de clientes

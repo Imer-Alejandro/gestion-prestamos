@@ -10,7 +10,7 @@ import {
 /* CREATE PAYMENT (Chronological Installment Distribution) */
 export async function createPayment(data) {
   const db = await getDb();
-  
+
   // Si es una edición, anular el pago previo primero de forma atómica
   if (data.replace_payment_id) {
     await voidPayment(data.replace_payment_id);
@@ -44,7 +44,7 @@ export async function createPayment(data) {
       const amountToApply = Math.min(remainingPayment, pendingInCuota);
 
       await applyPaymentToInstallment(inst.id, amountToApply);
-      
+
       distributions.push({
         installment_id: inst.id,
         amount: amountToApply
@@ -102,6 +102,22 @@ export async function createPayment(data) {
     [data.amount, data.amount, data.amount, new Date().toISOString(), data.loan_id],
   );
 
+
+  // Notificación de éxito (Feedback inmediato silencioso)
+  try {
+    const { sendLocalNotification } = await import("./notification.service");
+    await sendLocalNotification(
+      "✅ Cobro Registrado",
+      `Se han recibido $${data.amount.toLocaleString()} exitosamente.`,
+      { screen: '/prestamos_abonos', params: { initialTab: 'abonos' } },
+      data.user_id,
+      'success',
+      true // Silent: solo interna
+    );
+  } catch (error) {
+    console.error("Error enviando notificación de pago:", error);
+  }
+
   return result.lastInsertRowId;
 }
 
@@ -112,7 +128,7 @@ export async function getPaymentsByLoan(loanId) {
   return await db.getAllAsync(
     `SELECT * FROM payments 
      WHERE loan_id = ? AND status = 'active'
-     ORDER BY payment_date DESC, created_at DESC`, 
+     ORDER BY payment_date DESC, created_at DESC`,
     [loanId]
   );
 }
@@ -140,7 +156,7 @@ export async function getAllPayments(userId) {
 /* VOID PAYMENT (With reversal) */
 export async function voidPayment(paymentId) {
   const db = await getDb();
-  
+
   // 1. Obtener datos del pago
   const payment = await db.getFirstAsync(`SELECT * FROM payments WHERE id = ?`, [paymentId]);
   if (!payment) throw new Error("Pago no encontrado");
@@ -177,7 +193,7 @@ export async function voidPayment(paymentId) {
        WHERE id = ?`,
       [amountToReverse, amountToReverse, new Date().toISOString(), instId]
     );
-    
+
     // Si la cuota tenía mora aplicada, refresh para asegurar que vuelva a overdue si aplica
     await refreshInstallmentMora(instId);
   }

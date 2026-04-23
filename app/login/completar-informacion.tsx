@@ -39,6 +39,7 @@ export default function CompletarInformacionScreen() {
     nuevaContrasena: "",
     repetirContrasena: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isRD = countryCode === "DO";
 
@@ -60,28 +61,34 @@ export default function CompletarInformacionScreen() {
   };
 
   const handleSubmit = async () => {
+    const newErrors: Record<string, string> = {};
+
     if (!formData.representante.trim()) {
-      Alert.alert("Error", "El nombre del representante es requerido");
-      return;
+      newErrors.representante = "El nombre del representante es requerido";
     }
 
-    if (!formData.correo.trim() || !isValidEmail(formData.correo)) {
-      Alert.alert("Error", "Ingrese un correo electrónico válido");
-      return;
+    if (!formData.correo.trim()) {
+      newErrors.correo = "El correo electrónico es requerido";
+    } else if (!isValidEmail(formData.correo)) {
+      newErrors.correo = "Ingrese un correo electrónico válido";
     }
 
     if (!formData.telefono.trim()) {
-      Alert.alert("Error", "El teléfono es requerido");
-      return;
+      newErrors.telefono = "El teléfono es requerido";
     }
 
     if (formData.nuevaContrasena.length < 6) {
-      Alert.alert("Error", "La contraseña debe tener al menos 6 caracteres");
-      return;
+      newErrors.nuevaContrasena = "La contraseña debe tener al menos 6 caracteres";
     }
 
-    if (formData.nuevaContrasena !== formData.repetirContrasena) {
-      Alert.alert("Error", "Las contraseñas no coinciden");
+    if (!formData.repetirContrasena) {
+      newErrors.repetirContrasena = "Debe confirmar su contraseña";
+    } else if (formData.nuevaContrasena !== formData.repetirContrasena) {
+      newErrors.repetirContrasena = "Las contraseñas no coinciden";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -134,31 +141,47 @@ export default function CompletarInformacionScreen() {
           </Text>
 
           {/* REPRESENTANTE */}
-          <TextInput
-            value={formData.representante}
-            onChangeText={(text) =>
-              setFormData({ ...formData, representante: text })
-            }
-            className="bg-white/10 text-white p-4 rounded-lg mb-4"
-            placeholder="Representante"
-            placeholderTextColor="#ccc"
-          />
+          <View className="mb-4">
+            <Text className="text-white/80 text-sm mb-2">Representante *</Text>
+            <TextInput
+              value={formData.representante}
+              onChangeText={(text) => {
+                setFormData({ ...formData, representante: text });
+                if (errors.representante) setErrors({ ...errors, representante: "" });
+              }}
+              className={`bg-white/10 border ${errors.representante ? 'border-red-400' : 'border-white/20'} text-white p-4 rounded-lg`}
+              placeholder="Nombre completo"
+              placeholderTextColor="#ccc"
+            />
+            {errors.representante && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.representante}</Text>
+            )}
+          </View>
 
           {/* CORREO */}
-          <TextInput
-            value={formData.correo}
-            onChangeText={(text) =>
-              setFormData({ ...formData, correo: text })
-            }
-            className="bg-white/10 text-white p-4 rounded-lg mb-4"
-            placeholder="Correo"
-            placeholderTextColor="#ccc"
-          />
+          <View className="mb-4">
+            <Text className="text-white/80 text-sm mb-2">Correo electrónico *</Text>
+            <TextInput
+              value={formData.correo}
+              onChangeText={(text) => {
+                setFormData({ ...formData, correo: text });
+                if (errors.correo) setErrors({ ...errors, correo: "" });
+              }}
+              className={`bg-white/10 border ${errors.correo ? 'border-red-400' : 'border-white/20'} text-white p-4 rounded-lg`}
+              placeholder="ejemplo@correo.com"
+              placeholderTextColor="#ccc"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            {errors.correo && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.correo}</Text>
+            )}
+          </View>
 
         <View className="mb-5">
-  <Text className="text-white/80 mb-2">Teléfono</Text>
+  <Text className="text-white/80 mb-2">Teléfono *</Text>
 
-  <View className="flex-row pl-2 items-center bg-white/10 border border-white/30 rounded-lg overflow-hidden">
+  <View className={`flex-row pl-2 items-center bg-white/10 border ${errors.telefono ? 'border-red-400' : 'border-white/30'} rounded-lg overflow-hidden`}>
  {/* 🌍 MODAL */}
           <CountryPicker
             countryCode={countryCode}
@@ -201,33 +224,66 @@ export default function CompletarInformacionScreen() {
       className="flex-1 px-3 py-3 text-white"
     />
   </View>
+  {errors.telefono && (
+    <Text className="text-red-300 text-xs mt-1 ml-1">{errors.telefono}</Text>
+  )}
 </View>
 
          
 
           {/* PASSWORD */}
-          <TextInput
-            value={formData.nuevaContrasena}
-            onChangeText={(text) =>
-              setFormData({ ...formData, nuevaContrasena: text })
-            }
-            secureTextEntry={!showPassword}
-            className="bg-white/10 text-white p-4 rounded-lg mb-4"
-            placeholder="Contraseña"
-            placeholderTextColor="#ccc"
-          />
+          <View className="mb-4">
+            <Text className="text-white/80 text-sm mb-2">Contraseña *</Text>
+            <View className="relative">
+              <TextInput
+                value={formData.nuevaContrasena}
+                onChangeText={(text) => {
+                  setFormData({ ...formData, nuevaContrasena: text });
+                  if (errors.nuevaContrasena) setErrors({ ...errors, nuevaContrasena: "" });
+                }}
+                secureTextEntry={!showPassword}
+                className={`bg-white/10 border ${errors.nuevaContrasena ? 'border-red-400' : 'border-white/20'} text-white p-4 rounded-lg pr-12`}
+                placeholder="Mínimo 6 caracteres"
+                placeholderTextColor="#ccc"
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-4"
+              >
+                <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color="#ccc" />
+              </TouchableOpacity>
+            </View>
+            {errors.nuevaContrasena && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.nuevaContrasena}</Text>
+            )}
+          </View>
 
           {/* CONFIRM PASSWORD */}
-          <TextInput
-            value={formData.repetirContrasena}
-            onChangeText={(text) =>
-              setFormData({ ...formData, repetirContrasena: text })
-            }
-            secureTextEntry={!showConfirmPassword}
-            className="bg-white/10 text-white p-4 rounded-lg mb-4"
-            placeholder="Repetir contraseña"
-            placeholderTextColor="#ccc"
-          />
+          <View className="mb-4">
+            <Text className="text-white/80 text-sm mb-2">Confirmar contraseña *</Text>
+            <View className="relative">
+              <TextInput
+                value={formData.repetirContrasena}
+                onChangeText={(text) => {
+                  setFormData({ ...formData, repetirContrasena: text });
+                  if (errors.repetirContrasena) setErrors({ ...errors, repetirContrasena: "" });
+                }}
+                secureTextEntry={!showConfirmPassword}
+                className={`bg-white/10 border ${errors.repetirContrasena ? 'border-red-400' : 'border-white/20'} text-white p-4 rounded-lg pr-12`}
+                placeholder="Repita su contraseña"
+                placeholderTextColor="#ccc"
+              />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-4 top-4"
+              >
+                <Ionicons name={showConfirmPassword ? "eye-off" : "eye"} size={24} color="#ccc" />
+              </TouchableOpacity>
+            </View>
+            {errors.repetirContrasena && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.repetirContrasena}</Text>
+            )}
+          </View>
 
           {/* BOTÓN */}
           <TouchableOpacity

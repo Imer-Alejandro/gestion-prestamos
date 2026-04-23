@@ -87,6 +87,7 @@ export default function RegistroClienteModal({
   const [showSituacionLaboralPicker, setShowSituacionLaboralPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateNacimiento, setDateNacimiento] = useState(new Date());
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Estado del formulario
   const [formData, setFormData] = useState<ClienteFormData>({
@@ -183,6 +184,7 @@ export default function RegistroClienteModal({
       setShowSituacionLaboralPicker(false);
       setShowDatePicker(false);
       setDateNacimiento(new Date());
+      setErrors({});
 
       Animated.spring(translateY, {
         toValue: 0,
@@ -226,6 +228,23 @@ export default function RegistroClienteModal({
   ).current;
 
   // Validar formulario
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.nombreCompleto.trim()) {
+      newErrors.nombreCompleto = "El nombre completo es obligatorio";
+    }
+    if (!formData.numeroDocumento.trim()) {
+      newErrors.numeroDocumento = "El número de documento es obligatorio";
+    }
+    if (!formData.celularWhatsapp.trim()) {
+      newErrors.celularWhatsapp = "El número de celular es obligatorio";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const isFormValid = () => {
     return (
       formData.nombreCompleto.trim().length > 0 &&
@@ -236,7 +255,7 @@ export default function RegistroClienteModal({
 
   // Manejar envío del formulario
   const handleSubmit = () => {
-    if (isFormValid()) {
+    if (validateForm()) {
       onSubmit(formData);
       onClose();
     }
@@ -308,13 +327,17 @@ export default function RegistroClienteModal({
                     </Text>
                     <TextInput
                       value={formData.nombreCompleto}
-                      onChangeText={(text) =>
-                        setFormData({ ...formData, nombreCompleto: text })
-                      }
+                      onChangeText={(text) => {
+                        setFormData({ ...formData, nombreCompleto: text });
+                        if (errors.nombreCompleto) setErrors({ ...errors, nombreCompleto: "" });
+                      }}
                       placeholder="Ej: Juan Pérez García"
-                      className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-base"
+                      className={`border ${errors.nombreCompleto ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 text-gray-900 text-base`}
                       placeholderTextColor="#9CA3AF"
                     />
+                    {errors.nombreCompleto && (
+                      <Text className="text-red-500 text-xs mt-1">{errors.nombreCompleto}</Text>
+                    )}
                   </View>
 
                   {/* Tipo y Número de documento */}
@@ -364,13 +387,17 @@ export default function RegistroClienteModal({
                       </Text>
                       <TextInput
                         value={formData.numeroDocumento}
-                        onChangeText={(text) =>
-                          setFormData({ ...formData, numeroDocumento: text })
-                        }
+                        onChangeText={(text) => {
+                          setFormData({ ...formData, numeroDocumento: text });
+                          if (errors.numeroDocumento) setErrors({ ...errors, numeroDocumento: "" });
+                        }}
                         placeholder="001-0123456-7"
-                        className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-base"
+                        className={`border ${errors.numeroDocumento ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 text-gray-900 text-base`}
                         placeholderTextColor="#9CA3AF"
                       />
+                      {errors.numeroDocumento && (
+                        <Text className="text-red-500 text-xs mt-1">{errors.numeroDocumento}</Text>
+                      )}
                     </View>
                   </View>
 
@@ -480,14 +507,18 @@ export default function RegistroClienteModal({
                     </Text>
                     <TextInput
                       value={formData.celularWhatsapp}
-                      onChangeText={(text) =>
-                        setFormData({ ...formData, celularWhatsapp: text })
-                      }
+                      onChangeText={(text) => {
+                        setFormData({ ...formData, celularWhatsapp: text });
+                        if (errors.celularWhatsapp) setErrors({ ...errors, celularWhatsapp: "" });
+                      }}
                       placeholder="Ej: 809-555-1234"
                       keyboardType="phone-pad"
-                      className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-base"
+                      className={`border ${errors.celularWhatsapp ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 text-gray-900 text-base`}
                       placeholderTextColor="#9CA3AF"
                     />
+                    {errors.celularWhatsapp && (
+                      <Text className="text-red-500 text-xs mt-1">{errors.celularWhatsapp}</Text>
+                    )}
                   </View>
 
                   {/* Tel. Casa y Tel. Otro */}

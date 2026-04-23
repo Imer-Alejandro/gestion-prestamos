@@ -32,6 +32,7 @@ export default function RegistroEmpleadoScreen() {
     nuevaContrasena: "",
     repetirContrasena: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Valida el formato del correo electrónico
   const isValidEmail = (email: string) => {
@@ -41,34 +42,38 @@ export default function RegistroEmpleadoScreen() {
 
   // Maneja el envío del formulario
   const handleSubmit = () => {
-    // Validaciones
+    const newErrors: Record<string, string> = {};
+
     if (!formData.nombre.trim()) {
-      Alert.alert("Error", "El nombre es requerido");
-      return;
+      newErrors.nombre = "El nombre es requerido";
     }
 
-    if (!formData.correo.trim() || !isValidEmail(formData.correo)) {
-      Alert.alert("Error", "Ingrese un correo electrónico válido");
-      return;
+    if (!formData.correo.trim()) {
+      newErrors.correo = "El correo es requerido";
+    } else if (!isValidEmail(formData.correo)) {
+      newErrors.correo = "Ingrese un correo electrónico válido";
     }
 
     if (!formData.telefono.trim()) {
-      Alert.alert("Error", "El teléfono es requerido");
-      return;
+      newErrors.telefono = "El teléfono es requerido";
     }
 
     if (!formData.codigoOrganizacion.trim()) {
-      Alert.alert("Error", "El código de organización es requerido");
-      return;
+      newErrors.codigoOrganizacion = "El código de organización es requerido";
     }
 
     if (formData.nuevaContrasena.length < 6) {
-      Alert.alert("Error", "La contraseña debe tener al menos 6 caracteres");
-      return;
+      newErrors.nuevaContrasena = "La contraseña debe tener al menos 6 caracteres";
     }
 
-    if (formData.nuevaContrasena !== formData.repetirContrasena) {
-      Alert.alert("Error", "Las contraseñas no coinciden");
+    if (!formData.repetirContrasena) {
+      newErrors.repetirContrasena = "Debe confirmar su contraseña";
+    } else if (formData.nuevaContrasena !== formData.repetirContrasena) {
+      newErrors.repetirContrasena = "Las contraseñas no coinciden";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -110,37 +115,45 @@ export default function RegistroEmpleadoScreen() {
         <View className="mb-6">
           {/* Campo: Nombre */}
           <View className="mb-5">
-            <Text className="text-white/80 text-sm mb-2">Nombre</Text>
+            <Text className="text-white/80 text-sm mb-2">Nombre *</Text>
             <TextInput
               value={formData.nombre}
-              onChangeText={(text) =>
-                setFormData({ ...formData, nombre: text })
-              }
+              onChangeText={(text) => {
+                setFormData({ ...formData, nombre: text });
+                if (errors.nombre) setErrors({ ...errors, nombre: "" });
+              }}
               placeholder=""
               placeholderTextColor="#ffffff40"
-              className="bg-white/10 border border-white/30 rounded-lg px-4 py-3.5 text-white text-base"
+              className={`bg-white/10 border ${errors.nombre ? 'border-red-400' : 'border-white/30'} rounded-lg px-4 py-3.5 text-white text-base`}
             />
+            {errors.nombre && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.nombre}</Text>
+            )}
           </View>
 
           {/* Campo: Correo */}
           <View className="mb-5">
-            <Text className="text-white/80 text-sm mb-2">Correo</Text>
+            <Text className="text-white/80 text-sm mb-2">Correo *</Text>
             <TextInput
               value={formData.correo}
-              onChangeText={(text) =>
-                setFormData({ ...formData, correo: text.toLowerCase() })
-              }
+              onChangeText={(text) => {
+                setFormData({ ...formData, correo: text.toLowerCase() });
+                if (errors.correo) setErrors({ ...errors, correo: "" });
+              }}
               placeholder=""
               placeholderTextColor="#ffffff40"
               keyboardType="email-address"
               autoCapitalize="none"
-              className="bg-white/10 border border-white/30 rounded-lg px-4 py-3.5 text-white text-base"
+              className={`bg-white/10 border ${errors.correo ? 'border-red-400' : 'border-white/30'} rounded-lg px-4 py-3.5 text-white text-base`}
             />
+            {errors.correo && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.correo}</Text>
+            )}
           </View>
 
           {/* Campo: Teléfono con código de área */}
           <View className="mb-5">
-            <Text className="text-white/80 text-sm mb-2">Teléfono</Text>
+            <Text className="text-white/80 text-sm mb-2">Teléfono *</Text>
             <View className="flex-row gap-3">
               {/* Código de área */}
               <TextInput
@@ -157,33 +170,38 @@ export default function RegistroEmpleadoScreen() {
               {/* Número de teléfono */}
               <TextInput
                 value={formData.telefono}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, telefono: text })
-                }
+                onChangeText={(text) => {
+                  setFormData({ ...formData, telefono: text });
+                  if (errors.telefono) setErrors({ ...errors, telefono: "" });
+                }}
                 placeholder=""
                 placeholderTextColor="#ffffff40"
                 keyboardType="phone-pad"
-                className="flex-1 bg-white/10 border border-white/30 rounded-lg px-4 py-3.5 text-white text-base"
+                className={`flex-1 bg-white/10 border ${errors.telefono ? 'border-red-400' : 'border-white/30'} rounded-lg px-4 py-3.5 text-white text-base`}
               />
             </View>
+            {errors.telefono && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.telefono}</Text>
+            )}
           </View>
 
           {/* Campo: Código de organización con botón QR */}
           <View className="mb-5">
             <Text className="text-white/80 text-sm mb-2">
-              Código de organización
+              Código de organización *
             </Text>
             <View className="flex-row gap-3">
               <TextInput
                 value={formData.codigoOrganizacion}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, codigoOrganizacion: text })
-                }
+                onChangeText={(text) => {
+                  setFormData({ ...formData, codigoOrganizacion: text });
+                  if (errors.codigoOrganizacion) setErrors({ ...errors, codigoOrganizacion: "" });
+                }}
                 placeholder=""
                 placeholderTextColor="#ffffff40"
                 keyboardType="number-pad"
                 maxLength={6}
-                className="flex-1 bg-white/10 border border-white/30 rounded-lg px-4 py-3.5 text-white text-base"
+                className={`flex-1 bg-white/10 border ${errors.codigoOrganizacion ? 'border-red-400' : 'border-white/30'} rounded-lg px-4 py-3.5 text-white text-base`}
               />
               {/* Botón para escanear QR */}
               <TouchableOpacity
@@ -194,23 +212,27 @@ export default function RegistroEmpleadoScreen() {
                 <Ionicons name="qr-code-outline" size={24} color="#ffffff" />
               </TouchableOpacity>
             </View>
+            {errors.codigoOrganizacion && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.codigoOrganizacion}</Text>
+            )}
           </View>
 
           {/* Campo: Nueva contraseña */}
           <View className="mb-5">
             <Text className="text-white/80 text-sm mb-2">
-              Nueva contraseña
+              Nueva contraseña *
             </Text>
             <View className="relative">
               <TextInput
                 value={formData.nuevaContrasena}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, nuevaContrasena: text })
-                }
+                onChangeText={(text) => {
+                  setFormData({ ...formData, nuevaContrasena: text });
+                  if (errors.nuevaContrasena) setErrors({ ...errors, nuevaContrasena: "" });
+                }}
                 placeholder=""
                 placeholderTextColor="#ffffff40"
                 secureTextEntry={!showPassword}
-                className="bg-white/10 border border-white/30 rounded-lg px-4 py-3.5 text-white text-base pr-12"
+                className={`bg-white/10 border ${errors.nuevaContrasena ? 'border-red-400' : 'border-white/30'} rounded-lg px-4 py-3.5 text-white text-base pr-12`}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
@@ -223,23 +245,27 @@ export default function RegistroEmpleadoScreen() {
                 />
               </TouchableOpacity>
             </View>
+            {errors.nuevaContrasena && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.nuevaContrasena}</Text>
+            )}
           </View>
 
           {/* Campo: Repetir contraseña */}
           <View className="mb-6">
             <Text className="text-white/80 text-sm mb-2">
-              Repita la contraseña
+              Repita la contraseña *
             </Text>
             <View className="relative">
               <TextInput
                 value={formData.repetirContrasena}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, repetirContrasena: text })
-                }
+                onChangeText={(text) => {
+                  setFormData({ ...formData, repetirContrasena: text });
+                  if (errors.repetirContrasena) setErrors({ ...errors, repetirContrasena: "" });
+                }}
                 placeholder=""
                 placeholderTextColor="#ffffff40"
                 secureTextEntry={!showConfirmPassword}
-                className="bg-white/10 border border-white/30 rounded-lg px-4 py-3.5 text-white text-base pr-12"
+                className={`bg-white/10 border ${errors.repetirContrasena ? 'border-red-400' : 'border-white/30'} rounded-lg px-4 py-3.5 text-white text-base pr-12`}
               />
               <TouchableOpacity
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -254,6 +280,9 @@ export default function RegistroEmpleadoScreen() {
                 />
               </TouchableOpacity>
             </View>
+            {errors.repetirContrasena && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.repetirContrasena}</Text>
+            )}
           </View>
 
           {/* Botón continuar */}

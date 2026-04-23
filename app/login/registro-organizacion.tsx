@@ -26,6 +26,7 @@ export default function RegistroOrganizacionScreen() {
     logo: "",
     tipoOrganizacion: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
 
   // Tipos de organización disponibles
@@ -50,18 +51,23 @@ export default function RegistroOrganizacionScreen() {
   // Maneja la selección del tipo de organización
   const handleSelectTipo = (tipoId: string) => {
     setFormData({ ...formData, tipoOrganizacion: tipoId });
+    if (errors.tipoOrganizacion) setErrors({ ...errors, tipoOrganizacion: "" });
   };
 
   // Valida y continúa al siguiente paso
   const handleContinuar = () => {
-    // Validación de campos requeridos
+    const newErrors: Record<string, string> = {};
+
     if (!formData.nombreOrganizacion.trim()) {
-      Alert.alert("Error", "El nombre de la organización es requerido");
-      return;
+      newErrors.nombreOrganizacion = "El nombre de la organización es obligatorio";
     }
 
     if (!formData.tipoOrganizacion) {
-      Alert.alert("Error", "Debe seleccionar un tipo de organización");
+      newErrors.tipoOrganizacion = "Debe seleccionar un tipo de organización";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -107,18 +113,22 @@ export default function RegistroOrganizacionScreen() {
           {/* Campo: Nombre de la organización - Altura fija para evitar movimiento */}
           <View className="mb-4">
             <Text className="text-white/80 text-base mb-2">
-              Nombre organización
+              Nombre organización *
             </Text>
             <TextInput
               value={formData.nombreOrganizacion}
-              onChangeText={(text) =>
-                setFormData({ ...formData, nombreOrganizacion: text })
-              }
+              onChangeText={(text) => {
+                setFormData({ ...formData, nombreOrganizacion: text });
+                if (errors.nombreOrganizacion) setErrors({ ...errors, nombreOrganizacion: "" });
+              }}
               placeholder=""
               placeholderTextColor="#ffffff40"
-              className="bg-white/10 border border-white/30 rounded-lg px-6 text-white text-lg"
+              className={`bg-white/10 border ${errors.nombreOrganizacion ? 'border-red-400' : 'border-white/30'} rounded-lg px-6 text-white text-lg`}
               style={{ height: 56, paddingVertical: 0 }}
             />
+            {errors.nombreOrganizacion && (
+              <Text className="text-red-300 text-xs mt-1 ml-1">{errors.nombreOrganizacion}</Text>
+            )}
           </View>
 
           {/* Campo: Eslogan - Altura fija para evitar movimiento */}
@@ -155,7 +165,7 @@ export default function RegistroOrganizacionScreen() {
           <View className="mb-6">
             <View className="flex-row items-center mb-3">
               <Text className="text-white/80 text-sm mr-2">
-                Tipo de organización
+                Tipo de organización *
               </Text>
               {/* Info tooltip */}
               <TouchableOpacity
@@ -210,6 +220,9 @@ export default function RegistroOrganizacionScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+            {errors.tipoOrganizacion && (
+              <Text className="text-red-300 text-xs mt-2 ml-1">{errors.tipoOrganizacion}</Text>
+            )}
           </View>
 
           {/* Botón continuar - Altura fija para mantener consistencia */}

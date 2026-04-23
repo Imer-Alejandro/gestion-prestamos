@@ -292,7 +292,7 @@ export function NuevoPrestamoModal({
             <View style={styles.field}>
               <Text style={styles.label}>Monto Principal *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.principal_amount && styles.inputError]}
                 value={formData.principal_amount}
                 onChangeText={(value) => updateFormData('principal_amount', formatCurrency(value))}
                 placeholder="$ 0"
@@ -320,7 +320,7 @@ export function NuevoPrestamoModal({
             <View style={styles.field}>
               <Text style={styles.label}>Tasa de Interés (%) *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.interest_rate && styles.inputError]}
                 value={formData.interest_rate}
                 onChangeText={(value) => updateFormData('interest_rate', value)}
                 placeholder="Ej: 2.5"
@@ -363,7 +363,7 @@ export function NuevoPrestamoModal({
               <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
                 <Text style={styles.label}>Valor de Mora *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.late_fee_value && styles.inputError]}
                   value={formData.late_fee_value}
                   onChangeText={(value) => updateFormData('late_fee_value', value)}
                   placeholder={formData.late_fee_type === 'percentage' ? "Ej: 1.5" : "Ej: 5000"}
@@ -377,7 +377,7 @@ export function NuevoPrestamoModal({
             <View style={styles.field}>
               <Text style={styles.label}>Número de Cuotas *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.installments && styles.inputError]}
                 value={formData.installments}
                 onChangeText={(value) => updateFormData('installments', value)}
                 placeholder="Ej: 12"
@@ -544,6 +544,9 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     backgroundColor: '#FFFFFF',
+  },
+  inputError: {
+    borderColor: '#EF4444',
   },
   pickerContainer: {
     borderWidth: 1,

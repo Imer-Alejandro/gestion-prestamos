@@ -1,17 +1,23 @@
 export interface Prestamo {
   id: string;
-  clienteId: string;
+  clienteId?: string;
   clienteNombre: string;
-  clienteIniciales: string;
-  totalPrestamo: number;
-  totalAbonado: number;
+  clienteIniciales?: string;
+  totalPrestamo?: number;
+  totalAbonado?: number;
   deudaPendiente: number;
-  deudaPendientePorcentaje: number;
-  cuotas: number;
-  estado: "activo" | "completado" | "mora";
-  fechaCreacion: string;
-  frecuenciaPago: string;
-  fechaVencimiento: string;
+  deudaPendientePorcentaje?: number;
+  cuotas?: number;
+  estado?: "activo" | "completado" | "mora";
+  status: 'activo' | 'atrasado' | 'completado';
+  fechaCreacion?: string;
+  frecuenciaPago?: string;
+  fechaVencimiento?: string;
+  montoOriginal: number;
+  cuotasPagadas: number;
+  cuotasTotales: number;
+  proximoPago: string;
+  payment_frequency?: string;
 }
 
 

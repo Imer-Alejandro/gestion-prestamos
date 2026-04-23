@@ -10,7 +10,6 @@ import {
   InteractionManager
 } from "react-native";
 import AppHeader from "../../components/shared/AppHeader";
-import DrawerMenu from "../../components/home/DrawerMenu";
 import Skeleton from "../../components/shared/Skeleton";
 import NotificationModal from "../../components/home/NotificationModal";
 import { PrestamoCard } from "../../components/prestamos_abonos/PrestamoCard";
@@ -45,7 +44,6 @@ export default function PrestamosScreen() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showNuevoPrestamo, setShowNuevoPrestamo] = useState(false);
   const [showRegistroAbono, setShowRegistroAbono] = useState(false);
   const [showDetallesPrestamo, setShowDetallesPrestamo] = useState(false);
@@ -121,7 +119,7 @@ export default function PrestamosScreen() {
         // Cargar todos los abonos
         const abonosData = await getAllPayments(user!.id);
         setAbonos(abonosData);
-        
+
         setIsLoading(false);
       } catch (error) {
         console.error("Error cargando datos:", error);
@@ -277,7 +275,7 @@ export default function PrestamosScreen() {
       <AppHeader
         userData={userData}
         onNotificationsPress={() => setShowNotifications(true)}
-        onMenuPress={() => setShowDrawer(true)}
+        onProfilePress={() => router.push("/configuracion")}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onSearchSubmit={handleSearch}
@@ -519,12 +517,7 @@ export default function PrestamosScreen() {
 
       />
 
-      {/* Drawer Menu */}
-      <DrawerMenu
-        visible={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        userData={userData}
-      />
+
 
     </View>
   );

@@ -97,6 +97,7 @@ export function FiltrosPrestamoModal({
               <Text style={styles.sectionTitle}>Frecuencia de Pago</Text>
               <View style={styles.optionsGrid}>
                 {renderOption('Todas', 'all', filters.payment_frequency, (v) => updateFilter('payment_frequency', v))}
+                {renderOption('Diario', 'daily', filters.payment_frequency, (v) => updateFilter('payment_frequency', v))}
                 {renderOption('Semanal', 'weekly', filters.payment_frequency, (v) => updateFilter('payment_frequency', v))}
                 {renderOption('Quincenal', 'biweekly', filters.payment_frequency, (v) => updateFilter('payment_frequency', v))}
                 {renderOption('Mensual', 'monthly', filters.payment_frequency, (v) => updateFilter('payment_frequency', v))}

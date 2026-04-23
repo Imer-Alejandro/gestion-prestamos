@@ -23,8 +23,10 @@ interface DrawerMenuProps {
     name: string;
     role: string;
   };
-  onNuevoAbono?: () => void;
-  onNuevoPrestamo?: () => void;
+  userData: {
+    name: string;
+    role: string;
+  };
 }
 
 interface MenuItem {
@@ -42,7 +44,7 @@ const DRAWER_WIDTH = 320;
  * Se abre de derecha a izquierda con blur en el fondo
  * Soporta cierre por swipe y toque fuera
  */
-export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, onNuevoPrestamo }: DrawerMenuProps) {
+export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuProps) {
   const router = useRouter();
   const { logout } = useAuth();
   const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
@@ -135,22 +137,6 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
     router.push(route as any);
   };
 
-  // Registrar abono
-  const handleRegistrarAbono = () => {
-    onClose();
-    if (onNuevoAbono) {
-      setTimeout(onNuevoAbono, 300);
-    }
-  };
-
-  // Registrar préstamo
-  const handleRegistrarPrestamo = () => {
-    onClose();
-    if (onNuevoPrestamo) {
-      setTimeout(onNuevoPrestamo, 300);
-    }
-  };
-
   // Cerrar sesión
   const handleLogout = () => {
     Alert.alert(
@@ -168,15 +154,6 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
           },
         },
       ]
-    );
-  };
-
-  // Simular notificación local
-  const handleTestNotification = async () => {
-    onClose();
-    await sendLocalNotification(
-      "🔔 Notificación de Prueba",
-      "El sistema está configurado y funcionando. Vibración y sonido activados."
     );
   };
 
@@ -221,20 +198,20 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
           <View className="flex-1 bg-white shadow-2xl">
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
               {/* Header con perfil */}
-              <View className="bg-[#13678A] px-6 pt-16 pb-6">
-                <View className="flex-row items-center mb-4">
-                  {/* Avatar */}
-                  <View className="w-14 h-14 bg-white/20 rounded-full items-center justify-center border-2 border-white/30 mr-3">
-                    <Text className="text-white text-xl font-bold">
-                      {userData.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+              <View className="bg-[#13678A] px-6 pt-16 pb-8 rounded-bl-3xl">
+                <View className="flex-row items-center">
+                  {/* Avatar con sombra suave */}
+                  <View className="w-16 h-16 bg-white rounded-full items-center justify-center shadow-sm mr-4">
+                    <Text className="text-[#13678A] text-2xl font-bold">
+                      {userData.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                     </Text>
                   </View>
                   {/* Nombre y rol */}
                   <View className="flex-1">
-                    <Text className="text-white text-base font-semibold">
-                      Hola, {userData.name}
+                    <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                      {userData.name}
                     </Text>
-                    <Text className="text-white/80 text-sm">
+                    <Text className="text-teal-100 text-sm font-medium mt-0.5">
                       {userData.role}
                     </Text>
                   </View>
@@ -242,99 +219,69 @@ export default function DrawerMenu({ visible, onClose, userData, onNuevoAbono, o
               </View>
 
               {/* Menú principal */}
-              <View className="py-4">
+              <View className="py-6 px-4">
+                <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 ml-4">
+                  Principal
+                </Text>
                 {mainMenu.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => handleNavigate(item.route)}
-                    className="flex-row items-center px-6 py-4 active:bg-gray-50"
+                    className="flex-row items-center px-4 py-3.5 mb-1 rounded-xl active:bg-blue-50"
                     activeOpacity={0.7}
                   >
-                    <Ionicons
-                      name={item.icon}
-                      size={24}
-                      color="#13678A"
-                    />
-                    <Text className="text-gray-700 text-base ml-4 flex-1">
+                    <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3">
+                      <Ionicons
+                        name={item.icon}
+                        size={22}
+                        color="#13678A"
+                      />
+                    </View>
+                    <Text className="text-gray-800 font-medium text-base flex-1">
                       {item.label}
                     </Text>
+                    <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
                   </TouchableOpacity>
                 ))}
               </View>
 
-              {/* Separador */}
-              <View className="h-px bg-gray-200 mx-6 my-2" />
-
-
-              <View className="px-6 py-4">
-                <TouchableOpacity
-                  onPress={handleRegistrarAbono}
-                  className="bg-[#13678A] rounded-xl py-3.5 flex-row items-center justify-center mb-3"
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="arrow-down-circle-outline" size={22} color="#ffffff" />
-                  <Text className="text-white font-semibold text-base ml-2">
-                    Registro de abonos
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={handleRegistrarPrestamo}
-                  className="bg-[#13678A] rounded-xl py-3.5 flex-row items-center justify-center"
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="arrow-up-circle-outline" size={22} color="#ffffff" />
-                  <Text className="text-white font-semibold text-base ml-2">
-                    Registro de préstamos
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-
+              <View className="h-px bg-gray-100 mx-8" />
 
               {/* Menú inferior */}
-              <View className="py-2">
+              <View className="py-6 px-4 flex-1">
+                <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 ml-4">
+                  Preferencias
+                </Text>
                 {bottomMenu.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => handleNavigate(item.route)}
-                    className="flex-row items-center px-6 py-4 active:bg-gray-50"
+                    className="flex-row items-center px-4 py-3.5 mb-1 rounded-xl active:bg-gray-50"
                     activeOpacity={0.7}
                   >
-                    <Ionicons
-                      name={item.icon}
-                      size={24}
-                      color="#13678A"
-                    />
-                    <Text className="text-gray-700 text-base ml-4 flex-1">
+                    <View className="w-10 h-10 rounded-full bg-gray-50 items-center justify-center mr-3">
+                      <Ionicons
+                        name={item.icon}
+                        size={22}
+                        color="#6B7280"
+                      />
+                    </View>
+                    <Text className="text-gray-600 font-medium text-base flex-1">
                       {item.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              {/* Botón Probar Notificaciones */}
-              <View className="px-6 py-2">
-                <TouchableOpacity
-                  onPress={handleTestNotification}
-                  className="bg-teal-100 rounded-xl py-4 flex-row items-center justify-center border border-teal-200"
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="notifications-outline" size={20} color="#0D9488" />
-                  <Text className="text-teal-700 font-semibold text-base ml-2">
-                    Probar Notificación Activa
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
               {/* Botón de cerrar sesión */}
-              <View className="px-6 py-2 pb-8">
+              <View className="px-6 pb-10 pt-4">
                 <TouchableOpacity
                   onPress={handleLogout}
-                  className="bg-gray-100 rounded-xl py-4 items-center border border-gray-200"
+                  className="flex-row items-center justify-center py-4 bg-red-50 rounded-2xl border border-red-100"
                   activeOpacity={0.8}
                 >
-                  <Text className="text-gray-700 font-semibold text-base">
+                  <Ionicons name="log-out-outline" size={22} color="#EF4444" />
+                  <Text className="text-red-500 font-bold text-base ml-2">
                     Cerrar sesión
                   </Text>
                 </TouchableOpacity>

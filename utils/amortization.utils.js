@@ -6,16 +6,31 @@ export function generateFrenchAmortization({
   paymentFrequency,
   interestRatePeriod = 'monthly',
 }) {
-  // Adjust rate to monthly
-  let monthlyRate = rate / 100;
-  if (interestRatePeriod === 'annual') {
-    monthlyRate = monthlyRate / 12;
-  } else if (interestRatePeriod === 'daily') {
-    monthlyRate = monthlyRate * 30; // approximate
+  // Primero obtenemos la tasa en decimal
+  let rateDecimal = rate / 100;
+
+  // Convertimos la tasa a diaria para tener una base común
+  let dailyRate = rateDecimal;
+  if (interestRatePeriod === 'monthly') {
+    dailyRate = rateDecimal / 30; // Mes aproximado
+  } else if (interestRatePeriod === 'annual') {
+    dailyRate = rateDecimal / 365;
   }
 
-  // Rounding the base installment amount to integer
-  const cuotaBase = (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -installments));
+  // Calculamos la tasa del periodo (periodRate) según la frecuencia de pago
+  let periodRate = dailyRate;
+  if (paymentFrequency === 'weekly') {
+    periodRate = dailyRate * 7;
+  } else if (paymentFrequency === 'biweekly') {
+    periodRate = dailyRate * 14;
+  } else if (paymentFrequency === 'monthly') {
+    periodRate = dailyRate * 30;
+  }
+  // Si paymentFrequency es 'daily', periodRate ya es dailyRate
+
+  // Formula Amortización Francesa: A = (P * r) / (1 - (1+r)^-n)
+  // Redondeamos la cuota base a entero
+  const cuotaBase = (principal * periodRate) / (1 - Math.pow(1 + periodRate, -installments));
   const cuota = Math.round(cuotaBase);
 
   let saldo = principal;
@@ -24,10 +39,10 @@ export function generateFrenchAmortization({
   const schedule = [];
 
   for (let i = 1; i <= installments; i++) {
-    let interest = Math.round(saldo * monthlyRate);
+    let interest = Math.round(saldo * periodRate);
     let capital = cuota - interest;
 
-    // Last installment adjustment: ensure saldo becomes exactly 0
+    // Ajuste en la última cuota para asegurar que el saldo sea exactamente 0
     if (i === installments) {
       capital = saldo;
       interest = Math.max(0, cuota - capital);
@@ -46,8 +61,10 @@ export function generateFrenchAmortization({
       status: "pending",
     });
 
-    // Adjust date based on frequency
-    if (paymentFrequency === 'weekly') {
+    // Ajustar fecha según frecuencia
+    if (paymentFrequency === 'daily') {
+      currentDate.setDate(currentDate.getDate() + 1);
+    } else if (paymentFrequency === 'weekly') {
       currentDate.setDate(currentDate.getDate() + 7);
     } else if (paymentFrequency === 'biweekly') {
       currentDate.setDate(currentDate.getDate() + 14);

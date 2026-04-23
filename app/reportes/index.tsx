@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { Svg, Rect, Circle } from "react-native-svg";
 import AppHeader from "../../components/shared/AppHeader";
-import DrawerMenu from "../../components/home/DrawerMenu";
 import Skeleton from "../../components/shared/Skeleton";
 import NotificationModal from "../../components/home/NotificationModal";
 import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
@@ -44,7 +43,6 @@ export default function ReportesScreen() {
   const insets = useSafeAreaInsets(); // Obtiene el espacio seguro de Android/iOS
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
   const [activeTab, setActiveTab] = useState<"prestamos" | "ganancias" | "clientes" | "empleados">("prestamos");
   const [showFiltros, setShowFiltros] = useState(false);
 
@@ -250,7 +248,7 @@ export default function ReportesScreen() {
       <AppHeader
         userData={userData}
         onNotificationsPress={() => setShowNotifications(true)}
-        onMenuPress={() => setShowDrawer(true)}
+        onProfilePress={() => router.push("/configuracion")}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
         onSearchSubmit={handleSearchSubmit}
@@ -510,13 +508,6 @@ export default function ReportesScreen() {
         notifications={notifications}
         onClose={() => setShowNotifications(false)}
         onDeleteNotification={handleDeleteNotification}
-      />
-
-      {/* Drawer Menu */}
-      <DrawerMenu
-        visible={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        userData={userData}
       />
 
       {/* Modal de Detalles del Cliente */}

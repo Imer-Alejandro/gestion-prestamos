@@ -17,7 +17,7 @@ import AppInfoCard from "../../components/configuracion/AppInfoCard";
 
 export default function ConfiguracionScreen() {
   const router = useRouter();
-  const { user, updateUserName } = useAuth();
+  const { user, updateUserName, logout } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
 
@@ -71,9 +71,13 @@ export default function ConfiguracionScreen() {
         {
           text: "Cerrar sesión",
           style: "destructive",
-          onPress: () => {
-            // La lógica de logout debe llamarse desde aquí
-            console.log("Cerrando sesión...");
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              console.error("Error cerrando sesión:", error);
+              Alert.alert("Error", "No se pudo cerrar la sesión");
+            }
           },
         },
       ]

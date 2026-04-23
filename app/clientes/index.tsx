@@ -11,7 +11,6 @@ import {
   RefreshControl,
 } from "react-native";
 import AppHeader from "../../components/shared/AppHeader";
-import DrawerMenu from "../../components/home/DrawerMenu";
 import NotificationModal from "../../components/home/NotificationModal";
 import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
 import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
@@ -31,7 +30,6 @@ export default function ClientesScreen() {
   const insets = useSafeAreaInsets(); // Obtiene el espacio seguro de Android/iOS
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showRegistroCliente, setShowRegistroCliente] = useState(false);
   const [showFiltros, setShowFiltros] = useState(false);
   const [filters, setFilters] = useState<ClienteFilters>(DEFAULT_CLIENTE_FILTERS);
@@ -377,7 +375,7 @@ export default function ClientesScreen() {
       <AppHeader
         userData={userData}
         onNotificationsPress={() => setShowNotifications(true)}
-        onMenuPress={() => setShowDrawer(true)}
+        onProfilePress={() => router.push("/configuracion")}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
         onSearchSubmit={handleSearch}
@@ -632,13 +630,6 @@ export default function ClientesScreen() {
         currentFilters={filters}
         onApply={(newFilters) => setFilters(newFilters)}
         onClear={() => setFilters(DEFAULT_CLIENTE_FILTERS)}
-      />
-
-      {/* Drawer Menu */}
-      <DrawerMenu
-        visible={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        userData={userData}
       />
 
       {/* Modal de Detalles del Cliente */}

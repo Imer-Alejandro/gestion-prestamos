@@ -13,7 +13,7 @@ interface AppHeaderProps {
     role: string;
   };
   onNotificationsPress: () => void;
-  onMenuPress: () => void;
+  onProfilePress: () => void;
   searchQuery: string;
   onSearchChange: (text: string) => void;
   onSearchSubmit: () => void;
@@ -22,12 +22,12 @@ interface AppHeaderProps {
 
 /**
  * Header compartido para todas las pantallas principales
- * Incluye perfil, notificaciones, menú y buscador
+ * Incluye perfil (cliqueable), notificaciones y buscador
  */
 export default function AppHeader({
   userData,
   onNotificationsPress,
-  onMenuPress,
+  onProfilePress,
   searchQuery,
   onSearchChange,
   onSearchSubmit,
@@ -45,8 +45,12 @@ export default function AppHeader({
       }}
     >
       <View className="flex-row items-center justify-between mb-6">
-        {/* Perfil de usuario */}
-        <View className="flex-row items-center">
+        {/* Perfil de usuario - Cliqueable para ir a Configuración */}
+        <TouchableOpacity 
+          className="flex-row items-center"
+          onPress={onProfilePress}
+          activeOpacity={0.7}
+        >
           {/* Avatar con iniciales */}
           <View className="w-12 h-12 bg-white/20 rounded-full items-center justify-center border-2 border-white/30 mr-3">
             <Text className="text-white text-lg font-bold">
@@ -62,9 +66,9 @@ export default function AppHeader({
               {userData.role}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
-        {/* Iconos de notificación y menú */}
+        {/* Iconos de notificación */}
         <View className="flex-row gap-3">
           <TouchableOpacity
             onPress={onNotificationsPress}
@@ -76,14 +80,6 @@ export default function AppHeader({
             {hasNotifications && (
               <View className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border border-[#13678A]" />
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={onMenuPress}
-            className="w-10 h-10 bg-white/10 rounded-full items-center justify-center"
-            activeOpacity={0.7}
-          >
-            <Ionicons name="menu" size={24} color="#ffffff" />
           </TouchableOpacity>
         </View>
       </View>

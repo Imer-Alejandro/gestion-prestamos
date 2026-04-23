@@ -10,7 +10,6 @@ import {
   InteractionManager
 } from "react-native";
 import AppHeader from "../../components/shared/AppHeader";
-import DrawerMenu from "../../components/home/DrawerMenu";
 import Skeleton from "../../components/shared/Skeleton";
 import NotificationModal from "../../components/home/NotificationModal";
 import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
@@ -34,7 +33,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets(); // Obtiene el espacio seguro de Android/iOS
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -141,7 +139,7 @@ export default function HomeScreen() {
       <AppHeader
         userData={userData}
         onNotificationsPress={() => setShowNotifications(true)}
-        onMenuPress={() => setShowDrawer(true)}
+        onProfilePress={() => router.push("/configuracion")}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
         onSearchSubmit={handleSearchSubmit}
@@ -429,13 +427,6 @@ export default function HomeScreen() {
         notifications={notifications}
         onClose={() => setShowNotifications(false)}
         onDeleteNotification={handleDeleteNotification}
-      />
-
-      {/* Drawer Menu */}
-      <DrawerMenu
-        visible={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        userData={userData}
       />
 
       {/* Modal de Detalles del Cliente */}

@@ -200,7 +200,9 @@ export function NuevoPrestamoModal({
         const dueDate = new Date(startDate);
         let monthsToAdd = installments;
 
-        if (frequency === 'weekly') {
+        if (frequency === 'daily') {
+          dueDate.setDate(dueDate.getDate() + installments);
+        } else if (frequency === 'weekly') {
           dueDate.setDate(dueDate.getDate() + installments * 7);
         } else if (frequency === 'biweekly') {
           dueDate.setDate(dueDate.getDate() + installments * 14);
@@ -396,6 +398,7 @@ export function NuevoPrestamoModal({
                 selectedValue={formData.payment_frequency}
                 onValueChange={(value) => updateFormData('payment_frequency', value)}
                 options={[
+                  { label: "Diario", value: "daily" },
                   { label: "Semanal", value: "weekly" },
                   { label: "Quincenal", value: "biweekly" },
                   { label: "Mensual", value: "monthly" },

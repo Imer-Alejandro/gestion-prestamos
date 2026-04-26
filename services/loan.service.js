@@ -9,7 +9,7 @@ export async function createLoan(data) {
     throw new Error("Missing required fields: user_id, client_id, principal_amount");
   }
 
-  if (!data.interest_rate || !data.installments || !data.start_date) {
+  if (data.interest_rate === undefined || !data.installments || !data.start_date) {
     throw new Error("Missing required fields: interest_rate, installments, start_date");
   }
 
@@ -58,9 +58,10 @@ export async function createLoan(data) {
       grace_days,
       status,
       total_paid,
+      comments,
       created_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.user_id,
       data.client_id,
@@ -84,6 +85,7 @@ export async function createLoan(data) {
       data.grace_days || 0,
       "active",
       0, // total_paid
+      data.comments || null, // comments
       new Date().toISOString(),
     ],
   );
@@ -194,6 +196,10 @@ export async function updateLoan(id, data) {
   if (data.status !== undefined) {
     fields.push("status = ?");
     values.push(data.status);
+  }
+  if (data.comments !== undefined) {
+    fields.push("comments = ?");
+    values.push(data.comments);
   }
 
   if (fields.length === 0) return;

@@ -30,7 +30,12 @@ export function generateFrenchAmortization({
 
   // Formula Amortización Francesa: A = (P * r) / (1 - (1+r)^-n)
   // Redondeamos la cuota base a entero
-  const cuotaBase = (principal * periodRate) / (1 - Math.pow(1 + periodRate, -installments));
+  let cuotaBase;
+  if (periodRate === 0) {
+    cuotaBase = principal / installments;
+  } else {
+    cuotaBase = (principal * periodRate) / (1 - Math.pow(1 + periodRate, -installments));
+  }
   const cuota = Math.round(cuotaBase);
 
   let saldo = principal;

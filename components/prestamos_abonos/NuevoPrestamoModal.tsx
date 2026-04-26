@@ -9,8 +9,10 @@ import {
   Modal,
   Alert,
   FlatList,
+  Switch,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 
 interface CustomPickerProps {
   selectedValue: string | undefined;
@@ -112,10 +114,13 @@ export function NuevoPrestamoModal({
     due_date: new Date(),
     payment_frequency: 'monthly',
     grace_days: '0',
+    comments: '',
   });
 
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showDueDatePicker, setShowDueDatePicker] = useState(false);
+  const [newItem, setNewItem] = useState('');
+  const [isInterestFree, setIsInterestFree] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -126,14 +131,17 @@ export function NuevoPrestamoModal({
     if (!formData.principal_amount || parseFloat(formData.principal_amount) <= 0) {
       newErrors.principal_amount = 'Monto principal debe ser mayor a 0';
     }
-    if (!formData.interest_rate || parseFloat(formData.interest_rate) <= 0) {
-      newErrors.interest_rate = 'Tasa de interés requerida';
-    }
     if (!formData.installments || parseInt(formData.installments) <= 0) {
       newErrors.installments = 'Número de cuotas requerido';
     }
-    if (!formData.late_fee_value || parseFloat(formData.late_fee_value) <= 0) {
-      newErrors.late_fee_value = 'Valor de mora requerido';
+    
+    if (!isInterestFree) {
+      if (!formData.interest_rate || parseFloat(formData.interest_rate) <= 0) {
+        newErrors.interest_rate = 'Tasa de interés requerida';
+      }
+      if (!formData.late_fee_value || parseFloat(formData.late_fee_value) <= 0) {
+        newErrors.late_fee_value = 'Valor de mora requerido';
+      }
     }
 
     setErrors(newErrors);
@@ -147,8 +155,8 @@ export function NuevoPrestamoModal({
       ...formData,
       principal_amount: parseFloat(formData.principal_amount.replace(/\./g, '').replace(',', '.')),
       disbursed_amount: formData.disbursed_amount ? parseFloat(formData.disbursed_amount.replace(/\./g, '').replace(',', '.')) : parseFloat(formData.principal_amount.replace(/\./g, '').replace(',', '.')),
-      interest_rate: parseFloat(formData.interest_rate.replace(',', '.')),
-      late_fee_value: parseFloat(formData.late_fee_value.replace(',', '.')),
+      interest_rate: isInterestFree ? 0 : parseFloat(formData.interest_rate.replace(',', '.')),
+      late_fee_value: isInterestFree ? 0 : parseFloat(formData.late_fee_value.replace(',', '.')),
       installments: parseInt(formData.installments),
       grace_days: parseInt(formData.grace_days),
       start_date: formData.start_date.toISOString().split('T')[0],
@@ -177,7 +185,10 @@ export function NuevoPrestamoModal({
       due_date: new Date(),
       payment_frequency: 'monthly',
       grace_days: '0',
+      comments: '',
     });
+    setNewItem('');
+    setIsInterestFree(false);
     setErrors({});
     onClose();
   };
@@ -221,6 +232,17 @@ export function NuevoPrestamoModal({
   const formatCurrency = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
     return numericValue ? new Intl.NumberFormat('es-CO').format(parseInt(numericValue)) : '';
+  };
+
+  const handleAddItem = () => {
+    if (!newItem.trim()) return;
+    const currentComments = formData.comments || '';
+    const separator = currentComments && !currentComments.endsWith('\n') ? '\n' : '';
+    setFormData(prev => ({
+      ...prev,
+      comments: `${currentComments}${separator}- ${newItem.trim()}\n`
+    }));
+    setNewItem('');
   };
 
   return (
@@ -315,65 +337,80 @@ export function NuevoPrestamoModal({
               />
             </View>
 
-            {/* Condiciones del Préstamo */}
-            <Text style={styles.sectionTitle}>Condiciones del Préstamo</Text>
-
-            {/* Tasa de interés */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Tasa de Interés (%) *</Text>
-              <TextInput
-                style={[styles.input, errors.interest_rate && styles.inputError]}
-                value={formData.interest_rate}
-                onChangeText={(value) => updateFormData('interest_rate', value)}
-                placeholder="Ej: 2.5"
-                keyboardType="decimal-pad"
-              />
-              {errors.interest_rate && <Text style={styles.error}>{errors.interest_rate}</Text>}
-            </View>
-
-            {/* Base de cálculo de interés */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Base de Cálculo de Interés</Text>
-              <CustomPicker
-                selectedValue={formData.interest_calculation_base}
-                onValueChange={(value) => updateFormData('interest_calculation_base', value)}
-                options={[
-                  { label: "Mensual", value: "monthly" },
-                  { label: "Anual", value: "annual" },
-                  { label: "Diario", value: "daily" },
-                ]}
-                placeholder="Seleccionar base"
+            {/* Toggle Fiado */}
+            <View style={[styles.field, styles.row, { alignItems: 'center', justifyContent: 'space-between', marginTop: 10, marginBottom: 20 }]}>
+              <Text style={[styles.label, { marginBottom: 0 }]}>Crédito sin intereses (Fiado)</Text>
+              <Switch
+                value={isInterestFree}
+                onValueChange={setIsInterestFree}
+                trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+                thumbColor="#FFFFFF"
               />
             </View>
 
-            {/* Mora */}
-            <View style={styles.row}>
-              <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.label}>Tipo de Mora</Text>
-                <CustomPicker
-                  selectedValue={formData.late_fee_type}
-                  onValueChange={(value) => updateFormData('late_fee_type', value)}
-                  options={[
-                    { label: "Porcentaje", value: "percentage" },
-                    { label: "Fijo", value: "fixed" },
-                    { label: "Diario %", value: "daily_percentage" },
-                  ]}
-                  placeholder="Seleccionar tipo"
-                />
-              </View>
+            {!isInterestFree && (
+              <>
+                {/* Condiciones del Préstamo */}
+                <Text style={styles.sectionTitle}>Condiciones del Préstamo</Text>
 
-              <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
-                <Text style={styles.label}>Valor de Mora *</Text>
-                <TextInput
-                  style={[styles.input, errors.late_fee_value && styles.inputError]}
-                  value={formData.late_fee_value}
-                  onChangeText={(value) => updateFormData('late_fee_value', value)}
-                  placeholder={formData.late_fee_type === 'percentage' ? "Ej: 1.5" : "Ej: 5000"}
-                  keyboardType="decimal-pad"
-                />
-                {errors.late_fee_value && <Text style={styles.error}>{errors.late_fee_value}</Text>}
-              </View>
-            </View>
+                {/* Tasa de interés */}
+                <View style={styles.field}>
+                  <Text style={styles.label}>Tasa de Interés (%) *</Text>
+                  <TextInput
+                    style={[styles.input, errors.interest_rate && styles.inputError]}
+                    value={formData.interest_rate}
+                    onChangeText={(value) => updateFormData('interest_rate', value)}
+                    placeholder="Ej: 2.5"
+                    keyboardType="decimal-pad"
+                  />
+                  {errors.interest_rate && <Text style={styles.error}>{errors.interest_rate}</Text>}
+                </View>
+
+                {/* Base de cálculo de interés */}
+                <View style={styles.field}>
+                  <Text style={styles.label}>Base de Cálculo de Interés</Text>
+                  <CustomPicker
+                    selectedValue={formData.interest_calculation_base}
+                    onValueChange={(value) => updateFormData('interest_calculation_base', value)}
+                    options={[
+                      { label: "Mensual", value: "monthly" },
+                      { label: "Anual", value: "annual" },
+                      { label: "Diario", value: "daily" },
+                    ]}
+                    placeholder="Seleccionar base"
+                  />
+                </View>
+
+                {/* Mora */}
+                <View style={styles.row}>
+                  <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.label}>Tipo de Mora</Text>
+                    <CustomPicker
+                      selectedValue={formData.late_fee_type}
+                      onValueChange={(value) => updateFormData('late_fee_type', value)}
+                      options={[
+                        { label: "Porcentaje", value: "percentage" },
+                        { label: "Fijo", value: "fixed" },
+                        { label: "Diario %", value: "daily_percentage" },
+                      ]}
+                      placeholder="Seleccionar tipo"
+                    />
+                  </View>
+
+                  <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.label}>Valor de Mora *</Text>
+                    <TextInput
+                      style={[styles.input, errors.late_fee_value && styles.inputError]}
+                      value={formData.late_fee_value}
+                      onChangeText={(value) => updateFormData('late_fee_value', value)}
+                      placeholder={formData.late_fee_type === 'percentage' ? "Ej: 1.5" : "Ej: 5000"}
+                      keyboardType="decimal-pad"
+                    />
+                    {errors.late_fee_value && <Text style={styles.error}>{errors.late_fee_value}</Text>}
+                  </View>
+                </View>
+              </>
+            )}
 
             {/* Número de cuotas */}
             <View style={styles.field}>
@@ -467,6 +504,38 @@ export function NuevoPrestamoModal({
                 keyboardType="numeric"
               />
             </View>
+
+            {/* Información Adicional */}
+            <Text style={styles.sectionTitle}>Información Adicional</Text>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Añadir a lista (opcional)</Text>
+              <View style={styles.addItemRow}>
+                <TextInput
+                  style={[styles.input, styles.addItemInput]}
+                  value={newItem}
+                  onChangeText={setNewItem}
+                  placeholder="Ej: Moto marca Honda, color Rojo..."
+                />
+                <TouchableOpacity style={styles.addItemButton} onPress={handleAddItem}>
+                  <Ionicons name="add" size={24} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Comentarios / Detalles</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={formData.comments}
+                onChangeText={(value) => updateFormData('comments', value)}
+                placeholder="Escribe comentarios o detalles adicionales del préstamo..."
+                multiline={true}
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+
           </View>
         </ScrollView>
 
@@ -650,5 +719,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#FFFFFF',
+  },
+  textArea: {
+    height: 100,
+  },
+  addItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addItemInput: {
+    flex: 1,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  addItemButton: {
+    backgroundColor: '#10B981',
+    padding: 12,
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

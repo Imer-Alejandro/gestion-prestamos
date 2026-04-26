@@ -38,6 +38,7 @@ interface LoanDetails {
   due_date: string;
   payment_frequency: string;
   expected_profit: number;
+  comments?: string;
 }
 
 interface Installment {
@@ -121,6 +122,7 @@ export function DetallesPrestamoModal({
         due_date: loan.due_date,
         payment_frequency: loan.payment_frequency,
         expected_profit: installmentsData.reduce((sum: number, inst: any) => sum + inst.interest_amount, 0),
+        comments: loan.comments,
       });
 
       setInstallments(installmentsData.map((installment: any) => ({
@@ -243,21 +245,25 @@ export function DetallesPrestamoModal({
             </Text>
           </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Ganancias Estimadas:</Text>
-            <Text style={[styles.infoValue, { color: '#2563EB' }]}>
-              {formatCurrency(loanDetails.expected_profit)}
-            </Text>
-          </View>
+          {loanDetails.interest_rate > 0 && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Ganancias Estimadas:</Text>
+              <Text style={[styles.infoValue, { color: '#2563EB' }]}>
+                {formatCurrency(loanDetails.expected_profit)}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.overviewCard}>
           <Text style={styles.cardTitle}>Condiciones</Text>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Tasa de Interés:</Text>
-            <Text style={styles.infoValue}>{loanDetails.interest_rate}%</Text>
-          </View>
+          {loanDetails.interest_rate > 0 && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Tasa de Interés:</Text>
+              <Text style={styles.infoValue}>{loanDetails.interest_rate}%</Text>
+            </View>
+          )}
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Cuotas:</Text>
@@ -282,6 +288,13 @@ export function DetallesPrestamoModal({
             <Text style={styles.infoValue}>{formatDate(loanDetails.due_date)}</Text>
           </View>
         </View>
+
+        {loanDetails.comments ? (
+          <View style={styles.overviewCard}>
+            <Text style={styles.cardTitle}>Información Adicional</Text>
+            <Text style={styles.commentsText}>{loanDetails.comments}</Text>
+          </View>
+        ) : null}
       </ScrollView>
     );
   };
@@ -725,5 +738,10 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  commentsText: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 22,
   },
 });

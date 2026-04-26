@@ -133,6 +133,7 @@ export async function initializeDatabase() {
 
       status TEXT NOT NULL,
       total_paid REAL DEFAULT 0,
+      comments TEXT,
 
       created_at TEXT NOT NULL,
       updated_at TEXT,
@@ -270,6 +271,7 @@ export async function initializeDatabase() {
     { name: 'grace_days', type: 'INTEGER', defaultValue: 0 },
     { name: 'status', type: 'TEXT', defaultValue: "'active'" },
     { name: 'total_paid', type: 'REAL', defaultValue: 0 },
+    { name: 'comments', type: 'TEXT', defaultValue: "''" },
     { name: 'created_at', type: 'TEXT', defaultValue: "''" },
     { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
     { name: 'closed_at', type: 'TEXT', defaultValue: "''" },

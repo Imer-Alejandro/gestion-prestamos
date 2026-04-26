@@ -94,9 +94,9 @@ export async function createPayment(data) {
   // 4. Actualizar el préstamo
   await db.runAsync(
     `UPDATE loans 
-     SET total_paid = total_paid + ?,
-         current_balance = current_balance - ?,
-         status = CASE WHEN (current_balance - ?) <= 0 THEN 'completed' ELSE status END,
+     SET total_paid = ROUND(total_paid + ?, 2),
+         current_balance = MAX(0, ROUND(current_balance - ?, 2)),
+         status = CASE WHEN ROUND(current_balance - ?, 2) <= 0 THEN 'completed' ELSE status END,
          updated_at = ?
      WHERE id = ?`,
     [data.amount, data.amount, data.amount, new Date().toISOString(), data.loan_id],
@@ -201,8 +201,8 @@ export async function voidPayment(paymentId) {
   // 5. Revertir impacto en el préstamo
   await db.runAsync(
     `UPDATE loans
-     SET total_paid = MAX(0, total_paid - ?),
-         current_balance = current_balance + ?,
+     SET total_paid = MAX(0, ROUND(total_paid - ?, 2)),
+         current_balance = ROUND(current_balance + ?, 2),
          status = 'active', -- Siempre regresa a activo al anular un pago
          updated_at = ?
      WHERE id = ?`,

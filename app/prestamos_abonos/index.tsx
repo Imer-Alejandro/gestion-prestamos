@@ -21,6 +21,8 @@ import { DetallesAbonoModal } from "../../components/prestamos_abonos/DetallesAb
 import { FiltrosPrestamoModal } from "../../components/prestamos_abonos/FiltrosPrestamoModal";
 import { Abono } from "../../components/prestamos_abonos/AbonoCard";
 import { QuickActionFAB } from "../../components/shared/QuickActionFAB";
+import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
+import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
 
 import {
   formatCurrencyPrestamos,
@@ -51,6 +53,8 @@ export default function PrestamosScreen() {
   const [selectedPrestamo, setSelectedPrestamo] = useState<Prestamo | null>(null);
   const [selectedAbono, setSelectedAbono] = useState<Abono | null>(null);
   const [editAbonoData, setEditAbonoData] = useState<any>(null);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
 
 
   // Estado de datos
@@ -153,10 +157,26 @@ export default function PrestamosScreen() {
     }
   };
 
-  // Maneja la búsqueda
-  const handleSearch = () => {
-    console.log("Buscando:", searchQuery);
+  // Maneja la búsqueda de clientes (Overlay)
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    setIsSearchActive(text.length > 0);
   };
+
+  const handleSearchSubmit = () => {
+    if (searchQuery.length > 0) setIsSearchActive(true);
+  };
+
+  const handleResultPress = (client: any) => {
+    setIsSearchActive(false);
+    setSearchQuery("");
+    setSelectedClient(client);
+  };
+
+  const filteredClients = clients.filter(c =>
+    (c.first_name + ' ' + c.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.document_number.includes(searchQuery)
+  );
 
   // Determinar si hay filtros activos (diferentes al defecto 'all')
   const isFiltering = filters.status !== 'all' ||
@@ -164,11 +184,8 @@ export default function PrestamosScreen() {
     filters.date !== null;
 
 
-  // Filtrar préstamos por búsqueda
-  const filteredLoans = loans.filter(loan =>
-    loan.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    loan.id.includes(searchQuery)
-  );
+  // Los préstamos ya no se filtran por la barra de búsqueda general
+  const filteredLoans = loans;
 
 
   // Navegar al detalle del préstamo
@@ -284,15 +301,21 @@ export default function PrestamosScreen() {
     <View className="flex-1 bg-gray-50">
       <Stack.Screen options={{ headerShown: false, animation: "none" }} />
 
-      {/* Header compartido */}
       <AppHeader
         userData={userData}
         onNotificationsPress={() => setShowNotifications(true)}
         onProfilePress={() => router.push("/configuracion")}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onSearchSubmit={handleSearch}
+        onSearchChange={handleSearchChange}
+        onSearchSubmit={handleSearchSubmit}
         hasNotifications={notifications.length > 0}
+      />
+
+      <SearchResultsOverlay
+        isVisible={isSearchActive}
+        results={filteredClients}
+        onClose={() => setIsSearchActive(false)}
+        onResultPress={handleResultPress}
       />
 
       {/* Info Card - Resumen de Préstamos (Versión Compacta) */}
@@ -549,7 +572,6 @@ export default function PrestamosScreen() {
         abono={selectedAbono}
       />
 
-      {/* Modal de Filtros */}
       <FiltrosPrestamoModal
         visible={showFiltros}
         onClose={() => setShowFiltros(false)}
@@ -565,6 +587,14 @@ export default function PrestamosScreen() {
           });
         }}
 
+      />
+
+      {/* Modal de Detalles del Cliente */}
+      <ClientDetailsModal
+        visible={!!selectedClient}
+        client={selectedClient}
+        onClose={() => setSelectedClient(null)}
+        onRefresh={loadData}
       />
 
 

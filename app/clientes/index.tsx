@@ -17,8 +17,9 @@ import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
 import RegistroClienteModal, { type ClienteFormData } from "../../components/clientes/RegistroClienteModal";
 import ProgressBar from "../../components/clientes/ProgressBar";
 import { useAuth } from "../../contexts/AuthContext";
-import { getClients, createClient } from "../../services/client.service";
+import { getClients, createClient, deactivateClient } from "../../services/client.service";
 import { FiltrosClienteModal, type ClienteFilters, DEFAULT_CLIENTE_FILTERS } from "../../components/clientes/FiltrosClienteModal";
+import { ClienteCard } from "../../components/clientes/ClienteCard";
 
 /**
  * Pantalla de Clientes
@@ -54,12 +55,12 @@ export default function ClientesScreen() {
       setIsLoading(true);
       const clientesData = await getClients(user.id);
       setClientes(clientesData || []);
-      
+
       // Cargar notificaciones reales
       const { getPendingNotificationsUI } = await import("../../services/notification.service");
       const uiNotifications = await getPendingNotificationsUI();
       setNotifications(uiNotifications);
-      
+
       console.log(`✅ ${clientesData?.length || 0} clientes cargados`);
     } catch (error) {
       console.error("Error cargando clientes:", error);
@@ -112,8 +113,8 @@ export default function ClientesScreen() {
   };
 
   // Determinar si hay filtros activos
-  const isFiltering = filters.status !== 'all' || 
-    filters.hasActiveLoans !== 'all' || 
+  const isFiltering = filters.status !== 'all' ||
+    filters.hasActiveLoans !== 'all' ||
     filters.registeredFrom !== null;
 
   // Filtrar clientes según búsqueda y filtros
@@ -128,7 +129,7 @@ export default function ClientesScreen() {
       const matchSearch = nombreCompleto.includes(query) ||
         documento.includes(query) ||
         telefono.includes(query);
-        
+
       if (!matchSearch) return false;
     }
 
@@ -149,9 +150,9 @@ export default function ClientesScreen() {
     if (filters.registeredFrom) {
       const clientDate = new Date(cliente.created_at);
       const filterDate = new Date(filters.registeredFrom);
-      clientDate.setHours(0,0,0,0);
-      filterDate.setHours(0,0,0,0);
-      
+      clientDate.setHours(0, 0, 0, 0);
+      filterDate.setHours(0, 0, 0, 0);
+
       if (clientDate < filterDate) return false;
     }
 
@@ -159,12 +160,39 @@ export default function ClientesScreen() {
   });
 
   // Abrir detalle del cliente en el modal (mismo componente que en búsqueda)
-  const handleClientePress = (clienteId: string) => {
+  const handleClientePress = useCallback((clienteId: string) => {
     const cliente = clientes.find(c => c.id.toString() === clienteId);
     if (cliente) {
       setSelectedClient(cliente);
     }
-  };
+  }, [clientes]);
+
+  // Desactivar cliente (soft delete)
+  const handleDeactivateClient = useCallback(async (clienteId: string, activeLoansCount: number) => {
+    if (activeLoansCount > 0) {
+      // Por si la validación falla antes
+      Alert.alert(
+        "Acción denegada",
+        "No puedes anular un cliente con préstamos activos. Por favor salda o anula sus préstamos primero."
+      );
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await deactivateClient(clienteId);
+      
+      // Recargar la lista local
+      setClientes(prev => prev.filter(c => c.id.toString() !== clienteId));
+      
+      Alert.alert("Éxito", "El cliente ha sido anulado correctamente.");
+    } catch (error) {
+      console.error("Error anulando cliente:", error);
+      Alert.alert("Error", "Ocurrió un problema al anular el cliente.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   // Navegar a registrar nuevo cliente
   const handleNuevoCliente = () => {
@@ -243,140 +271,13 @@ export default function ClientesScreen() {
 
   // Renderizar card de cliente
   const renderClienteCard = (cliente: any) => {
-    const iniciales = `${cliente.first_name[0]}${cliente.last_name[0]}`.toUpperCase();
-    const nombreCompleto = `${cliente.first_name} ${cliente.last_name}`;
-
-    // Función para formatear moneda
-    const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat('es-DO', {
-        style: 'currency',
-        currency: 'DOP',
-      }).format(amount || 0);
-    };
-
-    // Función para formatear fecha
-    const formatDate = (dateString: string) => {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('es-DO', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-    };
-
-    // Determinar color del estado
-    const getStatusColor = () => {
-      switch (cliente.status) {
-        case 'en-mora':
-          return { bg: 'bg-red-100', text: 'En mora', textColor: 'text-red-700' };
-        case 'proximo-mora':
-          return { bg: 'bg-yellow-100', text: 'Próximo a vencer', textColor: 'text-yellow-700' };
-        default:
-          return { bg: 'bg-emerald-100', text: 'Al día', textColor: 'text-emerald-700' };
-      }
-    };
-
-    const statusColor = getStatusColor();
-
     return (
-      <TouchableOpacity
+      <ClienteCard
         key={cliente.id}
+        cliente={cliente}
         onPress={() => handleClientePress(cliente.id.toString())}
-        className="bg-white rounded-[20px] p-4 mb-4 border border-slate-100/60"
-        activeOpacity={0.7}
-        style={{
-          shadowColor: "#0f172a",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.04,
-          shadowRadius: 12,
-          elevation: 2,
-        }}
-      >
-        {/* Header de la tarjeta */}
-        <View className="flex-row items-start mb-3.5">
-          {/* Avatar */}
-          <View className="w-12 h-12 bg-slate-800 rounded-full items-center justify-center mr-3.5 border-2 border-slate-100 shadow-sm">
-            <Text className="text-white text-sm font-bold tracking-wider">
-              {iniciales}
-            </Text>
-          </View>
-
-          {/* Información básica */}
-          <View className="flex-1 pt-0.5">
-            <Text className="text-slate-800 font-bold text-[15px] mb-0.5">
-              {nombreCompleto}
-            </Text>
-            <Text className="text-slate-500 text-[11px] mb-1.5 font-medium">
-              {cliente.document_type} • {cliente.document_number}
-            </Text>
-            <View className="flex-row items-center bg-slate-50 self-start px-2 py-0.5 rounded-md border border-slate-100">
-              <Ionicons name="call" size={10} color="#64748b" />
-              <Text className="text-slate-600 text-[11px] ml-1.5 font-medium">
-                {cliente.phone_primary}
-              </Text>
-            </View>
-          </View>
-
-          {/* Badge de estado */}
-          <View className={`${statusColor.bg} px-2.5 py-1 rounded-full border border-white/50`}>
-            <Text className={`${statusColor.textColor} text-[10px] font-bold uppercase tracking-wider`}>
-              {statusColor.text}
-            </Text>
-          </View>
-        </View>
-
-        {/* Información financiera */}
-        <View className="bg-slate-50/80 rounded-xl p-3.5 mb-3 border border-slate-100">
-          <View className="flex-row justify-between items-center mb-2">
-            <View>
-              <Text className="text-slate-500 text-[11px] uppercase tracking-wider mb-0.5">
-                Deuda Total
-              </Text>
-              <Text className="text-slate-800 text-sm font-bold">
-                {formatCurrency(cliente.totalDebt)}
-              </Text>
-            </View>
-            <View className="items-end">
-              <Text className="text-slate-500 text-[11px] uppercase tracking-wider mb-0.5">
-                Pendiente
-              </Text>
-              <Text className="text-red-500 text-sm font-bold">
-                {formatCurrency(cliente.pendingDebt)}
-              </Text>
-            </View>
-          </View>
-
-          <View className="mt-1">
-            <ProgressBar
-              percentage={cliente.totalDebt > 0 ? (cliente.totalPaid / cliente.totalDebt) * 100 : 0}
-              color="#10B981"
-            />
-            <View className="flex-row justify-between mt-1.5">
-              <Text className="text-slate-400 text-[10px]">Total abonado</Text>
-              <Text className="text-emerald-600 font-medium text-[10px]">{formatCurrency(cliente.totalPaid)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Footer - Info adicional */}
-        <View className="flex-row justify-between items-center pt-1">
-          <View className="flex-row items-center">
-            <Ionicons name="calendar-outline" size={12} color="#94a3b8" />
-            <Text className="text-slate-400 text-[10px] ml-1 font-medium">
-              Registrado: {formatDate(cliente.created_at)}
-            </Text>
-          </View>
-
-          {cliente.activeLoansCount > 0 && (
-            <View className="flex-row items-center bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-              <Ionicons name="document-text" size={10} color="#3b82f6" />
-              <Text className="text-blue-600 text-[10px] font-bold ml-1">
-                {cliente.activeLoansCount} {cliente.activeLoansCount === 1 ? 'préstamo' : 'préstamos'}
-              </Text>
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
+        onVoid={handleDeactivateClient}
+      />
     );
   };
 

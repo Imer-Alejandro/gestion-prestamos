@@ -125,17 +125,29 @@ export function RegistroAbonoModal({
   const [loading, setLoading] = useState(false);
   const [selectedInstallmentId, setSelectedInstallmentId] = useState<number | null>(null);
 
-  // Cargar datos iniciales al editar
+  // Cargar datos iniciales al editar o resetear al abrir
   React.useEffect(() => {
-    if (visible && initialData) {
-      setFormData({
-        amount: initialData.amount,
-        payment_method: initialData.payment_method,
-        reference_number: '',
-        payment_date: initialData.payment_date,
-      });
-      const formatted = initialData.amount ? new Intl.NumberFormat('es-CO').format(parseInt(initialData.amount)) : '';
-      setDisplayAmount(formatted);
+    if (visible) {
+      if (initialData) {
+        setFormData({
+          amount: initialData.amount,
+          payment_method: initialData.payment_method,
+          reference_number: '',
+          payment_date: initialData.payment_date,
+        });
+        const formatted = initialData.amount ? new Intl.NumberFormat('es-CO').format(parseInt(initialData.amount)) : '';
+        setDisplayAmount(formatted);
+      } else {
+        // Asegurarse de que esté limpio al abrir si no hay datos iniciales
+        setFormData({
+          amount: '',
+          payment_method: 'efectivo',
+          reference_number: '',
+          payment_date: new Date(),
+        });
+        setDisplayAmount('');
+        setErrors({});
+      }
     }
   }, [visible, initialData]);
 
@@ -231,6 +243,7 @@ export function RegistroAbonoModal({
       reference_number: '',
       payment_date: new Date(),
     });
+    setDisplayAmount('');
     setErrors({});
     onClose();
   };

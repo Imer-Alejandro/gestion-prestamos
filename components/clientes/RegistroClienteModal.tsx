@@ -14,6 +14,8 @@ import {
   View
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import SignatureCapture from "../shared/SignatureCapture";
+import { SvgXml } from "react-native-svg";
 
 interface RegistroClienteModalProps {
   visible: boolean;
@@ -88,6 +90,7 @@ export default function RegistroClienteModal({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateNacimiento, setDateNacimiento] = useState(new Date());
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   // Estado del formulario
   const [formData, setFormData] = useState<ClienteFormData>({
@@ -146,7 +149,7 @@ export default function RegistroClienteModal({
           ingresos: initialData.monthly_income ? String(initialData.monthly_income) : "",
           tipoVivienda: "Propia",
           recomendadoPor: initialData.reference_name || "",
-          firma: null,
+          firma: initialData.signature_svg || null,
           nota: initialData.notes || "",
         });
       } else {
@@ -243,6 +246,37 @@ export default function RegistroClienteModal({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Función para obtener el XML limpio si viene como Data URI Base64
+  const getSvgXml = (signature: string | null) => {
+    if (!signature) return null;
+    if (signature.includes('data:image/svg+xml;base64,')) {
+      try {
+        const base64 = signature.split('data:image/svg+xml;base64,')[1];
+        // Decodificador base64 simple
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+        let str = '';
+        let i = 0;
+        while (i < base64.length) {
+          const p1 = chars.indexOf(base64[i++]);
+          const p2 = chars.indexOf(base64[i++]);
+          const p3 = chars.indexOf(base64[i++]);
+          const p4 = chars.indexOf(base64[i++]);
+          const c1 = (p1 << 2) | (p2 >> 4);
+          const c2 = ((p2 & 15) << 4) | (p3 >> 2);
+          const c3 = ((p3 & 3) << 6) | p4;
+          str += String.fromCharCode(c1);
+          if (p3 !== 64) str += String.fromCharCode(c2);
+          if (p4 !== 64) str += String.fromCharCode(c3);
+        }
+        return str;
+      } catch (e) {
+        console.error("Error decodificando SVG:", e);
+        return null;
+      }
+    }
+    return signature;
   };
 
   const isFormValid = () => {
@@ -852,21 +886,34 @@ export default function RegistroClienteModal({
                   {/* Firma */}
                   <View className="mb-4">
                     <Text className="text-gray-800 text-sm font-medium mb-2">
-                      Firma del cliente
+                      Firma del cliente (Opcional)
                     </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        // TODO: Implementar captura de firma
-                        alert("Funcionalidad de firma en desarrollo");
-                      }}
-                      className="border-2 border-dashed border-gray-300 rounded-lg px-4 py-8 items-center justify-center"
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="pencil-outline" size={32} color="#9CA3AF" />
-                      <Text className="text-gray-500 text-sm mt-2">
-                        Toca para agregar firma
-                      </Text>
-                    </TouchableOpacity>
+                    
+                    {formData.firma ? (
+                      <View className="border border-gray-200 rounded-xl p-2 bg-gray-50 items-center">
+                        <View className="w-full h-40 bg-white rounded-lg items-center justify-center overflow-hidden">
+                          <SvgXml xml={getSvgXml(formData.firma)} width="100%" height="100%" />
+                        </View>
+                        <TouchableOpacity 
+                          onPress={() => setFormData({ ...formData, firma: null })}
+                          className="mt-2 flex-row items-center"
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                          <Text className="text-red-500 text-xs ml-1 font-bold uppercase">Eliminar firma</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => setShowSignatureModal(true)}
+                        className="border-2 border-dashed border-gray-300 rounded-lg px-4 py-8 items-center justify-center"
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="pencil-outline" size={32} color="#9CA3AF" />
+                        <Text className="text-gray-500 text-sm mt-2">
+                          Toca para agregar firma
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
 
@@ -898,6 +945,37 @@ export default function RegistroClienteModal({
           </Animated.View>
         </BlurView>
       </View>
+      {/* Modal de Firma */}
+      <Modal
+        visible={showSignatureModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSignatureModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center px-4">
+          <View className="bg-white rounded-3xl overflow-hidden shadow-2xl">
+            <View className="p-4 border-b border-gray-100 flex-row justify-between items-center bg-gray-50">
+              <Text className="text-gray-800 font-bold text-lg">Captura de Firma</Text>
+              <TouchableOpacity onPress={() => setShowSignatureModal(false)}>
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+            
+            <View className="p-4" style={{ height: 450 }}>
+              <SignatureCapture 
+                onOK={(svg) => {
+                  setFormData({ ...formData, firma: svg });
+                  setShowSignatureModal(false);
+                }}
+                onClear={() => {}}
+                descriptionText="Firme dentro del cuadro"
+                confirmText="Guardar Firma"
+                clearText="Reiniciar"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }

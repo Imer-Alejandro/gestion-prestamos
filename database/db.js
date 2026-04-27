@@ -277,6 +277,10 @@ export async function initializeDatabase() {
     { name: 'closed_at', type: 'TEXT', defaultValue: "''" },
   ]);
 
+  await ensureColumns('clients', [
+    { name: 'signature_svg', type: 'TEXT', defaultValue: "NULL" },
+  ]);
+
   await ensureColumns('loan_installments', [
     { name: 'loan_id', type: 'INTEGER', defaultValue: 0 },
     { name: 'installment_number', type: 'INTEGER', defaultValue: 0 },

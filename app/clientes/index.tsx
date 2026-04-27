@@ -235,6 +235,7 @@ export default function ClientesScreen() {
         monthly_income: clienteData.ingresos ? parseFloat(clienteData.ingresos) : null,
         reference_name: clienteData.recomendadoPor || null,
         reference_phone: clienteData.telefonoOtro || null,
+        signature_svg: clienteData.firma || null,
         notes: clienteData.nota || null,
         credit_limit: 0,
       };

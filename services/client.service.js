@@ -46,9 +46,10 @@ export async function createClient(data) {
       occupation, workplace, monthly_income,
       reference_name, reference_phone,
       credit_limit, notes,
+      signature_svg,
       created_at, is_active
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     [
       data.user_id,
       data.first_name,
@@ -71,6 +72,7 @@ export async function createClient(data) {
       data.reference_phone,
       data.credit_limit,
       data.notes,
+      data.signature_svg || null,
       new Date().toISOString(),
     ],
   );
@@ -236,6 +238,7 @@ export async function updateClient(id, data) {
          reference_name = ?,
          reference_phone = ?,
          notes = ?,
+         signature_svg = ?,
          updated_at = ?
      WHERE id = ?`,
     [
@@ -258,6 +261,7 @@ export async function updateClient(id, data) {
       data.reference_name,
       data.reference_phone,
       data.notes,
+      data.signature_svg || null,
       new Date().toISOString(),
       id,
     ],

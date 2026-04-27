@@ -18,6 +18,7 @@ import { createPayment } from "../../services/payment.service";
 import { updateClient } from "../../services/client.service";
 import { RegistroAbonoModal } from "../prestamos_abonos/RegistroAbonoModal";
 import RegistroClienteModal from "../clientes/RegistroClienteModal";
+import { SvgXml } from "react-native-svg";
 
 interface ClientDetailsModalProps {
   visible: boolean;
@@ -248,6 +249,37 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
 
   const loanStatusLabel = (s: string) => s === "active" ? "ACTIVO" : s === "completed" ? "COMPLETADO" : s.toUpperCase();
 
+  // Función para obtener el XML limpio si viene como Data URI Base64
+  const getSvgXml = (signature: string | null) => {
+    if (!signature) return null;
+    if (signature.includes('data:image/svg+xml;base64,')) {
+      try {
+        const base64 = signature.split('data:image/svg+xml;base64,')[1];
+        // Decodificador base64 simple para evitar dependencias externas
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+        let str = '';
+        let i = 0;
+        while (i < base64.length) {
+          const p1 = chars.indexOf(base64[i++]);
+          const p2 = chars.indexOf(base64[i++]);
+          const p3 = chars.indexOf(base64[i++]);
+          const p4 = chars.indexOf(base64[i++]);
+          const c1 = (p1 << 2) | (p2 >> 4);
+          const c2 = ((p2 & 15) << 4) | (p3 >> 2);
+          const c3 = ((p3 & 3) << 6) | p4;
+          str += String.fromCharCode(c1);
+          if (p3 !== 64) str += String.fromCharCode(c2);
+          if (p4 !== 64) str += String.fromCharCode(c3);
+        }
+        return str;
+      } catch (e) {
+        console.error("Error decodificando SVG:", e);
+        return null;
+      }
+    }
+    return signature;
+  };
+
   return (
     <>
       {/* ── Modal Detalle Cliente ── */}
@@ -349,6 +381,16 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
                     <Text style={{ color: "#9A3412", fontSize: 10, fontWeight: "600", marginBottom: 4 }}>SALDO PENDIENTE</Text>
                     <Text style={{ color: "#7C2D12", fontSize: 20, fontWeight: "800" }}>{formatCurrency(clientData.pendingDebt)}</Text>
                   </View>
+
+                  {/* Firma del Cliente */}
+                  {clientData.signature_svg && (
+                    <View style={{ marginBottom: 20 }}>
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: "#111827", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Firma del Cliente</Text>
+                      <View style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 16, padding: 12, alignItems: "center", justifyContent: "center", minHeight: 120 }}>
+                        <SvgXml xml={getSvgXml(clientData.signature_svg)} width="100%" height="100" />
+                      </View>
+                    </View>
+                  )}
 
                   {/* Historial Préstamos */}
                   <Text style={{ fontSize: 14, fontWeight: "700", color: "#111827", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Historial de Préstamos</Text>

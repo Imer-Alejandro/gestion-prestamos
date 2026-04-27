@@ -114,14 +114,17 @@ export async function sendLocalNotification(title, body, data = {}, userId = nul
 /**
  * Obtiene notificaciones para la UI (Campana)
  */
-export async function getPendingNotificationsUI() {
+export async function getPendingNotificationsUI(userId) {
+  if (!userId) return [];
+  
   try {
     const db = await getDb();
     const rows = await db.getAllAsync(
       `SELECT * FROM notifications 
-       WHERE is_dismissed = 0 
+       WHERE user_id = ? AND is_dismissed = 0 
        ORDER BY created_at DESC 
-       LIMIT 50`
+       LIMIT 50`,
+      [userId]
     );
 
     return rows.map(row => ({
@@ -187,10 +190,21 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async () => {
     await initializeDatabase();
     
     const db = await getDb();
-    const user = await db.getFirstAsync('SELECT id FROM users LIMIT 1');
-    if (!user) return BackgroundFetch.BackgroundFetchResult.NoData;
+    
+    // Intentar obtener el usuario actual desde el almacenamiento
+    const { getItemAsync } = await import('./storage.service');
+    const storedUserId = await getItemAsync('user_id');
+    
+    let userId;
+    if (storedUserId) {
+      userId = parseInt(storedUserId);
+    } else {
+      // Fallback: tomar el primero si no hay sesión activa (no ideal pero mejor que nada)
+      const user = await db.getFirstAsync('SELECT id FROM users LIMIT 1');
+      if (!user) return BackgroundFetch.BackgroundFetchResult.NoData;
+      userId = user.id;
+    }
 
-    const userId = user.id;
     const todayStr = formatDate(new Date());
 
     // 1. Cobros de Hoy

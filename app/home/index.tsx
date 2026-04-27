@@ -75,7 +75,7 @@ export default function HomeScreen() {
         const clientsData = await getClients(user.id);
         setClients(clientsData);
 
-        const uiNotifications = await getPendingNotificationsUI();
+        const uiNotifications = await getPendingNotificationsUI(user.id);
         setNotifications(uiNotifications);
 
         setIsLoading(false);

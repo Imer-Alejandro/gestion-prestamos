@@ -123,7 +123,7 @@ export default function PrestamosScreen() {
 
         // Cargar notificaciones reales de la base de datos
         const { getPendingNotificationsUI } = await import("../../services/notification.service");
-        const uiNotifications = await getPendingNotificationsUI();
+        const uiNotifications = await getPendingNotificationsUI(user!.id);
         setNotifications(uiNotifications);
 
         setIsLoading(false);
@@ -150,7 +150,7 @@ export default function PrestamosScreen() {
     try {
       const { dismissNotification, getPendingNotificationsUI } = await import("../../services/notification.service");
       await dismissNotification(notificationId);
-      const updated = await getPendingNotificationsUI();
+      const updated = await getPendingNotificationsUI(user!.id);
       setNotifications(updated);
     } catch (error) {
       console.error("Error eliminando notificación:", error);

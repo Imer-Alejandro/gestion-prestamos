@@ -229,6 +229,27 @@ export async function initializeDatabase() {
   FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
 );
 
+    -------------------------------------------------------
+    -- NOTIFICATIONS
+    -------------------------------------------------------
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      data TEXT,
+      created_at TEXT NOT NULL,
+      is_read INTEGER DEFAULT 0,
+      is_dismissed INTEGER DEFAULT 0,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_notifications_user
+    ON notifications(user_id);
+
+    CREATE INDEX IF NOT EXISTS idx_notifications_dismissed
+    ON notifications(is_dismissed);
     `);
 
   async function ensureColumns(tableName, expectedColumns) {

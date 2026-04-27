@@ -3,6 +3,39 @@ import { getDb } from "../database/db.js";
 export async function createClient(data) {
   const db = await getDb();
 
+  // Validar si el email ya existe
+  if (data.email && data.email.trim() !== '') {
+    const existingEmail = await db.getFirstAsync(
+      'SELECT id FROM clients WHERE email = ?',
+      [data.email.trim()]
+    );
+    if (existingEmail) {
+      throw new Error("El correo electrónico ya se encuentra registrado para otro cliente.");
+    }
+  }
+
+  // Validar si el teléfono primario ya existe
+  if (data.phone_primary && data.phone_primary.trim() !== '') {
+    const existingPhone = await db.getFirstAsync(
+      'SELECT id FROM clients WHERE phone_primary = ? OR phone_secondary = ?',
+      [data.phone_primary.trim(), data.phone_primary.trim()]
+    );
+    if (existingPhone) {
+      throw new Error("El teléfono principal ya se encuentra registrado para otro cliente.");
+    }
+  }
+
+  // Validar si el teléfono secundario ya existe
+  if (data.phone_secondary && data.phone_secondary.trim() !== '') {
+    const existingPhone2 = await db.getFirstAsync(
+      'SELECT id FROM clients WHERE phone_primary = ? OR phone_secondary = ?',
+      [data.phone_secondary.trim(), data.phone_secondary.trim()]
+    );
+    if (existingPhone2) {
+      throw new Error("El teléfono secundario ya se encuentra registrado para otro cliente.");
+    }
+  }
+
   const result = await db.runAsync(
     `INSERT INTO clients (
       user_id, first_name, last_name,
@@ -137,6 +170,50 @@ export async function getClientById(id) {
 /* UPDATE CLIENT */
 export async function updateClient(id, data) {
   const db = await getDb();
+
+  // Validar si el documento ya existe (excluyendo este cliente)
+  if (data.document_number && data.document_number.trim() !== '') {
+    const existingDoc = await db.getFirstAsync(
+      'SELECT id FROM clients WHERE document_number = ? AND id != ?',
+      [data.document_number.trim(), id]
+    );
+    if (existingDoc) {
+      throw new Error("El número de documento ya se encuentra registrado para otro cliente.");
+    }
+  }
+
+  // Validar si el email ya existe (excluyendo este cliente)
+  if (data.email && data.email.trim() !== '') {
+    const existingEmail = await db.getFirstAsync(
+      'SELECT id FROM clients WHERE email = ? AND id != ?',
+      [data.email.trim(), id]
+    );
+    if (existingEmail) {
+      throw new Error("El correo electrónico ya se encuentra registrado para otro cliente.");
+    }
+  }
+
+  // Validar si el teléfono primario ya existe (excluyendo este cliente)
+  if (data.phone_primary && data.phone_primary.trim() !== '') {
+    const existingPhone = await db.getFirstAsync(
+      'SELECT id FROM clients WHERE (phone_primary = ? OR phone_secondary = ?) AND id != ?',
+      [data.phone_primary.trim(), data.phone_primary.trim(), id]
+    );
+    if (existingPhone) {
+      throw new Error("El teléfono principal ya se encuentra registrado para otro cliente.");
+    }
+  }
+
+  // Validar si el teléfono secundario ya existe (excluyendo este cliente)
+  if (data.phone_secondary && data.phone_secondary.trim() !== '') {
+    const existingPhone2 = await db.getFirstAsync(
+      'SELECT id FROM clients WHERE (phone_primary = ? OR phone_secondary = ?) AND id != ?',
+      [data.phone_secondary.trim(), data.phone_secondary.trim(), id]
+    );
+    if (existingPhone2) {
+      throw new Error("El teléfono secundario ya se encuentra registrado para otro cliente.");
+    }
+  }
 
   await db.runAsync(
     `UPDATE clients

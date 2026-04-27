@@ -10,6 +10,29 @@ async function hashPassword(password) {
 
 export async function createUser(userData) {
   const db = await getDb();
+
+  // Validar si el email ya existe
+  if (userData.email && userData.email.trim() !== '') {
+    const existingEmail = await db.getFirstAsync(
+      'SELECT id FROM users WHERE email = ?',
+      [userData.email.trim()]
+    );
+    if (existingEmail) {
+      throw new Error("El correo electrónico ya se encuentra registrado para otro usuario.");
+    }
+  }
+
+  // Validar si el teléfono ya existe
+  if (userData.phone && userData.phone.trim() !== '') {
+    const existingPhone = await db.getFirstAsync(
+      'SELECT id FROM users WHERE phone = ?',
+      [userData.phone.trim()]
+    );
+    if (existingPhone) {
+      throw new Error("El teléfono ya se encuentra registrado para otro usuario.");
+    }
+  }
+
   const passwordHash = await hashPassword(userData.password);
 
   const result = await db.runAsync(
@@ -35,6 +58,17 @@ export async function getUserById(id) {
 
 export async function updateUser(id, data) {
   const db = await getDb();
+
+  // Validar si el teléfono ya existe
+  if (data.phone && data.phone.trim() !== '') {
+    const existingPhone = await db.getFirstAsync(
+      'SELECT id FROM users WHERE phone = ? AND id != ?',
+      [data.phone.trim(), id]
+    );
+    if (existingPhone) {
+      throw new Error("El teléfono ya se encuentra registrado para otro usuario.");
+    }
+  }
 
   await db.runAsync(
     `UPDATE users 

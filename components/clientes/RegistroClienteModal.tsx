@@ -16,6 +16,7 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import SignatureCapture from "../shared/SignatureCapture";
 import { SvgXml } from "react-native-svg";
+import { RD_LOCATIONS } from "../../data/rdLocations";
 
 interface RegistroClienteModalProps {
   visible: boolean;
@@ -70,6 +71,59 @@ const TIPOS_DOCUMENTO = ["Cédula", "Pasaporte", "RNC"];
 const SEXOS = ["Masculino", "Femenino"];
 const TIPOS_VIVIENDA = ["Propia", "Alquilada", "Familiar", "Otra"];
 const SITUACIONES_LABORALES = ["Empleado", "Independiente", "Desempleado", "Pensionado"];
+const NACIONALIDADES = [
+  { label: "Dominicana", flag: "🇩🇴" },
+  { label: "Haitiana", flag: "🇭🇹" },
+  { label: "Venezolana", flag: "🇻🇪" },
+  { label: "Colombiana", flag: "🇨🇴" },
+  { label: "Mexicana", flag: "🇲🇽" },
+  { label: "Estadounidense", flag: "🇺🇸" },
+  { label: "Española", flag: "🇪🇸" },
+  { label: "Puertorriqueña", flag: "🇵🇷" },
+  { label: "Cubana", flag: "🇨🇺" },
+  { label: "Panameña", flag: "🇵🇦" },
+  { label: "Argentina", flag: "🇦🇷" },
+  { label: "Boliviana", flag: "🇧🇴" },
+  { label: "Brasileña", flag: "🇧🇷" },
+  { label: "Chilena", flag: "🇨🇱" },
+  { label: "Costarricense", flag: "🇨🇷" },
+  { label: "Ecuatoriana", flag: "🇪🇨" },
+  { label: "Salvadoreña", flag: "🇸🇻" },
+  { label: "Guatemalteca", flag: "🇬🇹" },
+  { label: "Hondureña", flag: "🇭🇳" },
+  { label: "Nicaragüense", flag: "🇳🇮" },
+  { label: "Paraguaya", flag: "🇵🇾" },
+  { label: "Peruana", flag: "🇵🇪" },
+  { label: "Uruguaya", flag: "🇺🇾" },
+  { label: "Canadiense", flag: "🇨🇦" },
+  { label: "Italiana", flag: "🇮🇹" },
+  { label: "Francesa", flag: "🇫🇷" },
+  { label: "Alemana", flag: "🇩🇪" },
+  { label: "China", flag: "🇨🇳" },
+  { label: "Japonesa", flag: "🇯🇵" },
+  { label: "Otra", flag: "🌍" }
+];
+
+const formatCedula = (text: string) => {
+  // Eliminar todo lo que no sea número
+  const digits = text.replace(/\D/g, "");
+  
+  // Limitar a 11 dígitos
+  const limited = digits.substring(0, 11);
+  
+  // Formatear: XXX-XXXXXXX-X
+  let formatted = "";
+  if (limited.length > 0) {
+    formatted += limited.substring(0, 3);
+  }
+  if (limited.length > 3) {
+    formatted += "-" + limited.substring(3, 10);
+  }
+  if (limited.length > 10) {
+    formatted += "-" + limited.substring(10, 11);
+  }
+  return formatted;
+};
 
 /**
  * Modal de Registro de Cliente
@@ -85,6 +139,11 @@ export default function RegistroClienteModal({
   const translateY = useRef(new Animated.Value(0)).current;
   const [showTipoDocPicker, setShowTipoDocPicker] = useState(false);
   const [showSexoPicker, setShowSexoPicker] = useState(false);
+  const [showNacionalidadPicker, setShowNacionalidadPicker] = useState(false);
+  const [showProvinciaPicker, setShowProvinciaPicker] = useState(false);
+  const [showMunicipioPicker, setShowMunicipioPicker] = useState(false);
+  const [showSectorPicker, setShowSectorPicker] = useState(false);
+  const [sectorSearch, setSectorSearch] = useState("");
   const [showViviendaPicker, setShowViviendaPicker] = useState(false);
   const [showSituacionLaboralPicker, setShowSituacionLaboralPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -98,7 +157,7 @@ export default function RegistroClienteModal({
     tipoDocumento: "Cédula",
     numeroDocumento: "",
     fechaNacimiento: "",
-    nacionalidad: "Dominicana",
+    nacionalidad: "🇩🇴 Dominicana",
     sexo: "Masculino",
     celularWhatsapp: "",
     telefonoCasa: "",
@@ -159,7 +218,7 @@ export default function RegistroClienteModal({
           tipoDocumento: "Cédula",
           numeroDocumento: "",
           fechaNacimiento: "",
-          nacionalidad: "Dominicana",
+          nacionalidad: "🇩🇴 Dominicana",
           sexo: "Masculino",
           celularWhatsapp: "",
           telefonoCasa: "",
@@ -183,6 +242,10 @@ export default function RegistroClienteModal({
 
       setShowTipoDocPicker(false);
       setShowSexoPicker(false);
+      setShowNacionalidadPicker(false);
+      setShowProvinciaPicker(false);
+      setShowMunicipioPicker(false);
+      setShowSectorPicker(false);
       setShowViviendaPicker(false);
       setShowSituacionLaboralPicker(false);
       setShowDatePicker(false);
@@ -239,6 +302,8 @@ export default function RegistroClienteModal({
     }
     if (!formData.numeroDocumento.trim()) {
       newErrors.numeroDocumento = "El número de documento es obligatorio";
+    } else if (formData.tipoDocumento === "Cédula" && formData.numeroDocumento.length < 13) {
+      newErrors.numeroDocumento = "La cédula debe tener 11 dígitos";
     }
     if (!formData.celularWhatsapp.trim()) {
       newErrors.celularWhatsapp = "El número de celular es obligatorio";
@@ -422,12 +487,18 @@ export default function RegistroClienteModal({
                       <TextInput
                         value={formData.numeroDocumento}
                         onChangeText={(text) => {
-                          setFormData({ ...formData, numeroDocumento: text });
+                          let formattedText = text;
+                          if (formData.tipoDocumento === "Cédula") {
+                            formattedText = formatCedula(text);
+                          }
+                          setFormData({ ...formData, numeroDocumento: formattedText });
                           if (errors.numeroDocumento) setErrors({ ...errors, numeroDocumento: "" });
                         }}
-                        placeholder="001-0123456-7"
+                        placeholder={formData.tipoDocumento === "Cédula" ? "001-0123456-7" : "Número de documento"}
                         className={`border ${errors.numeroDocumento ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 text-gray-900 text-base`}
                         placeholderTextColor="#9CA3AF"
+                        keyboardType={formData.tipoDocumento === "Cédula" ? "numeric" : "default"}
+                        maxLength={formData.tipoDocumento === "Cédula" ? 13 : 20}
                       />
                       {errors.numeroDocumento && (
                         <Text className="text-red-500 text-xs mt-1">{errors.numeroDocumento}</Text>
@@ -516,15 +587,66 @@ export default function RegistroClienteModal({
                     <Text className="text-gray-800 text-sm font-medium mb-2">
                       Nacionalidad*
                     </Text>
-                    <TextInput
-                      value={formData.nacionalidad}
-                      onChangeText={(text) =>
-                        setFormData({ ...formData, nacionalidad: text })
-                      }
-                      placeholder="Ej: Dominicana"
-                      className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-base"
-                      placeholderTextColor="#9CA3AF"
-                    />
+                    <TouchableOpacity
+                      onPress={() => setShowNacionalidadPicker(true)}
+                      className="border border-gray-300 rounded-lg px-4 py-3 flex-row items-center justify-between"
+                      activeOpacity={0.7}
+                    >
+                      <Text className="text-gray-900 text-base">
+                        {formData.nacionalidad}
+                      </Text>
+                      <Ionicons
+                        name="chevron-down"
+                        size={20}
+                        color="#6B7280"
+                      />
+                    </TouchableOpacity>
+
+                    {/* Modal dedicado para el Selector de Nacionalidad (Evita problemas de scroll) */}
+                    <Modal
+                      visible={showNacionalidadPicker}
+                      transparent={true}
+                      animationType="fade"
+                      onRequestClose={() => setShowNacionalidadPicker(false)}
+                    >
+                      <TouchableOpacity 
+                        className="flex-1 bg-black/40 justify-center items-center px-6"
+                        activeOpacity={1}
+                        onPress={() => setShowNacionalidadPicker(false)}
+                      >
+                        <View className="bg-white w-full max-h-[60%] rounded-2xl overflow-hidden shadow-2xl">
+                          <View className="px-6 py-4 border-b border-gray-100 flex-row items-center justify-between">
+                            <Text className="text-gray-800 text-lg font-bold">Seleccionar Nacionalidad</Text>
+                            <TouchableOpacity onPress={() => setShowNacionalidadPicker(false)}>
+                              <Ionicons name="close" size={24} color="#374151" />
+                            </TouchableOpacity>
+                          </View>
+                          
+                          <ScrollView className="px-2 py-2">
+                            {NACIONALIDADES.map((item) => (
+                              <TouchableOpacity
+                                key={item.label}
+                                onPress={() => {
+                                  const flagLabel = `${item.flag} ${item.label}`;
+                                  setFormData({ ...formData, nacionalidad: flagLabel });
+                                  setShowNacionalidadPicker(false);
+                                }}
+                                className={`px-4 py-4 rounded-xl mb-1 flex-row items-center ${formData.nacionalidad.includes(item.label) ? "bg-blue-50" : ""}`}
+                                activeOpacity={0.7}
+                              >
+                                <Text className="text-2xl mr-3">{item.flag}</Text>
+                                <Text className={`text-base flex-1 ${formData.nacionalidad.includes(item.label) ? "text-blue-600 font-semibold" : "text-gray-700"}`}>
+                                  {item.label}
+                                </Text>
+                                {formData.nacionalidad.includes(item.label) && (
+                                  <Ionicons name="checkmark-circle" size={20} color="#2563EB" />
+                                )}
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      </TouchableOpacity>
+                    </Modal>
                   </View>
                 </View>
 
@@ -637,30 +759,121 @@ export default function RegistroClienteModal({
                       <Text className="text-gray-800 text-sm font-medium mb-2">
                         Provincia *
                       </Text>
-                      <TextInput
-                        value={formData.provincia}
-                        onChangeText={(text) =>
-                          setFormData({ ...formData, provincia: text })
-                        }
-                        placeholder="Ej: Santo Domingo"
-                        className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-base"
-                        placeholderTextColor="#9CA3AF"
-                      />
+                      <TouchableOpacity
+                        onPress={() => setShowProvinciaPicker(true)}
+                        className="border border-gray-300 rounded-lg px-4 py-3 flex-row items-center justify-between"
+                        activeOpacity={0.7}
+                      >
+                        <Text className="text-gray-900 text-base" numberOfLines={1}>
+                          {formData.provincia || "Seleccionar"}
+                        </Text>
+                        <Ionicons name="chevron-down" size={18} color="#6B7280" />
+                      </TouchableOpacity>
+
+                      <Modal
+                        visible={showProvinciaPicker}
+                        transparent={true}
+                        animationType="fade"
+                        onRequestClose={() => setShowProvinciaPicker(false)}
+                      >
+                        <TouchableOpacity 
+                          className="flex-1 bg-black/40 justify-center items-center px-6"
+                          activeOpacity={1}
+                          onPress={() => setShowProvinciaPicker(false)}
+                        >
+                          <View className="bg-white w-full max-h-[70%] rounded-2xl overflow-hidden shadow-2xl">
+                            <View className="px-6 py-4 border-b border-gray-100 flex-row items-center justify-between">
+                              <Text className="text-gray-800 text-lg font-bold">Provincias (RD)</Text>
+                              <TouchableOpacity onPress={() => setShowProvinciaPicker(false)}>
+                                <Ionicons name="close" size={24} color="#374151" />
+                              </TouchableOpacity>
+                            </View>
+                            <ScrollView className="px-2 py-2">
+                              {RD_LOCATIONS.map((loc) => (
+                                <TouchableOpacity
+                                  key={loc.provincia}
+                                  onPress={() => {
+                                    setFormData({ 
+                                      ...formData, 
+                                      provincia: loc.provincia,
+                                      municipio: "",
+                                      sector: ""
+                                    });
+                                    setShowProvinciaPicker(false);
+                                  }}
+                                  className={`px-4 py-4 rounded-xl mb-1 flex-row items-center ${formData.provincia === loc.provincia ? "bg-blue-50" : ""}`}
+                                >
+                                  <Text className={`text-base flex-1 ${formData.provincia === loc.provincia ? "text-blue-600 font-semibold" : "text-gray-700"}`}>
+                                    {loc.provincia}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          </View>
+                        </TouchableOpacity>
+                      </Modal>
                     </View>
 
                     <View className="flex-1">
                       <Text className="text-gray-800 text-sm font-medium mb-2">
                         Municipio *
                       </Text>
-                      <TextInput
-                        value={formData.municipio}
-                        onChangeText={(text) =>
-                          setFormData({ ...formData, municipio: text })
-                        }
-                        placeholder="Ej: Distrito Nacional"
-                        className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-base"
-                        placeholderTextColor="#9CA3AF"
-                      />
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (!formData.provincia) return;
+                          setShowMunicipioPicker(true);
+                        }}
+                        className={`border ${!formData.provincia ? 'bg-gray-50 border-gray-200' : 'border-gray-300'} rounded-lg px-4 py-3 flex-row items-center justify-between`}
+                        activeOpacity={0.7}
+                        disabled={!formData.provincia}
+                      >
+                        <Text className={`text-base ${!formData.provincia ? 'text-gray-400' : 'text-gray-900'}`} numberOfLines={1}>
+                          {formData.municipio || "Seleccionar"}
+                        </Text>
+                        <Ionicons name="chevron-down" size={18} color={!formData.provincia ? "#D1D5DB" : "#6B7280"} />
+                      </TouchableOpacity>
+
+                      <Modal
+                        visible={showMunicipioPicker}
+                        transparent={true}
+                        animationType="fade"
+                        onRequestClose={() => setShowMunicipioPicker(false)}
+                      >
+                        <TouchableOpacity 
+                          className="flex-1 bg-black/40 justify-center items-center px-6"
+                          activeOpacity={1}
+                          onPress={() => setShowMunicipioPicker(false)}
+                        >
+                          <View className="bg-white w-full max-h-[70%] rounded-2xl overflow-hidden shadow-2xl">
+                            <View className="px-6 py-4 border-b border-gray-100 flex-row items-center justify-between">
+                              <Text className="text-gray-800 text-lg font-bold">Municipios de {formData.provincia}</Text>
+                              <TouchableOpacity onPress={() => setShowMunicipioPicker(false)}>
+                                <Ionicons name="close" size={24} color="#374151" />
+                              </TouchableOpacity>
+                            </View>
+                            <ScrollView className="px-2 py-2">
+                              {RD_LOCATIONS.find(l => l.provincia === formData.provincia)?.municipios.map((mun) => (
+                                <TouchableOpacity
+                                  key={mun.nombre}
+                                  onPress={() => {
+                                    setFormData({ 
+                                      ...formData, 
+                                      municipio: mun.nombre,
+                                      sector: ""
+                                    });
+                                    setShowMunicipioPicker(false);
+                                  }}
+                                  className={`px-4 py-4 rounded-xl mb-1 flex-row items-center ${formData.municipio === mun.nombre ? "bg-blue-50" : ""}`}
+                                >
+                                  <Text className={`text-base flex-1 ${formData.municipio === mun.nombre ? "text-blue-600 font-semibold" : "text-gray-700"}`}>
+                                    {mun.nombre}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          </View>
+                        </TouchableOpacity>
+                      </Modal>
                     </View>
                   </View>
 
@@ -670,15 +883,118 @@ export default function RegistroClienteModal({
                       <Text className="text-gray-800 text-sm font-medium mb-2">
                         Sector *
                       </Text>
-                      <TextInput
-                        value={formData.sector}
-                        onChangeText={(text) =>
-                          setFormData({ ...formData, sector: text })
-                        }
-                        placeholder="Ej: Zona Colonial"
-                        className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-base"
-                        placeholderTextColor="#9CA3AF"
-                      />
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (!formData.municipio) return;
+                          setShowSectorPicker(true);
+                        }}
+                        className={`border ${!formData.municipio ? 'bg-gray-50 border-gray-200' : 'border-gray-300'} rounded-lg px-4 py-3 flex-row items-center justify-between`}
+                        activeOpacity={0.7}
+                        disabled={!formData.municipio}
+                      >
+                        <Text className={`text-base ${!formData.municipio ? 'text-gray-400' : 'text-gray-900'}`} numberOfLines={1}>
+                          {formData.sector || "Seleccionar"}
+                        </Text>
+                        <Ionicons name="chevron-down" size={18} color={!formData.municipio ? "#D1D5DB" : "#6B7280"} />
+                      </TouchableOpacity>
+
+                      <Modal
+                        visible={showSectorPicker}
+                        transparent={true}
+                        animationType="fade"
+                        onRequestClose={() => {
+                          setShowSectorPicker(false);
+                          setSectorSearch("");
+                        }}
+                      >
+                        <TouchableOpacity 
+                          className="flex-1 bg-black/40 justify-center items-center px-6"
+                          activeOpacity={1}
+                          onPress={() => {
+                            setShowSectorPicker(false);
+                            setSectorSearch("");
+                          }}
+                        >
+                          <View className="bg-white w-full max-h-[75%] rounded-2xl overflow-hidden shadow-2xl">
+                            <View className="px-6 py-4 border-b border-gray-100 flex-row items-center justify-between">
+                              <View>
+                                <Text className="text-gray-800 text-lg font-bold">Sectores de {formData.municipio}</Text>
+                                <Text className="text-gray-500 text-xs">Selecciona o escribe uno nuevo</Text>
+                              </View>
+                              <TouchableOpacity onPress={() => {
+                                setShowSectorPicker(false);
+                                setSectorSearch("");
+                              }}>
+                                <Ionicons name="close" size={24} color="#374151" />
+                              </TouchableOpacity>
+                            </View>
+
+                            {/* Barra de búsqueda de sectores */}
+                            <View className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                              <View className="flex-row items-center bg-white border border-gray-200 rounded-xl px-3 py-1">
+                                <Ionicons name="search-outline" size={18} color="#9CA3AF" />
+                                <TextInput
+                                  placeholder="Buscar sector..."
+                                  className="flex-1 ml-2 text-gray-800 py-2"
+                                  value={sectorSearch}
+                                  onChangeText={setSectorSearch}
+                                  autoFocus={false}
+                                />
+                                {sectorSearch.length > 0 && (
+                                  <TouchableOpacity onPress={() => setSectorSearch("")}>
+                                    <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            </View>
+
+                            <ScrollView className="px-2 py-2">
+                              {RD_LOCATIONS.find(l => l.provincia === formData.provincia)
+                                ?.municipios.find(m => m.nombre === formData.municipio)
+                                ?.sectores
+                                .filter(sec => sec.toLowerCase().includes(sectorSearch.toLowerCase()))
+                                .map((sec) => (
+                                <TouchableOpacity
+                                  key={sec}
+                                  onPress={() => {
+                                    setFormData({ ...formData, sector: sec });
+                                    setShowSectorPicker(false);
+                                    setSectorSearch("");
+                                  }}
+                                  className={`px-4 py-4 rounded-xl mb-1 flex-row items-center ${formData.sector === sec ? "bg-blue-50" : ""}`}
+                                >
+                                  <Text className={`text-base flex-1 ${formData.sector === sec ? "text-blue-600 font-semibold" : "text-gray-700"}`}>
+                                    {sec}
+                                  </Text>
+                                  {formData.sector === sec && (
+                                    <Ionicons name="checkmark-circle" size={20} color="#2563EB" />
+                                  )}
+                                </TouchableOpacity>
+                              ))}
+                              
+                              {/* Opción si no hay resultados o para añadir uno nuevo */}
+                              <View className="border-t border-gray-100 mt-2 pt-2 pb-6">
+                                <Text className="px-4 py-2 text-gray-400 text-xs">¿No está en la lista? Úsalo como nuevo:</Text>
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    if (sectorSearch.trim()) {
+                                      setFormData({ ...formData, sector: sectorSearch.trim() });
+                                      setShowSectorPicker(false);
+                                      setSectorSearch("");
+                                    }
+                                  }}
+                                  className="mx-4 bg-gray-100 rounded-xl p-4 flex-row items-center border border-dashed border-gray-300"
+                                >
+                                  <Ionicons name="add-circle-outline" size={20} color="#6B7280" />
+                                  <Text className="text-gray-700 ml-2">
+                                    {sectorSearch.trim() ? `Usar "${sectorSearch}"` : "Escribe en el buscador arriba"}
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
+                            </ScrollView>
+                          </View>
+                        </TouchableOpacity>
+                      </Modal>
                     </View>
 
                     <View className="flex-1">

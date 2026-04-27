@@ -76,11 +76,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadStoredSession = async () => {
     try {
       const storedUserId = await StorageService.getItemAsync(USER_ID_KEY);
-      
+
       if (storedUserId) {
         // Recuperar los datos del usuario desde la BD
         const userData = await getUserById(parseInt(storedUserId));
-        
+
         if (userData && userData.is_active === 1) {
           setUser(userData);
         } else {
@@ -100,17 +100,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      
+
       // Llamar al service que valida email y contraseña
       const userData = await loginWithEmail(email, password);
-      
+
       if (userData) {
         // Guardar el ID del usuario en SecureStore
         await StorageService.setItemAsync(USER_ID_KEY, userData.id.toString());
-        
+
         // Actualizar el estado
         setUser(userData);
-        
+
         console.log("✅ Login exitoso:", userData.full_name);
       }
     } catch (error) {
@@ -125,20 +125,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (userData: RegisterData) => {
     try {
       setIsLoading(true);
-      
+
       // Crear el usuario en la BD
       const userId = await createUser(userData);
-      
+
       // Recuperar los datos completos del usuario
       const newUser = await getUserById(userId);
-      
+
       if (newUser) {
         // Guardar la sesión
         await StorageService.setItemAsync(USER_ID_KEY, userId.toString());
-        
+
         // Actualizar el estado
         setUser(newUser);
-        
+
         console.log("✅ Registro exitoso:", newUser.full_name);
       }
     } catch (error) {
@@ -154,12 +154,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Limpiar SecureStore
       await StorageService.deleteItemAsync(USER_ID_KEY);
-      
+
       // Limpiar el estado
       setUser(null);
-      
+
       console.log("✅ Logout exitoso");
-      
+
       // Redirigir al login
       router.replace("/login");
     } catch (error) {
@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const { updateUser } = await import("../services/user.service.js");
-      
+
       await updateUser(user.id, {
         full_name: newName,
         phone: user.phone,
@@ -241,10 +241,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 // Hook personalizado para usar el contexto
 export function useAuth() {
   const context = useContext(AuthContext);
-  
+
   if (context === undefined) {
     throw new Error("useAuth debe ser usado dentro de un AuthProvider");
   }
-  
+
   return context;
 }

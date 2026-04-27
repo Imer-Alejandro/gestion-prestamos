@@ -253,7 +253,7 @@ export default function ConfiguracionScreen() {
             icon="moon-outline"
             title="Modo oscuro"
             description="Disponible en futuras versiones"
-            onPress={() => {}}
+            onPress={() => { }}
             trailing="toggle"
             isActive={false}
             isDivider={true}
@@ -262,7 +262,7 @@ export default function ConfiguracionScreen() {
             icon="language-outline"
             title="Idioma"
             description="Español"
-            onPress={() => {}}
+            onPress={() => { }}
             trailing="chevron"
             isDivider={false}
           />
@@ -313,9 +313,8 @@ export default function ConfiguracionScreen() {
           <TouchableOpacity
             onPress={handleExportAll}
             disabled={exportLoading}
-            className={`px-6 py-4 flex-row items-center justify-between border-b border-gray-200 ${
-              exportLoading ? "opacity-60" : ""
-            }`}
+            className={`px-6 py-4 flex-row items-center justify-between border-b border-gray-200 ${exportLoading ? "opacity-60" : ""
+              }`}
           >
             <View className="flex-1 flex-row items-center">
               <View className="w-10 h-10 rounded-lg bg-blue-100 items-center justify-center mr-4">
@@ -340,9 +339,8 @@ export default function ConfiguracionScreen() {
           <TouchableOpacity
             onPress={handleExportClients}
             disabled={exportLoading}
-            className={`px-6 py-4 flex-row items-center justify-between border-b border-gray-200 ${
-              exportLoading ? "opacity-60" : ""
-            }`}
+            className={`px-6 py-4 flex-row items-center justify-between border-b border-gray-200 ${exportLoading ? "opacity-60" : ""
+              }`}
           >
             <View className="flex-1 flex-row items-center">
               <View className="w-10 h-10 rounded-lg bg-green-100 items-center justify-center mr-4">
@@ -367,9 +365,8 @@ export default function ConfiguracionScreen() {
           <TouchableOpacity
             onPress={handleExportLoans}
             disabled={exportLoading}
-            className={`px-6 py-4 flex-row items-center justify-between border-b border-gray-200 ${
-              exportLoading ? "opacity-60" : ""
-            }`}
+            className={`px-6 py-4 flex-row items-center justify-between border-b border-gray-200 ${exportLoading ? "opacity-60" : ""
+              }`}
           >
             <View className="flex-1 flex-row items-center">
               <View className="w-10 h-10 rounded-lg bg-purple-100 items-center justify-center mr-4">
@@ -394,9 +391,8 @@ export default function ConfiguracionScreen() {
           <TouchableOpacity
             onPress={handleExportPayments}
             disabled={exportLoading}
-            className={`px-6 py-4 flex-row items-center justify-between ${
-              exportLoading ? "opacity-60" : ""
-            }`}
+            className={`px-6 py-4 flex-row items-center justify-between ${exportLoading ? "opacity-60" : ""
+              }`}
           >
             <View className="flex-1 flex-row items-center">
               <View className="w-10 h-10 rounded-lg bg-orange-100 items-center justify-center mr-4">

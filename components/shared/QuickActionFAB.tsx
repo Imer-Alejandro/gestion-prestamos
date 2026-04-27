@@ -1,19 +1,21 @@
 import React, { useState } from "react";
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  Modal, 
-  FlatList, 
-  Alert 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  FlatList,
+  Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
-import { getClients } from "../../services/client.service";
-import { createLoan, getLoansByClient } from "../../services/loan.service";
-import { createPayment } from "../../services/payment.service";
+import { getClients, getClientById } from "../../services/client.service";
+import { createLoan, getLoansByClient, getLoanById } from "../../services/loan.service";
+import { createPayment, getPaymentById } from "../../services/payment.service";
 import { NuevoPrestamoModal } from "../prestamos_abonos/NuevoPrestamoModal";
 import { RegistroAbonoModal } from "../prestamos_abonos/RegistroAbonoModal";
+import { ConfirmationModal } from "./ConfirmationModal";
+import { generateLoanReceipt, generatePaymentReceipt } from "../../services/pdf.service";
 
 interface QuickActionFABProps {
   onRefresh?: () => void;
@@ -25,19 +27,29 @@ interface QuickActionFABProps {
  */
 export const QuickActionFAB: React.FC<QuickActionFABProps> = ({ onRefresh }) => {
   const { user } = useAuth();
-  
+
   // UI States
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [showLoanModal, setShowLoanModal] = useState(false);
   const [showAbonoModal, setShowAbonoModal] = useState(false);
   const [showClientSelector, setShowClientSelector] = useState(false);
   const [showLoanSelector, setShowLoanSelector] = useState(false);
-  
+
   // Data States
   const [clients, setClients] = useState<any[]>([]);
   const [loansForClient, setLoansForClient] = useState<any[]>([]);
   const [targetLoanId, setTargetLoanId] = useState<number | null>(null);
   const [selectedClientForAbono, setSelectedClientForAbono] = useState<any>(null);
+
+  // Estados para Confirmación Profesional
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationConfig, setConfirmationConfig] = useState<{
+    title: string;
+    message: string;
+    type: 'loan' | 'payment';
+    data: any;
+  } | null>(null);
+  const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
 
   // Cargador de clientes
   const loadClients = async () => {
@@ -65,9 +77,19 @@ export const QuickActionFAB: React.FC<QuickActionFABProps> = ({ onRefresh }) => 
   const handleSaveLoan = async (data: any) => {
     if (!user?.id) return;
     try {
-      await createLoan({ ...data, user_id: user.id });
-      Alert.alert("Éxito", "Préstamo creado correctamente");
+      const loanId = await createLoan({ ...data, user_id: user.id });
+      const fullLoan = await getLoanById(loanId);
+      const client = await getClientById(data.client_id);
+
+      setConfirmationConfig({
+        title: "Préstamo Confirmado",
+        message: `El préstamo para ${client?.first_name || 'el cliente'} ha sido registrado exitosamente.`,
+        type: 'loan',
+        data: { loan: fullLoan, client }
+      });
+
       setShowLoanModal(false);
+      setShowConfirmation(true);
       if (onRefresh) onRefresh();
     } catch (error: any) {
       Alert.alert("Error", error.message);
@@ -77,13 +99,48 @@ export const QuickActionFAB: React.FC<QuickActionFABProps> = ({ onRefresh }) => 
   const handleSaveAbono = async (data: any) => {
     if (!user?.id) return;
     try {
-      await createPayment({ ...data, user_id: user.id });
-      Alert.alert("Éxito", "Abono registrado correctamente");
+      const paymentId = await createPayment({ ...data, user_id: user.id });
+      const fullPayment = await getPaymentById(paymentId);
+      const fullLoan = await getLoanById(data.loan_id);
+      const client = selectedClientForAbono || await getClientById(fullLoan.client_id);
+
+      setConfirmationConfig({
+        title: "Abono Registrado",
+        message: `Se ha recibido el pago de $${Number(data.amount).toLocaleString()} correctamente.`,
+        type: 'payment',
+        data: { payment: fullPayment, loan: fullLoan, client }
+      });
+
       setShowAbonoModal(false);
+      setShowConfirmation(true);
       setTargetLoanId(null);
       if (onRefresh) onRefresh();
     } catch (error: any) {
       Alert.alert("Error", error.message);
+    }
+  };
+
+  const handleGenerateReceipt = async () => {
+    if (!confirmationConfig) return;
+    try {
+      setIsGeneratingReceipt(true);
+      if (confirmationConfig.type === 'loan') {
+        await generateLoanReceipt(
+          confirmationConfig.data.loan,
+          confirmationConfig.data.client
+        );
+      } else {
+        await generatePaymentReceipt(
+          confirmationConfig.data.payment,
+          confirmationConfig.data.loan,
+          confirmationConfig.data.client
+        );
+      }
+    } catch (error) {
+      console.error("Error generating receipt:", error);
+      Alert.alert("Error", "No se pudo generar el comprobante en PDF.");
+    } finally {
+      setIsGeneratingReceipt(false);
     }
   };
 
@@ -93,7 +150,7 @@ export const QuickActionFAB: React.FC<QuickActionFABProps> = ({ onRefresh }) => 
     try {
       const clientLoans = await getLoansByClient(client.id);
       const activeLoans = clientLoans.filter((l: any) => l.status === 'active');
-      
+
       if (activeLoans.length === 0) {
         Alert.alert("Sin préstamos", "Este cliente no tiene préstamos activos.");
       } else if (activeLoans.length === 1) {
@@ -280,6 +337,19 @@ export const QuickActionFAB: React.FC<QuickActionFABProps> = ({ onRefresh }) => 
           </View>
         </View>
       </Modal>
+
+      {/* Confirmación Profesional */}
+      <ConfirmationModal
+        visible={showConfirmation}
+        title={confirmationConfig?.title || ""}
+        message={confirmationConfig?.message || ""}
+        onClose={() => {
+          setShowConfirmation(false);
+          setConfirmationConfig(null);
+        }}
+        onGenerateReceipt={handleGenerateReceipt}
+        isGenerating={isGeneratingReceipt}
+      />
     </>
   );
 };

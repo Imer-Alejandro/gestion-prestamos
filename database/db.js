@@ -30,7 +30,7 @@ export async function initializeDatabase() {
     try {
       const database = await getDatabase();
 
-  await database.execAsync(`
+      await database.execAsync(`
     -------------------------------------------------------
     -- USERS
     -------------------------------------------------------
@@ -252,81 +252,81 @@ export async function initializeDatabase() {
     ON notifications(is_dismissed);
     `);
 
-  async function ensureColumns(tableName, expectedColumns) {
-    const existingColumns = await database.getAllAsync(`PRAGMA table_info(${tableName});`);
-    const existingNames = new Set(existingColumns.map(col => col.name));
+      async function ensureColumns(tableName, expectedColumns) {
+        const existingColumns = await database.getAllAsync(`PRAGMA table_info(${tableName});`);
+        const existingNames = new Set(existingColumns.map(col => col.name));
 
-    for (const column of expectedColumns) {
-      if (!existingNames.has(column.name)) {
-        try {
-          await database.execAsync(
-            `ALTER TABLE ${tableName} ADD COLUMN ${column.name} ${column.type} DEFAULT ${column.defaultValue};`
-          );
-        } catch (error) {
-          console.warn(`No se pudo agregar columna ${column.name} en ${tableName}:`, error);
+        for (const column of expectedColumns) {
+          if (!existingNames.has(column.name)) {
+            try {
+              await database.execAsync(
+                `ALTER TABLE ${tableName} ADD COLUMN ${column.name} ${column.type} DEFAULT ${column.defaultValue};`
+              );
+            } catch (error) {
+              console.warn(`No se pudo agregar columna ${column.name} en ${tableName}:`, error);
+            }
+          }
         }
       }
-    }
-  }
 
-  await ensureColumns('loans', [
-    { name: 'user_id', type: 'INTEGER', defaultValue: 0 },
-    { name: 'client_id', type: 'INTEGER', defaultValue: 0 },
-    { name: 'current_balance', type: 'REAL', defaultValue: 0 },
-    { name: 'total_interest', type: 'REAL', defaultValue: 0 },
-    { name: 'total_late_fees', type: 'REAL', defaultValue: 0 },
-    { name: 'contract_number', type: 'TEXT', defaultValue: "''" },
-    { name: 'loan_type', type: 'TEXT', defaultValue: "'personal'" },
-    { name: 'principal_amount', type: 'REAL', defaultValue: 0 },
-    { name: 'disbursed_amount', type: 'REAL', defaultValue: 0 },
-    { name: 'interest_rate', type: 'REAL', defaultValue: 0 },
-    { name: 'interest_calculation_base', type: 'TEXT', defaultValue: "'monthly'" },
-    { name: 'interest_rate_period', type: 'TEXT', defaultValue: "'monthly'" },
-    { name: 'late_fee_type', type: 'TEXT', defaultValue: "'percentage'" },
-    { name: 'late_fee_value', type: 'REAL', defaultValue: 0 },
-    { name: 'amortization_type', type: 'TEXT', defaultValue: "'francesa'" },
-    { name: 'installments', type: 'INTEGER', defaultValue: 0 },
-    { name: 'start_date', type: 'TEXT', defaultValue: "''" },
-    { name: 'due_date', type: 'TEXT', defaultValue: "''" },
-    { name: 'payment_frequency', type: 'TEXT', defaultValue: "'monthly'" },
-    { name: 'grace_days', type: 'INTEGER', defaultValue: 0 },
-    { name: 'status', type: 'TEXT', defaultValue: "'active'" },
-    { name: 'total_paid', type: 'REAL', defaultValue: 0 },
-    { name: 'comments', type: 'TEXT', defaultValue: "''" },
-    { name: 'created_at', type: 'TEXT', defaultValue: "''" },
-    { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
-    { name: 'closed_at', type: 'TEXT', defaultValue: "''" },
-  ]);
+      await ensureColumns('loans', [
+        { name: 'user_id', type: 'INTEGER', defaultValue: 0 },
+        { name: 'client_id', type: 'INTEGER', defaultValue: 0 },
+        { name: 'current_balance', type: 'REAL', defaultValue: 0 },
+        { name: 'total_interest', type: 'REAL', defaultValue: 0 },
+        { name: 'total_late_fees', type: 'REAL', defaultValue: 0 },
+        { name: 'contract_number', type: 'TEXT', defaultValue: "''" },
+        { name: 'loan_type', type: 'TEXT', defaultValue: "'personal'" },
+        { name: 'principal_amount', type: 'REAL', defaultValue: 0 },
+        { name: 'disbursed_amount', type: 'REAL', defaultValue: 0 },
+        { name: 'interest_rate', type: 'REAL', defaultValue: 0 },
+        { name: 'interest_calculation_base', type: 'TEXT', defaultValue: "'monthly'" },
+        { name: 'interest_rate_period', type: 'TEXT', defaultValue: "'monthly'" },
+        { name: 'late_fee_type', type: 'TEXT', defaultValue: "'percentage'" },
+        { name: 'late_fee_value', type: 'REAL', defaultValue: 0 },
+        { name: 'amortization_type', type: 'TEXT', defaultValue: "'francesa'" },
+        { name: 'installments', type: 'INTEGER', defaultValue: 0 },
+        { name: 'start_date', type: 'TEXT', defaultValue: "''" },
+        { name: 'due_date', type: 'TEXT', defaultValue: "''" },
+        { name: 'payment_frequency', type: 'TEXT', defaultValue: "'monthly'" },
+        { name: 'grace_days', type: 'INTEGER', defaultValue: 0 },
+        { name: 'status', type: 'TEXT', defaultValue: "'active'" },
+        { name: 'total_paid', type: 'REAL', defaultValue: 0 },
+        { name: 'comments', type: 'TEXT', defaultValue: "''" },
+        { name: 'created_at', type: 'TEXT', defaultValue: "''" },
+        { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
+        { name: 'closed_at', type: 'TEXT', defaultValue: "''" },
+      ]);
 
-  await ensureColumns('clients', [
-    { name: 'signature_svg', type: 'TEXT', defaultValue: "NULL" },
-  ]);
+      await ensureColumns('clients', [
+        { name: 'signature_svg', type: 'TEXT', defaultValue: "NULL" },
+      ]);
 
-  await ensureColumns('loan_installments', [
-    { name: 'loan_id', type: 'INTEGER', defaultValue: 0 },
-    { name: 'installment_number', type: 'INTEGER', defaultValue: 0 },
-    { name: 'due_date', type: 'TEXT', defaultValue: "''" },
-    { name: 'scheduled_amount', type: 'REAL', defaultValue: 0 },
-    { name: 'capital_amount', type: 'REAL', defaultValue: 0 },
-    { name: 'interest_amount', type: 'REAL', defaultValue: 0 },
-    { name: 'remaining_capital', type: 'REAL', defaultValue: 0 },
-    { name: 'remaining_interest', type: 'REAL', defaultValue: 0 },
-    { name: 'remaining_late_fee', type: 'REAL', defaultValue: 0 },
-    { name: 'late_fee_accrued', type: 'REAL', defaultValue: 0 },
-    { name: 'amount_paid', type: 'REAL', defaultValue: 0 },
-    { name: 'status', type: 'TEXT', defaultValue: "'pending'" },
-    { name: 'created_at', type: 'TEXT', defaultValue: "''" },
-    { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
-  ]);
+      await ensureColumns('loan_installments', [
+        { name: 'loan_id', type: 'INTEGER', defaultValue: 0 },
+        { name: 'installment_number', type: 'INTEGER', defaultValue: 0 },
+        { name: 'due_date', type: 'TEXT', defaultValue: "''" },
+        { name: 'scheduled_amount', type: 'REAL', defaultValue: 0 },
+        { name: 'capital_amount', type: 'REAL', defaultValue: 0 },
+        { name: 'interest_amount', type: 'REAL', defaultValue: 0 },
+        { name: 'remaining_capital', type: 'REAL', defaultValue: 0 },
+        { name: 'remaining_interest', type: 'REAL', defaultValue: 0 },
+        { name: 'remaining_late_fee', type: 'REAL', defaultValue: 0 },
+        { name: 'late_fee_accrued', type: 'REAL', defaultValue: 0 },
+        { name: 'amount_paid', type: 'REAL', defaultValue: 0 },
+        { name: 'status', type: 'TEXT', defaultValue: "'pending'" },
+        { name: 'created_at', type: 'TEXT', defaultValue: "''" },
+        { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
+      ]);
 
-  await ensureColumns('payments', [
-    { name: 'status', type: 'TEXT', defaultValue: "'active'" },
-    { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
-  ]);
+      await ensureColumns('payments', [
+        { name: 'status', type: 'TEXT', defaultValue: "'active'" },
+        { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
+      ]);
 
 
 
-  console.log("✅ Database initialized successfully");
+      console.log("✅ Database initialized successfully");
     } catch (error) {
       initPromise = null;
       throw error;

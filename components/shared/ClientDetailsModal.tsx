@@ -15,10 +15,13 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { getLoansByClient } from "../../services/loan.service";
 import { createPayment } from "../../services/payment.service";
-import { updateClient } from "../../services/client.service";
+import { updateClient, getClientById } from "../../services/client.service";
 import { RegistroAbonoModal } from "../prestamos_abonos/RegistroAbonoModal";
 import RegistroClienteModal from "../clientes/RegistroClienteModal";
 import { SvgXml } from "react-native-svg";
+import { ConfirmationModal } from "./ConfirmationModal";
+import { generatePaymentReceipt } from "../../services/pdf.service";
+import { getLoanById } from "../../services/loan.service";
 
 interface ClientDetailsModalProps {
   visible: boolean;
@@ -119,6 +122,11 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
   // Estado para flujo Editar
   const [showEditModal, setShowEditModal] = useState(false);
 
+  // Estados para Confirmación Profesional
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [lastOperationData, setLastOperationData] = useState<any>(null);
+  const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
+
   const loadLoans = async () => {
     if (!clientData?.id) return;
     try {
@@ -168,15 +176,39 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
   const handleSaveAbono = async (data: any) => {
     if (!user?.id) return;
     try {
-      await createPayment({ ...data, user_id: user.id });
-      Alert.alert("Éxito", "Abono registrado correctamente.");
+      const paymentId = await createPayment({ ...data, user_id: user.id });
+
+      // Guardar datos para el recibo antes de limpiar
+      setLastOperationData({
+        payment: { ...data, id: paymentId },
+        loan: targetLoan,
+        client: clientData || await getClientById(client.id)
+      });
+
       setShowAbonoModal(false);
-      setTargetLoanId(null);
-      setTargetLoan(null);
+      setShowConfirmation(true); // Mostrar modal profesional en lugar de Alert
+
       await loadLoans();
       if (onRefresh) onRefresh();
     } catch (error: any) {
       Alert.alert("Error", error.message || "No se pudo registrar el abono.");
+    }
+  };
+
+  const handleGenerateReceipt = async () => {
+    if (!lastOperationData) return;
+    try {
+      setIsGeneratingReceipt(true);
+      await generatePaymentReceipt(
+        lastOperationData.payment,
+        lastOperationData.loan,
+        lastOperationData.client
+      );
+    } catch (error) {
+      console.error("Error generating receipt:", error);
+      Alert.alert("Error", "No se pudo generar el comprobante en PDF.");
+    } finally {
+      setIsGeneratingReceipt(false);
     }
   };
 
@@ -490,6 +522,21 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
         onSubmit={handleEditarSubmit}
         initialData={clientData}
         isEditMode={true}
+      />
+
+      {/* ── Confirmación Profesional ── */}
+      <ConfirmationModal
+        visible={showConfirmation}
+        title="Abono Registrado"
+        message={`Se ha recibido el pago de ${formatCurrency(lastOperationData?.payment?.amount)} correctamente.`}
+        onClose={() => {
+          setShowConfirmation(false);
+          setTargetLoanId(null);
+          setTargetLoan(null);
+          setLastOperationData(null);
+        }}
+        onGenerateReceipt={handleGenerateReceipt}
+        isGenerating={isGeneratingReceipt}
       />
     </>
   )

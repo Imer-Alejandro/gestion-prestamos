@@ -2,6 +2,15 @@ import { getDb } from "../database/db.js";
 import { generateFrenchAmortization } from "../utils/amortization.utils.js";
 import { generateAndSaveInstallments } from "./installment.service.js";
 
+function generateContractNumber() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluyendo 0, O, I, 1 por claridad
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 /* CREATE LOAN */
 export async function createLoan(data) {
   // Validaciones básicas
@@ -14,6 +23,9 @@ export async function createLoan(data) {
   }
 
   const db = await getDb();
+  const contractNumber = data.contract_number && data.contract_number.trim() !== '' 
+    ? data.contract_number 
+    : generateContractNumber();
 
   // Generar cuotas primero para calcular interés total
   let totalInterest = 0;
@@ -68,7 +80,7 @@ export async function createLoan(data) {
       initialBalance, // current_balance inicial = principal + intereses
       totalInterest, // total_interest proyectado
       0, // total_late_fees
-      data.contract_number,
+      contractNumber,
       data.loan_type || "personal",
       data.principal_amount,
       data.disbursed_amount,

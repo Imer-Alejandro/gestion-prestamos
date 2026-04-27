@@ -23,6 +23,10 @@ import { Abono } from "../../components/prestamos_abonos/AbonoCard";
 import { QuickActionFAB } from "../../components/shared/QuickActionFAB";
 import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
 import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
+import { ConfirmationModal } from "../../components/shared/ConfirmationModal";
+import { generateLoanReceipt, generatePaymentReceipt } from "../../services/pdf.service";
+import { getLoanById } from "../../services/loan.service";
+import { getPaymentById } from "../../services/payment.service";
 
 import {
   formatCurrencyPrestamos,
@@ -35,7 +39,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { getLoans, createLoan, voidLoan } from "../../services/loan.service";
 import { createPayment, getAllPayments } from "../../services/payment.service";
 
-import { getClients } from "../../services/client.service";
+import { getClients, getClientById } from "../../services/client.service";
 
 /**
  * Pantalla de Préstamos y Abonos
@@ -55,6 +59,16 @@ export default function PrestamosScreen() {
   const [editAbonoData, setEditAbonoData] = useState<any>(null);
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+
+  // Estados para Confirmación Profesional
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationConfig, setConfirmationConfig] = useState<{
+    title: string;
+    message: string;
+    type: 'loan' | 'payment';
+    data: any;
+  } | null>(null);
+  const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
 
 
   // Estado de datos
@@ -140,7 +154,7 @@ export default function PrestamosScreen() {
     (sum, prestamo) => sum + prestamo.deudaPendiente,
     0
   );
-  
+
   const prestamosActivos = loans.filter(l => l.status === 'activo').length;
   const prestamosAtrasados = loans.filter(l => l.status === 'atrasado').length;
   const totalPrestamos = loans.length;
@@ -242,13 +256,50 @@ export default function PrestamosScreen() {
   // Registrar pago/abono
   const handleRegisterPayment = async (paymentData: any) => {
     try {
-      await createPayment({ ...paymentData, user_id: user!.id });
-      await loadData(); // Recargar datos
+      const paymentId = await createPayment({ ...paymentData, user_id: user!.id });
+      const fullPayment = await getPaymentById(paymentId);
+      const fullLoan = await getLoanById(paymentData.loan_id);
+      const client = await getClientById(fullLoan.client_id);
+
+      setConfirmationConfig({
+        title: "Abono Registrado",
+        message: `Se ha recibido el pago de $${Number(paymentData.amount).toLocaleString()} correctamente.`,
+        type: 'payment',
+        data: { payment: fullPayment, loan: fullLoan, client }
+      });
+
+      await loadData();
       setShowRegistroAbono(false);
-      setEditAbonoData(null); // Limpiar datos de edición
+      setEditAbonoData(null);
       setShowDetallesPrestamo(false);
+      setShowConfirmation(true);
     } catch (error) {
       console.error("Error registrando pago:", error);
+      Alert.alert('Error', 'No se pudo registrar el pago');
+    }
+  };
+
+  const handleGenerateReceipt = async () => {
+    if (!confirmationConfig) return;
+    try {
+      setIsGeneratingReceipt(true);
+      if (confirmationConfig.type === 'loan') {
+        await generateLoanReceipt(
+          confirmationConfig.data.loan,
+          confirmationConfig.data.client
+        );
+      } else {
+        await generatePaymentReceipt(
+          confirmationConfig.data.payment,
+          confirmationConfig.data.loan,
+          confirmationConfig.data.client
+        );
+      }
+    } catch (error) {
+      console.error("Error generating receipt:", error);
+      Alert.alert("Error", "No se pudo generar el comprobante en PDF.");
+    } finally {
+      setIsGeneratingReceipt(false);
     }
   };
 
@@ -267,12 +318,23 @@ export default function PrestamosScreen() {
   // Crear nuevo préstamo
   const handleCreateLoan = async (loanData: any) => {
     try {
-      await createLoan({ ...loanData, user_id: user!.id });
-      await loadData(); // Recargar datos
+      const loanId = await createLoan({ ...loanData, user_id: user!.id });
+      const fullLoan = await getLoanById(loanId);
+      const client = await getClientById(loanData.client_id);
+
+      setConfirmationConfig({
+        title: "Préstamo Confirmado",
+        message: `El préstamo para ${client?.first_name || 'el cliente'} ha sido registrado exitosamente.`,
+        type: 'loan',
+        data: { loan: fullLoan, client }
+      });
+
+      await loadData();
       setShowNuevoPrestamo(false);
+      setShowConfirmation(true);
     } catch (error) {
       console.error("Error creando préstamo:", error);
-      // TODO: Mostrar error al usuario
+      Alert.alert('Error', 'No se pudo crear el préstamo');
     }
   };
 
@@ -597,8 +659,18 @@ export default function PrestamosScreen() {
         onRefresh={loadData}
       />
 
-
-
+      {/* Confirmación Profesional */}
+      <ConfirmationModal
+        visible={showConfirmation}
+        title={confirmationConfig?.title || ""}
+        message={confirmationConfig?.message || ""}
+        onClose={() => {
+          setShowConfirmation(false);
+          setConfirmationConfig(null);
+        }}
+        onGenerateReceipt={handleGenerateReceipt}
+        isGenerating={isGeneratingReceipt}
+      />
     </View>
   );
 }

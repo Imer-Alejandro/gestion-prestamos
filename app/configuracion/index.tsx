@@ -15,6 +15,7 @@ import SettingSection from "../../components/configuracion/SettingSection";
 import SettingItem from "../../components/configuracion/SettingItem";
 import DangerZone from "../../components/configuracion/DangerZone";
 import AppInfoCard from "../../components/configuracion/AppInfoCard";
+import ChangePasswordModal from "../../components/configuracion/ChangePasswordModal";
 import {
   exportClientsToExcel,
   exportLoansToExcel,
@@ -24,8 +25,9 @@ import {
 
 export default function ConfiguracionScreen() {
   const router = useRouter();
-  const { user, updateUserName, logout } = useAuth();
+  const { user, updateUserName, logout, changePassword } = useAuth();
   const [exportLoading, setExportLoading] = useState(false);
+  const [changePasswordVisible, setChangePasswordVisible] = useState(false);
 
   const handleEditProfile = async (newName: string) => {
     try {
@@ -61,11 +63,18 @@ export default function ConfiguracionScreen() {
   };
 
   const handleChangePassword = () => {
-    Alert.alert(
-      "Cambiar contraseña",
-      "Se enviará un enlace de restablecimiento a tu correo",
-      [{ text: "OK", style: "default" }]
-    );
+    setChangePasswordVisible(true);
+  };
+
+  const handleConfirmChangePassword = async (
+    currentPassword: string,
+    newPassword: string
+  ) => {
+    try {
+      await changePassword(currentPassword, newPassword);
+    } catch (error) {
+      throw error;
+    }
   };
 
   const handleLogout = () => {
@@ -431,6 +440,13 @@ export default function ConfiguracionScreen() {
           <Text className="text-gray-400 text-xs mt-2">v1.0.0</Text>
         </View>
       </ScrollView>
+
+      {/* Modal Cambiar Contraseña */}
+      <ChangePasswordModal
+        visible={changePasswordVisible}
+        onClose={() => setChangePasswordVisible(false)}
+        onChangePassword={handleConfirmChangePassword}
+      />
     </View>
   );
 }

@@ -105,3 +105,37 @@ export async function loginWithEmail(email, password) {
 
   return user;
 }
+
+/* CAMBIAR CONTRASEÑA */
+export async function changePassword(userId, currentPassword, newPassword) {
+  const db = await getDb();
+
+  // Obtener el usuario actual
+  const user = await db.getFirstAsync(`SELECT * FROM users WHERE id = ?`, [userId]);
+
+  if (!user) {
+    throw new Error("Usuario no encontrado");
+  }
+
+  // Validar contraseña actual
+  const currentPasswordHash = await hashPassword(currentPassword);
+  
+  if (currentPasswordHash !== user.password_hash) {
+    throw new Error("La contraseña actual es incorrecta");
+  }
+
+  // Validar que la nueva contraseña sea diferente
+  if (currentPassword === newPassword) {
+    throw new Error("La nueva contraseña debe ser diferente a la actual");
+  }
+
+  // Actualizar a la nueva contraseña
+  const newPasswordHash = await hashPassword(newPassword);
+
+  await db.runAsync(
+    `UPDATE users SET password_hash = ? WHERE id = ?`,
+    [newPasswordHash, userId]
+  );
+
+  return true;
+}

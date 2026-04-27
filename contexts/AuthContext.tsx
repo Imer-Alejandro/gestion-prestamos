@@ -4,6 +4,7 @@ import {
   createUser,
   getUserById,
   loginWithEmail,
+  changePassword,
 } from "../services/user.service.js";
 import * as StorageService from "../services/storage.service";
 
@@ -35,6 +36,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUserName: (newName: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 // Claves para SecureStore
@@ -206,6 +208,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Cambiar contraseña del usuario
+  const handleChangePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user) {
+      throw new Error("No hay usuario autenticado");
+    }
+
+    try {
+      await changePassword(user.id, currentPassword, newPassword);
+      console.log("✅ Contraseña actualizada correctamente");
+    } catch (error) {
+      console.error("❌ Error cambiando contraseña:", error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -215,6 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     refreshUser,
     updateUserName,
+    changePassword: handleChangePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

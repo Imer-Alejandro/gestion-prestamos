@@ -286,13 +286,15 @@ export default function PrestamosScreen() {
       if (confirmationConfig.type === 'loan') {
         await generateLoanReceipt(
           confirmationConfig.data.loan,
-          confirmationConfig.data.client
+          confirmationConfig.data.client,
+          user?.organization || undefined
         );
       } else {
         await generatePaymentReceipt(
           confirmationConfig.data.payment,
           confirmationConfig.data.loan,
-          confirmationConfig.data.client
+          confirmationConfig.data.client,
+          user?.organization || undefined
         );
       }
     } catch (error) {

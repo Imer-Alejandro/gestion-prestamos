@@ -239,6 +239,18 @@ export default function ConfiguracionScreen() {
           )}
         </View>
 
+        {/* Sección: Negocio */}
+        <SettingSection title="Mi Negocio">
+          <SettingItem
+            icon="business-outline"
+            title="Datos del Negocio"
+            description="Edita el nombre, logo, RNC y dirección"
+            onPress={() => router.push("/configuracion/negocio")}
+            trailing="chevron"
+            isDivider={false}
+          />
+        </SettingSection>
+
         {/* Sección: Preferencias */}
         <SettingSection title="Preferencias">
           <SettingItem
@@ -246,23 +258,6 @@ export default function ConfiguracionScreen() {
             title="Notificaciones"
             description="Recibe alertas sobre tus préstamos"
             onPress={handleNotifications}
-            trailing="chevron"
-            isDivider={true}
-          />
-          <SettingItem
-            icon="moon-outline"
-            title="Modo oscuro"
-            description="Disponible en futuras versiones"
-            onPress={() => { }}
-            trailing="toggle"
-            isActive={false}
-            isDivider={true}
-          />
-          <SettingItem
-            icon="language-outline"
-            title="Idioma"
-            description="Español"
-            onPress={() => { }}
             trailing="chevron"
             isDivider={false}
           />

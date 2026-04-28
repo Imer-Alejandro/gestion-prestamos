@@ -204,7 +204,8 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
       await generatePaymentReceipt(
         lastOperationData.payment,
         lastOperationData.loan,
-        lastOperationData.client
+        lastOperationData.client,
+        user?.organization || undefined
       );
     } catch (error) {
       console.error("Error generating receipt:", error);
@@ -219,7 +220,7 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
     try {
       setIsGeneratingStatus(true);
       const activeLoans = loans.filter((l) => l.status === "active");
-      await generateClientStatusReport(clientData, activeLoans);
+      await generateClientStatusReport(clientData, activeLoans, user?.organization || undefined);
       setShowStatusConfirmation(false);
     } catch (error) {
       console.error("Error generating status report:", error);

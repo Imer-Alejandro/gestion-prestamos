@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 interface BusinessInfo {
   name: string;
@@ -7,6 +8,7 @@ interface BusinessInfo {
   phone?: string;
   address?: string;
   email?: string;
+  logo_path?: string;
 }
 
 const DEFAULT_BUSINESS: BusinessInfo = {
@@ -35,6 +37,20 @@ const translateFrequency = (freq: string) => {
     monthly: 'Mensual',
   };
   return map[freq.toLowerCase()] || freq;
+};
+
+const getBase64Image = async (uri: string) => {
+  try {
+    if (!uri) return null;
+    if (uri.startsWith('data:')) return uri;
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: 'base64',
+    });
+    return `data:image/png;base64,${base64}`;
+  } catch (error) {
+    console.warn("Could not convert image to base64:", error);
+    return null;
+  }
 };
 
 const getCommonStyles = () => `
@@ -176,6 +192,8 @@ const getCommonStyles = () => `
 `;
 
 export const generateLoanReceipt = async (loan: any, client: any, business = DEFAULT_BUSINESS) => {
+  const logoBase64 = business.logo_path ? await getBase64Image(business.logo_path) : null;
+  
   const html = `
     <!DOCTYPE html>
     <html lang="es">
@@ -188,11 +206,15 @@ export const generateLoanReceipt = async (loan: any, client: any, business = DEF
         <div class="watermark">KANNI CASH</div>
         
         <div class="header">
-          <div>
-            <div class="business-title">${business.name}</div>
-            <div class="business-info">
-              ${business.address}<br>
-              Tel: ${business.phone}
+          <div style="display: flex; align-items: center; gap: 15px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: contain;" />` : ''}
+            <div>
+              <div class="business-title">${business.name}</div>
+              <div class="business-info">
+                ${business.address || ''}${business.address ? '<br>' : ''}
+                ${business.phone ? `Tel: ${business.phone}` : ''}
+                ${business.rnc ? `<br>RNC: ${business.rnc}` : ''}
+              </div>
             </div>
           </div>
           <div class="receipt-meta">
@@ -259,6 +281,8 @@ export const generateLoanReceipt = async (loan: any, client: any, business = DEF
 };
 
 export const generatePaymentReceipt = async (payment: any, loan: any, client: any, business = DEFAULT_BUSINESS) => {
+  const logoBase64 = business.logo_path ? await getBase64Image(business.logo_path) : null;
+
   const html = `
     <!DOCTYPE html>
     <html lang="es">
@@ -271,11 +295,15 @@ export const generatePaymentReceipt = async (payment: any, loan: any, client: an
         <div class="watermark">KANNI CASH</div>
         
         <div class="header">
-          <div>
-            <div class="business-title">${business.name}</div>
-            <div class="business-info">
-              ${business.address}<br>
-              Tel: ${business.phone}
+          <div style="display: flex; align-items: center; gap: 15px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: contain;" />` : ''}
+            <div>
+              <div class="business-title">${business.name}</div>
+              <div class="business-info">
+                ${business.address || ''}${business.address ? '<br>' : ''}
+                ${business.phone ? `Tel: ${business.phone}` : ''}
+                ${business.rnc ? `<br>RNC: ${business.rnc}` : ''}
+              </div>
             </div>
           </div>
           <div class="receipt-meta">
@@ -322,6 +350,7 @@ export const generatePaymentReceipt = async (payment: any, loan: any, client: an
 };
 
 export const generateClientStatusReport = async (client: any, loans: any[], business = DEFAULT_BUSINESS) => {
+  const logoBase64 = business.logo_path ? await getBase64Image(business.logo_path) : null;
   const totalBalance = loans.reduce((sum, loan) => sum + (loan.current_balance || 0), 0);
   
   const html = `
@@ -367,11 +396,15 @@ export const generateClientStatusReport = async (client: any, loans: any[], busi
         <div class="watermark">KANNI CASH</div>
         
         <div class="header">
-          <div>
-            <div class="business-title">${business.name}</div>
-            <div class="business-info">
-              ${business.address}<br>
-              Tel: ${business.phone}
+          <div style="display: flex; align-items: center; gap: 15px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: contain;" />` : ''}
+            <div>
+              <div class="business-title">${business.name}</div>
+              <div class="business-info">
+                ${business.address || ''}${business.address ? '<br>' : ''}
+                ${business.phone ? `Tel: ${business.phone}` : ''}
+                ${business.rnc ? `<br>RNC: ${business.rnc}` : ''}
+              </div>
             </div>
           </div>
           <div class="receipt-meta">

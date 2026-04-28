@@ -19,6 +19,7 @@ import { getLoansByClient } from "../../services/loan.service";
 import { getPaymentsByLoan } from "../../services/payment.service";
 import { generateClientStatusReport } from "../../services/pdf.service";
 import { ConfirmationModal } from "../../components/shared/ConfirmationModal";
+import { useAuth } from "../../contexts/AuthContext";
 
 // Paleta de colores principal de la app
 const COLORS = {
@@ -57,6 +58,7 @@ interface Abono {
 export default function ClienteDetalleScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
 
   // Estado de datos
   const [cliente, setCliente] = useState<any>(null);
@@ -179,7 +181,7 @@ export default function ClienteDetalleScreen() {
     try {
       setIsGenerating(true);
       const activeLoans = prestamos.filter(p => p.current_balance > 0);
-      await generateClientStatusReport(cliente, activeLoans);
+      await generateClientStatusReport(cliente, activeLoans, user?.organization || undefined);
       setShowConfirmation(false);
     } catch (error) {
       console.error('Error generando reporte:', error);

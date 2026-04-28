@@ -91,6 +91,28 @@ export async function getOrganizationByUserId(userId) {
   return await db.getFirstAsync(`SELECT * FROM organizations WHERE user_id = ?`, [userId]);
 }
 
+export async function updateOrganization(userId, data) {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE organizations 
+     SET name = ?, type = ?, slogan = ?, logo_path = ?, address = ?, phone = ?, email = ?, rnc = ?, currency = ?, updated_at = ?
+     WHERE user_id = ?`,
+    [
+      data.name,
+      data.type,
+      data.slogan || null,
+      data.logo_path || null,
+      data.address || null,
+      data.phone || null,
+      data.email || null,
+      data.rnc || null,
+      data.currency || 'DOP',
+      new Date().toISOString(),
+      userId
+    ]
+  );
+}
+
 export async function updateUser(id, data) {
   const db = await getDb();
 

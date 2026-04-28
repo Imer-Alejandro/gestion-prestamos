@@ -18,6 +18,17 @@ export interface User {
   created_at: string;
   last_login: string | null;
   is_active: number;
+  organization?: {
+    name: string;
+    type: string;
+    slogan?: string;
+    logo_path?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    rnc?: string;
+    currency?: string;
+  } | null;
 }
 
 export interface RegisterData {

@@ -36,6 +36,7 @@ export default function CompletarInformacionScreen() {
     direccion: "",
     correo: "",
     telefono: "",
+    rnc: "",
     nuevaContrasena: "",
     repetirContrasena: "",
   });
@@ -107,6 +108,7 @@ export default function CompletarInformacionScreen() {
         logo: params.logo,
         tipo: params.tipoOrganizacion,
         direccion: formData.direccion,
+        rnc: formData.rnc,
       },
     };
 
@@ -135,6 +137,14 @@ export default function CompletarInformacionScreen() {
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View className="px-8 pt-14">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="flex-row items-center self-start mb-6"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#ffffff" />
+            <Text className="text-white text-base ml-2 font-medium">Volver</Text>
+          </TouchableOpacity>
 
           <Text className="text-white text-3xl font-bold mb-6">
             Complete la información
@@ -176,6 +186,19 @@ export default function CompletarInformacionScreen() {
             {errors.correo && (
               <Text className="text-red-300 text-xs mt-1 ml-1">{errors.correo}</Text>
             )}
+          </View>
+
+          {/* RNC */}
+          <View className="mb-4">
+            <Text className="text-white/80 text-sm mb-2">RNC (Opcional)</Text>
+            <TextInput
+              value={formData.rnc}
+              onChangeText={(text) => setFormData({ ...formData, rnc: text })}
+              className="bg-white/10 border border-white/20 text-white p-4 rounded-lg"
+              placeholder="000-00000-0"
+              placeholderTextColor="#ccc"
+              keyboardType="numeric"
+            />
           </View>
 
         <View className="mb-5">

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import * as ImagePicker from "expo-image-picker";
 import {
   Alert,
   ScrollView,
@@ -47,6 +48,26 @@ export default function RegistroOrganizacionScreen() {
       icon: "card",
     },
   ];
+
+  const pickImage = async () => {
+    // Solicitar permisos
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso denegado', 'Se necesita permiso para acceder a la galería.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setFormData({ ...formData, logo: result.assets[0].uri });
+    }
+  };
 
   // Maneja la selección del tipo de organización
   const handleSelectTipo = (tipoId: string) => {
@@ -150,14 +171,15 @@ export default function RegistroOrganizacionScreen() {
           <View className="mb-6">
             <Text className="text-white/80 text-sm mb-2">Logo</Text>
             <TouchableOpacity
+              onPress={pickImage}
               className="bg-white/10 border border-white/30 rounded-lg px-4 flex-row items-center justify-between"
               style={{ height: 52 }}
               activeOpacity={0.7}
             >
-              <Text className="text-white/40 text-base">
-                {formData.logo || "Seleccionar imagen..."}
+              <Text className="text-white/40 text-base" numberOfLines={1}>
+                {formData.logo ? "Imagen seleccionada" : "Seleccionar imagen..."}
               </Text>
-              <Ionicons name="cloud-upload-outline" size={22} color="#ffffff80" />
+              <Ionicons name={formData.logo ? "image" : "cloud-upload-outline"} size={22} color={formData.logo ? "#4ade80" : "#ffffff80"} />
             </TouchableOpacity>
           </View>
 

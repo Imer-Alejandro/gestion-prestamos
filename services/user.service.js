@@ -48,12 +48,47 @@ export async function createUser(userData) {
     ],
   );
 
-  return result.lastInsertRowId;
+  const userId = result.lastInsertRowId;
+
+  // Si vienen datos de la organización, guardarlos
+  if (userData.organizacion) {
+    const org = userData.organizacion;
+    await db.runAsync(
+      `INSERT INTO organizations 
+        (user_id, name, type, slogan, logo_path, address, phone, email, rnc, currency, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        org.nombre || org.name,
+        org.tipo || org.type,
+        org.eslogan || org.slogan || null,
+        org.logo || org.logo_path || null,
+        org.direccion || org.address || null,
+        org.phone || null,
+        org.email || null,
+        org.rnc || null,
+        org.currency || 'DOP',
+        new Date().toISOString(),
+      ]
+    );
+  }
+
+  return userId;
 }
 
 export async function getUserById(id) {
   const db = await getDb();
-  return await db.getFirstAsync(`SELECT * FROM users WHERE id = ?`, [id]);
+  const user = await db.getFirstAsync(`SELECT * FROM users WHERE id = ?`, [id]);
+  if (user) {
+    const org = await db.getFirstAsync(`SELECT * FROM organizations WHERE user_id = ?`, [id]);
+    user.organization = org;
+  }
+  return user;
+}
+
+export async function getOrganizationByUserId(userId) {
+  const db = await getDb();
+  return await db.getFirstAsync(`SELECT * FROM organizations WHERE user_id = ?`, [userId]);
 }
 
 export async function updateUser(id, data) {
@@ -91,6 +126,9 @@ export async function loginWithPassword(password) {
     throw new Error("No existe usuario registrado");
   }
 
+  const org = await db.getFirstAsync(`SELECT * FROM organizations WHERE user_id = ?`, [user.id]);
+  user.organization = org;
+
   const passwordHash = await hashPassword(password);
 
   if (passwordHash !== user.password_hash) {
@@ -123,7 +161,7 @@ export async function loginWithEmail(email, password) {
   }
 
   const passwordHash = await hashPassword(password);
-  
+
   console.log('🔑 Hash de password ingresado:', passwordHash);
   console.log('🔑 Hash guardado en BD:', user.password_hash);
   console.log('✅ ¿Coinciden?', passwordHash === user.password_hash);
@@ -153,7 +191,7 @@ export async function changePassword(userId, currentPassword, newPassword) {
 
   // Validar contraseña actual
   const currentPasswordHash = await hashPassword(currentPassword);
-  
+
   if (currentPasswordHash !== user.password_hash) {
     throw new Error("La contraseña actual es incorrecta");
   }

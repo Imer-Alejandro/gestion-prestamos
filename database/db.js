@@ -250,6 +250,29 @@ export async function initializeDatabase() {
 
     CREATE INDEX IF NOT EXISTS idx_notifications_dismissed
     ON notifications(is_dismissed);
+
+    -------------------------------------------------------
+    -- ORGANIZATIONS (Business Data)
+    -------------------------------------------------------
+    CREATE TABLE IF NOT EXISTS organizations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      slogan TEXT,
+      logo_path TEXT,
+      address TEXT,
+      phone TEXT,
+      email TEXT,
+      rnc TEXT,
+      currency TEXT DEFAULT 'DOP',
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_org_user
+    ON organizations(user_id);
     `);
 
       async function ensureColumns(tableName, expectedColumns) {

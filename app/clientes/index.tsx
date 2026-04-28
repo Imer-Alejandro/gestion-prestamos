@@ -475,7 +475,7 @@ export default function ClientesScreen() {
             activeOpacity={0.7}
           >
             <Ionicons name="home-outline" size={24} color="#6B7280" />
-            <Text className="text-gray-500 text-xs mt-1">home</Text>
+            <Text className="text-gray-500 text-xs mt-1">inicio</Text>
           </TouchableOpacity>
 
           {/* Clientes */}

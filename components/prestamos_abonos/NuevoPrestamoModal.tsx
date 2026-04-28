@@ -201,6 +201,11 @@ export function NuevoPrestamoModal({
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
 
+    // Sincronizar interest_calculation_base con interest_rate_period
+    if (field === 'interest_calculation_base') {
+      setFormData(prev => ({ ...prev, interest_rate_period: value as string }));
+    }
+
     // Calcular fecha de vencimiento automáticamente
     if (field === 'installments' || field === 'payment_frequency' || field === 'start_date') {
       const installments = parseInt(field === 'installments' ? value as string : formData.installments);
@@ -364,6 +369,20 @@ export function NuevoPrestamoModal({
                     keyboardType="decimal-pad"
                   />
                   {errors.interest_rate && <Text style={styles.error}>{errors.interest_rate}</Text>}
+                </View>
+
+                {/* Tipo de Amortización */}
+                <View style={styles.field}>
+                  <Text style={styles.label}>Tipo de Amortización</Text>
+                  <CustomPicker
+                    selectedValue={formData.amortization_type}
+                    onValueChange={(value) => updateFormData('amortization_type', value)}
+                    options={[
+                      { label: "Francesa (Saldo decreciente)", value: "francesa" },
+                      { label: "Plana (Interés fijo sobre capital)", value: "plana" },
+                    ]}
+                    placeholder="Seleccionar tipo"
+                  />
                 </View>
 
                 {/* Base de cálculo de interés */}

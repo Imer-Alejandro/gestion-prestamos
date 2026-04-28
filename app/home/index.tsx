@@ -90,7 +90,7 @@ export default function HomeScreen() {
   const userData = {
     name: user?.full_name || "Usuario",
     role: "Gestor operador",
-    avatar: null,
+    avatarUrl: user?.organization?.logo_path
   };
 
   // Obtener saludo dinámico
@@ -391,7 +391,7 @@ export default function HomeScreen() {
           >
             <Ionicons name="home" size={24} color="#13678A" />
             <Text className="text-[#13678A] text-xs font-medium mt-1">
-              home
+              inicio
             </Text>
           </TouchableOpacity>
 

@@ -1,5 +1,5 @@
 import { getDb } from "../database/db.js";
-import { generateFrenchAmortization } from "../utils/amortization.utils.js";
+import { generateFrenchAmortization, generateFlatAmortization } from "../utils/amortization.utils.js";
 import { generateAndSaveInstallments } from "./installment.service.js";
 
 function generateContractNumber() {
@@ -32,6 +32,9 @@ export async function createLoan(data) {
   let schedule = [];
   const amortizationType = data.amortization_type || "francesa";
 
+  // Usar interest_calculation_base como fuente de verdad si interest_rate_period no está presente
+  const ratePeriod = data.interest_rate_period || data.interest_calculation_base || "monthly";
+
   if (amortizationType === "francesa") {
     schedule = generateFrenchAmortization({
       principal: data.principal_amount,
@@ -39,10 +42,20 @@ export async function createLoan(data) {
       installments: data.installments,
       startDate: data.start_date,
       paymentFrequency: data.payment_frequency || "monthly",
-      interestRatePeriod: data.interest_rate_period || "monthly",
+      interestRatePeriod: ratePeriod,
     });
-    totalInterest = schedule.reduce((sum, inst) => sum + inst.interest_amount, 0);
+  } else if (amortizationType === "plana") {
+    schedule = generateFlatAmortization({
+      principal: data.principal_amount,
+      rate: data.interest_rate,
+      installments: data.installments,
+      startDate: data.start_date,
+      paymentFrequency: data.payment_frequency || "monthly",
+    });
   }
+
+  totalInterest = schedule.reduce((sum, inst) => sum + inst.interest_amount, 0);
+
 
   const initialBalance = data.principal_amount + totalInterest;
 

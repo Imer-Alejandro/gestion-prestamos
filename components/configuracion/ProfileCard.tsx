@@ -40,7 +40,7 @@ export default function ProfileCard({
         <View className="flex-row items-center justify-between mb-0">
           <View className="flex-row items-center flex-1">
             {/* Avatar */}
-            <View className="w-16 h-16 bg-gradient-to-br from-[#13678A] to-[#0D4D68] rounded-full items-center justify-center mr-4">
+            <View className="w-16 h-16 rounded-full bg-[#13678A] items-center justify-center mr-4">
               <Text className="text-white text-2xl font-bold">{initials}</Text>
             </View>
 

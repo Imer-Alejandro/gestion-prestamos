@@ -4,13 +4,15 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Image
 } from "react-native";
 
 interface AppHeaderProps {
   userData: {
     name: string;
     role: string;
+    avatarUrl?: string;
   };
   onNotificationsPress: () => void;
   onProfilePress: () => void;
@@ -51,8 +53,8 @@ export default function AppHeader({
           onPress={onProfilePress}
           activeOpacity={0.7}
         >
-          {/* Avatar con iniciales */}
-          <View className="w-12 h-12 bg-white/20 rounded-full items-center justify-center border-2 border-white/30 mr-3">
+          {/* Avatar con imagen o iniciales */}
+          <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center border-2 border-white/30 mr-3">
             <Text className="text-white text-lg font-bold">
               {userData.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
             </Text>

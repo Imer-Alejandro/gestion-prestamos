@@ -12,6 +12,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
 } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
 import { sendLocalNotification } from "../../services/notification.service";
@@ -22,10 +23,7 @@ interface DrawerMenuProps {
   userData: {
     name: string;
     role: string;
-  };
-  userData: {
-    name: string;
-    role: string;
+    avatarUrl?: string;
   };
 }
 
@@ -201,10 +199,18 @@ export default function DrawerMenu({ visible, onClose, userData }: DrawerMenuPro
               <View className="bg-[#13678A] px-6 pt-16 pb-8 rounded-bl-3xl">
                 <View className="flex-row items-center">
                   {/* Avatar con sombra suave */}
-                  <View className="w-16 h-16 bg-white rounded-full items-center justify-center shadow-sm mr-4">
-                    <Text className="text-[#13678A] text-2xl font-bold">
-                      {userData.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                    </Text>
+                  <View className="w-16 h-16 bg-white rounded-full items-center justify-center shadow-sm mr-4 overflow-hidden">
+                    {userData.avatarUrl ? (
+                      <Image 
+                        source={{ uri: userData.avatarUrl }} 
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text className="text-[#13678A] text-2xl font-bold">
+                        {userData.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                      </Text>
+                    )}
                   </View>
                   {/* Nombre y rol */}
                   <View className="flex-1">

@@ -120,12 +120,17 @@ export async function getClients(userId) {
         // Verificar estado de mora
         if (loan.due_date && loan.status === 'active') {
           const dueDate = new Date(loan.due_date);
+          dueDate.setHours(0, 0, 0, 0);
+          
           const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
           const graceDays = loan.grace_days || 0;
 
           // Fecha límite considerando días de gracia
           const graceDate = new Date(dueDate);
           graceDate.setDate(graceDate.getDate() + graceDays);
+          graceDate.setHours(0, 0, 0, 0);
 
           // En mora: ya pasó la fecha con días de gracia
           if (today > graceDate) {
@@ -163,10 +168,80 @@ export async function getClients(userId) {
   return clientsWithFinancialInfo;
 }
 
-/* GET CLIENT BY ID */
+/* GET CLIENT BY ID WITH FINANCIAL INFO */
 export async function getClientById(id) {
   const db = await getDb();
-  return await db.getFirstAsync(`SELECT * FROM clients WHERE id = ?`, [id]);
+  const client = await db.getFirstAsync(`SELECT * FROM clients WHERE id = ?`, [id]);
+  
+  if (!client) return null;
+
+  // Obtener todos los préstamos activos del cliente
+  const loans = await db.getAllAsync(
+    `SELECT * FROM loans WHERE client_id = ? AND status != 'closed' AND status != 'voided'`,
+    [client.id]
+  );
+
+  let totalDebt = 0;
+  let totalPaid = 0;
+  let pendingDebt = 0;
+  let hasOverdueLoans = false;
+  let hasSoonOverdueLoans = false;
+
+  // Calcular totales y estado
+  for (const loan of loans) {
+    const principalAmount = loan.principal_amount || 0;
+    const paidAmount = loan.total_paid || 0;
+
+    totalDebt += principalAmount;
+    totalPaid += paidAmount;
+    pendingDebt += loan.current_balance || 0;
+
+    // Verificar estado de mora
+    if (loan.due_date && loan.status === 'active') {
+      const dueDate = new Date(loan.due_date);
+      dueDate.setHours(0, 0, 0, 0);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const graceDays = loan.grace_days || 0;
+
+      // Fecha límite considerando días de gracia
+      const graceDate = new Date(dueDate);
+      graceDate.setDate(graceDate.getDate() + graceDays);
+      graceDate.setHours(0, 0, 0, 0);
+
+      // En mora: ya pasó la fecha con días de gracia
+      if (today > graceDate) {
+        hasOverdueLoans = true;
+      }
+      // Próximo a mora: faltan 7 días o menos para vencer
+      else {
+        const diffTime = dueDate.getTime() - today.getTime();
+        const daysUntilDue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (daysUntilDue <= 7) {
+          hasSoonOverdueLoans = true;
+        }
+      }
+    }
+  }
+
+  // Determinar estado del cliente
+  let status = 'al-dia';
+  if (hasOverdueLoans) {
+    status = 'en-mora';
+  } else if (hasSoonOverdueLoans) {
+    status = 'proximo-mora';
+  }
+
+  return {
+    ...client,
+    totalDebt,
+    totalPaid,
+    pendingDebt,
+    status,
+    activeLoansCount: loans.length,
+  };
 }
 
 /* UPDATE CLIENT */

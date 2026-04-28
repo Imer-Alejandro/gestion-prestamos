@@ -116,9 +116,14 @@ export async function refreshInstallmentMora(installmentId) {
   if (!inst || inst.status === 'paid') return inst;
 
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
   const dueDate = new Date(inst.due_date);
+  dueDate.setHours(0, 0, 0, 0);
+  
   const graceDate = new Date(dueDate);
   graceDate.setDate(graceDate.getDate() + (inst.grace_days || 0));
+  graceDate.setHours(0, 0, 0, 0);
 
   if (today > graceDate && inst.late_fee_accrued === 0 && inst.late_fee_value > 0) {
     let mora = 0;

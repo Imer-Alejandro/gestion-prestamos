@@ -148,9 +148,9 @@ export default function ClienteDetalleScreen() {
   const getEstadoCliente = () => {
     if (!cliente) return { color: COLORS.success, text: "Sin datos" };
 
-    const totalDeuda = cliente.pendingDebt || 0;
-    if (totalDeuda === 0) return { color: COLORS.success, text: "Al día" };
-    if (totalDeuda > 0) return { color: COLORS.danger, text: "En mora" };
+    if (cliente.status === 'en-mora') return { color: COLORS.danger, text: "En mora" };
+    if (cliente.status === 'proximo-mora') return { color: COLORS.warning, text: "Próximo a mora" };
+    
     return { color: COLORS.success, text: "Al día" };
   };
 

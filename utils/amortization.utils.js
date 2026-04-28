@@ -39,11 +39,32 @@ export function generateFrenchAmortization({
   const cuota = Math.round(cuotaBase);
 
   let saldo = principal;
-  let currentDate = new Date(startDate);
+  // Asegurar que la fecha sea tratada como local (YYYY, MM-1, DD)
+  // Si startDate es un string "YYYY-MM-DD", dividirlo para evitar desfases de UTC
+  let currentDate;
+  if (typeof startDate === 'string' && startDate.includes('-')) {
+    const [year, month, day] = startDate.split('-').map(Number);
+    currentDate = new Date(year, month - 1, day);
+  } else {
+    currentDate = new Date(startDate);
+  }
+  currentDate.setHours(0, 0, 0, 0);
 
   const schedule = [];
 
   for (let i = 1; i <= installments; i++) {
+    // Ajustar fecha según frecuencia ANTES de asignar al vencimiento
+    // La primera cuota debe ser un periodo después de la fecha de inicio
+    if (paymentFrequency === 'daily') {
+      currentDate.setDate(currentDate.getDate() + 1);
+    } else if (paymentFrequency === 'weekly') {
+      currentDate.setDate(currentDate.getDate() + 7);
+    } else if (paymentFrequency === 'biweekly') {
+      currentDate.setDate(currentDate.getDate() + 14);
+    } else { // monthly
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+
     let interest = Math.round(saldo * periodRate);
     let capital = cuota - interest;
 
@@ -65,17 +86,6 @@ export function generateFrenchAmortization({
       remaining_interest: 0,
       status: "pending",
     });
-
-    // Ajustar fecha según frecuencia
-    if (paymentFrequency === 'daily') {
-      currentDate.setDate(currentDate.getDate() + 1);
-    } else if (paymentFrequency === 'weekly') {
-      currentDate.setDate(currentDate.getDate() + 7);
-    } else if (paymentFrequency === 'biweekly') {
-      currentDate.setDate(currentDate.getDate() + 14);
-    } else { // monthly
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    }
   }
 
   return schedule;

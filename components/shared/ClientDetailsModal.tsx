@@ -20,8 +20,8 @@ import { RegistroAbonoModal } from "../prestamos_abonos/RegistroAbonoModal";
 import RegistroClienteModal from "../clientes/RegistroClienteModal";
 import { SvgXml } from "react-native-svg";
 import { ConfirmationModal } from "./ConfirmationModal";
-import { generatePaymentReceipt } from "../../services/pdf.service";
 import { getLoanById } from "../../services/loan.service";
+import { generatePaymentReceipt, generateClientStatusReport } from "../../services/pdf.service";
 
 interface ClientDetailsModalProps {
   visible: boolean;
@@ -126,6 +126,8 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [lastOperationData, setLastOperationData] = useState<any>(null);
   const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
+  const [showStatusConfirmation, setShowStatusConfirmation] = useState(false);
+  const [isGeneratingStatus, setIsGeneratingStatus] = useState(false);
 
   const loadLoans = async () => {
     if (!clientData?.id) return;
@@ -209,6 +211,21 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
       Alert.alert("Error", "No se pudo generar el comprobante en PDF.");
     } finally {
       setIsGeneratingReceipt(false);
+    }
+  };
+
+  const handleGenerateStatusReport = async () => {
+    if (!clientData) return;
+    try {
+      setIsGeneratingStatus(true);
+      const activeLoans = loans.filter((l) => l.status === "active");
+      await generateClientStatusReport(clientData, activeLoans);
+      setShowStatusConfirmation(false);
+    } catch (error) {
+      console.error("Error generating status report:", error);
+      Alert.alert("Error", "No se pudo generar el reporte de estado.");
+    } finally {
+      setIsGeneratingStatus(false);
     }
   };
 
@@ -385,6 +402,7 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
                     {/* Estado / PDF */}
                     <TouchableOpacity
                       activeOpacity={0.75}
+                      onPress={() => setShowStatusConfirmation(true)}
                       style={{ flex: 1, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 14, paddingVertical: 13, alignItems: "center", justifyContent: "center", shadowColor: "#64748B", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2, gap: 4 }}
                     >
                       <View style={{ width: 32, height: 32, backgroundColor: "#EBF8FF", borderRadius: 10, alignItems: "center", justifyContent: "center" }}>
@@ -537,6 +555,18 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
         }}
         onGenerateReceipt={handleGenerateReceipt}
         isGenerating={isGeneratingReceipt}
+      />
+
+      {/* ── Confirmación Reporte de Estado ── */}
+      <ConfirmationModal
+        visible={showStatusConfirmation}
+        title="Reporte de Estado"
+        message={`¿Deseas generar un reporte detallado del estado de cuenta de ${clientData?.first_name || 'este cliente'}?`}
+        promptText="El reporte incluirá todos los préstamos activos y el balance total."
+        confirmButtonText="Generar Reporte"
+        onClose={() => setShowStatusConfirmation(false)}
+        onGenerateReceipt={handleGenerateStatusReport}
+        isGenerating={isGeneratingStatus}
       />
     </>
   )

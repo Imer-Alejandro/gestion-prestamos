@@ -17,6 +17,8 @@ import ProgressBar from "../../components/clientes/ProgressBar";
 import { getClientById } from "../../services/client.service";
 import { getLoansByClient } from "../../services/loan.service";
 import { getPaymentsByLoan } from "../../services/payment.service";
+import { generateClientStatusReport } from "../../services/pdf.service";
+import { ConfirmationModal } from "../../components/shared/ConfirmationModal";
 
 // Paleta de colores principal de la app
 const COLORS = {
@@ -67,6 +69,8 @@ export default function ClienteDetalleScreen() {
   const [showRegistroAbono, setShowRegistroAbono] = useState(false);
   const [showDetallesAbono, setShowDetallesAbono] = useState(false);
   const [showDetallesCliente, setShowDetallesCliente] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Cargar datos del cliente al montar el componente
   useEffect(() => {
@@ -170,6 +174,26 @@ export default function ClienteDetalleScreen() {
     }
   };
 
+  // Generar reporte de estado
+  const handleGenerateStatusReport = async () => {
+    try {
+      setIsGenerating(true);
+      const activeLoans = prestamos.filter(p => p.current_balance > 0);
+      await generateClientStatusReport(cliente, activeLoans);
+      setShowConfirmation(false);
+    } catch (error) {
+      console.error('Error generando reporte:', error);
+      Alert.alert('Error', 'No se pudo generar el reporte de estado');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  // Abrir confirmación de reporte
+  const handleOpenReportConfirmation = () => {
+    // Alert.alert("Depuración", "Abriendo modal...");
+    setShowConfirmation(true);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.light, justifyContent: 'center', alignItems: 'center' }}>
@@ -195,6 +219,17 @@ export default function ClienteDetalleScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.light }}>
       <Stack.Screen options={{ headerShown: false }} />
+      
+      <ConfirmationModal
+        visible={showConfirmation}
+        title="Reporte de Estado"
+        message={`¿Deseas generar un reporte detallado del estado de cuenta de ${cliente?.first_name || 'este cliente'}?`}
+        promptText="El reporte incluirá todos los préstamos activos y el balance total."
+        confirmButtonText="Generar Reporte"
+        onClose={() => setShowConfirmation(false)}
+        onGenerateReceipt={handleGenerateStatusReport}
+        isGenerating={isGenerating}
+      />
 
       {/* Card de información del cliente con datos reales - Rediseñada */}
       <View className="px-4 pt-4 pb-3" style={{ marginTop: 24 }}>
@@ -209,8 +244,8 @@ export default function ClienteDetalleScreen() {
           }}
         >
           {/* Elementos decorativos de fondo */}
-          <View className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
-          <View className="absolute -left-10 -bottom-10 w-40 h-40 bg-black/10 rounded-full" />
+          <View pointerEvents="none" className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
+          <View pointerEvents="none" className="absolute -left-10 -bottom-10 w-40 h-40 bg-black/10 rounded-full" />
 
           {/* Header con avatar, nombre y botón cerrar */}
           <View className="flex-row items-start justify-between mb-5">
@@ -269,7 +304,7 @@ export default function ClienteDetalleScreen() {
           </View>
 
           {/* Botones de acción rápida - Flotantes Modernos */}
-          <View className="flex-row justify-center gap-12 px-1">
+          <View className="flex-row justify-around px-1">
             {/* Abonar */}
             <TouchableOpacity
               className="items-center"
@@ -292,6 +327,18 @@ export default function ClienteDetalleScreen() {
                 <Ionicons name="create" size={24} color="white" />
               </View>
               <Text className="text-white/90 text-[11px] font-semibold tracking-wide">Editar</Text>
+            </TouchableOpacity>
+
+            {/* Estado */}
+            <TouchableOpacity
+              className="items-center"
+              activeOpacity={0.7}
+              onPress={() => setShowConfirmation(true)}
+            >
+              <View className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center mb-1.5 border border-white/10">
+                <Ionicons name="document-text" size={24} color="white" />
+              </View>
+              <Text className="text-white/90 text-[11px] font-semibold tracking-wide">Estado</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -519,6 +566,7 @@ export default function ClienteDetalleScreen() {
           nota: cliente.notes || 'Sin notas',
         }}
       />
+
     </SafeAreaView>
   );
 }

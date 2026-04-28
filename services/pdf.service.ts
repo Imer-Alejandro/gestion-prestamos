@@ -185,7 +185,7 @@ export const generateLoanReceipt = async (loan: any, client: any, business = DEF
     </head>
     <body>
       <div class="container">
-        <div class="watermark">PRÉSTAMO</div>
+        <div class="watermark">KANNI CASH</div>
         
         <div class="header">
           <div>
@@ -268,7 +268,7 @@ export const generatePaymentReceipt = async (payment: any, loan: any, client: an
     </head>
     <body>
       <div class="container">
-        <div class="watermark">PAGO RECIBIDO</div>
+        <div class="watermark">KANNI CASH</div>
         
         <div class="header">
           <div>
@@ -311,6 +311,122 @@ export const generatePaymentReceipt = async (payment: any, loan: any, client: an
         <div class="footer">
           Conserve este recibo como comprobante de su pago.<br>
           ¡Gracias por su puntualidad!
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const { uri } = await Print.printToFileAsync({ html });
+  await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+};
+
+export const generateClientStatusReport = async (client: any, loans: any[], business = DEFAULT_BUSINESS) => {
+  const totalBalance = loans.reduce((sum, loan) => sum + (loan.current_balance || 0), 0);
+  
+  const html = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        ${getCommonStyles()}
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 20px;
+        }
+        th {
+          text-align: left;
+          font-size: 11px;
+          text-transform: uppercase;
+          color: #777;
+          border-bottom: 1px solid #eee;
+          padding: 8px 4px;
+        }
+        td {
+          padding: 10px 4px;
+          font-size: 11px;
+          border-bottom: 1px solid #f9f9f9;
+        }
+        .text-right { text-align: right; }
+        .status-badge {
+          font-size: 10px;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-weight: bold;
+          text-transform: uppercase;
+        }
+        .status-activo { background: #e8f5e9; color: #2e7d32; }
+        .status-atrasado { background: #fff3e0; color: #ef6c00; }
+        .status-mora { background: #ffebee; color: #c62828; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="watermark">KANNI CASH</div>
+        
+        <div class="header">
+          <div>
+            <div class="business-title">${business.name}</div>
+            <div class="business-info">
+              ${business.address}<br>
+              Tel: ${business.phone}
+            </div>
+          </div>
+          <div class="receipt-meta">
+            <strong>ESTADO DE CUENTA</strong>
+            <div class="receipt-id">CLIENTE</div>
+            <div>Fecha: ${formatDate(new Date().toISOString())}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Información del Cliente</h3>
+          <div class="row"><span class="label">Nombre:</span><span class="value">${client.first_name} ${client.last_name}</span></div>
+          <div class="row"><span class="label">Cédula/RNC:</span><span class="value">${client.document_number || 'N/A'}</span></div>
+          <div class="row"><span class="label">Teléfono:</span><span class="value">${client.phone_primary || 'N/A'}</span></div>
+        </div>
+
+        <div class="section">
+          <h3>Resumen de Préstamos Activos</h3>
+          <table>
+            <thead>
+              <tr>
+                <th># Contrato</th>
+                <th>Fecha</th>
+                <th>Monto</th>
+                <th>Int (%)</th>
+                <th>Frecuencia</th>
+                <th>Cuotas</th>
+                <th class="text-right">Pendiente</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${loans.map(loan => `
+                <tr>
+                  <td><strong>#${loan.contract_number || loan.id}</strong></td>
+                  <td>${formatDate(loan.created_at)}</td>
+                  <td>${formatCurrency(loan.principal_amount)}</td>
+                  <td>${loan.interest_rate}%</td>
+                  <td>${translateFrequency(loan.payment_frequency)}</td>
+                  <td>${loan.installments}</td>
+                  <td class="text-right"><strong>${formatCurrency(loan.current_balance)}</strong></td>
+                </tr>
+              `).join('')}
+              ${loans.length === 0 ? '<tr><td colspan="7" style="text-align:center; padding: 20px; color: #999;">No hay préstamos activos</td></tr>' : ''}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="total-section">
+          <span class="total-label">TOTAL GENERAL ADEUDADO</span>
+          <span class="total-amount">${formatCurrency(totalBalance)}</span>
+        </div>
+
+        <div class="footer">
+          Este documento es un resumen informativo del estado actual de sus compromisos.<br>
+          Generado automáticamente por el sistema de gestión.
         </div>
       </div>
     </body>

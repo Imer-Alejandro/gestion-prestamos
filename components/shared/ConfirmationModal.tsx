@@ -19,6 +19,8 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onGenerateReceipt?: () => Promise<void>;
   isGenerating?: boolean;
+  confirmButtonText?: string;
+  promptText?: string;
 }
 
 const { width } = Dimensions.get("window");
@@ -30,6 +32,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onClose,
   onGenerateReceipt,
   isGenerating = false,
+  confirmButtonText = "Generar Comprobante",
+  promptText = "¿Desea generar un comprobante para esta operación?",
 }) => {
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -55,7 +59,6 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     }
   }, [visible]);
 
-  if (!visible) return null;
 
   return (
     <Modal visible={visible} transparent animationType="none">
@@ -83,7 +86,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           {/* Prompt */}
           <View style={styles.promptContainer}>
             <Text style={styles.promptText}>
-              ¿Desea generar un comprobante para esta operación?
+              {promptText}
             </Text>
           </View>
 
@@ -101,7 +104,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 ) : (
                   <>
                     <Ionicons name="document-text-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.primaryButtonText}>Generar Comprobante</Text>
+                    <Text style={styles.primaryButtonText}>{confirmButtonText}</Text>
                   </>
                 )}
               </TouchableOpacity>

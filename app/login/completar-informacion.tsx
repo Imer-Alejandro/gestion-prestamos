@@ -3,7 +3,6 @@ import CountryPicker, { CountryCode } from "react-native-country-picker-modal";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,16 +11,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useAuth } from "../../contexts/AuthContext";
+
 
 export default function CompletarInformacionScreen() {
   const router = useRouter();
-  const { register } = useAuth();
   const params = useLocalSearchParams();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   // 🌍 País
   const [countryCode, setCountryCode] = useState<CountryCode>("DO");
@@ -97,37 +94,23 @@ export default function CompletarInformacionScreen() {
       ? `+1${rdAreaCode}${formData.telefono.replace(/\D/g, "")}`
       : `+${callingCode}${formData.telefono.replace(/\D/g, "")}`;
 
-    const registroCompleto = {
+    const registroParaPlan = {
       full_name: formData.representante,
       email: formData.correo,
       phone: phoneFinal,
       password: formData.nuevaContrasena,
-      organizacion: {
-        nombre: params.nombreOrganizacion,
-        eslogan: params.eslogan,
-        logo: params.logo,
-        tipo: params.tipoOrganizacion,
-        direccion: formData.direccion,
-        rnc: formData.rnc,
-      },
+      org_nombre: params.nombreOrganizacion,
+      org_eslogan: params.eslogan,
+      org_logo: params.logo,
+      org_tipo: params.tipoOrganizacion,
+      org_direccion: formData.direccion,
+      org_rnc: formData.rnc,
     };
 
-    try {
-      setIsLoading(true);
-      await register(registroCompleto);
-
-      Alert.alert(
-        "¡Bienvenido! 🎉",
-        "Tu organización ha sido registrada exitosamente"
-      );
-    } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error.message || "No se pudo completar el registro."
-      );
-    } finally {
-      setIsLoading(false);
-    }
+    router.push({
+      pathname: "/login/seleccion-plan",
+      params: registroParaPlan,
+    });
   };
 
   return (
@@ -314,7 +297,7 @@ export default function CompletarInformacionScreen() {
             className="bg-white p-4 rounded-lg mt-4"
           >
             <Text className="text-center text-[#13678A] font-bold">
-              {isLoading ? "Cargando..." : "Continuar"}
+              Continuar
             </Text>
           </TouchableOpacity>
 

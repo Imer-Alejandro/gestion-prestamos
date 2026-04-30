@@ -89,7 +89,7 @@ export default function ClientesScreen() {
     try {
       const { dismissNotification, getPendingNotificationsUI } = await import("../../services/notification.service");
       await dismissNotification(notificationId);
-      const updated = await getPendingNotificationsUI(user!.id);
+      const updated = await getPendingNotificationsUI(user?.id || 0);
       setNotifications(updated);
     } catch (error) {
       console.error("Error eliminando notificación:", error);
@@ -289,6 +289,7 @@ export default function ClientesScreen() {
       {/* Header compartido */}
       <AppHeader
         userData={userData}
+        userId={user?.id}
         onNotificationsPress={() => setShowNotifications(true)}
         onProfilePress={() => router.push("/configuracion")}
         searchQuery={searchQuery}

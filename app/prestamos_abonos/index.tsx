@@ -105,8 +105,8 @@ export default function PrestamosScreen() {
     InteractionManager.runAfterInteractions(async () => {
       try {
         const [loansData, clientsData] = await Promise.all([
-          getLoans(user!.id, filters),
-          getClients(user!.id)
+          getLoans(user?.id || 0, filters),
+          getClients(user?.id || 0)
         ]);
 
 
@@ -132,12 +132,12 @@ export default function PrestamosScreen() {
         setClients(clientsData);
 
         // Cargar todos los abonos
-        const abonosData = await getAllPayments(user!.id);
+        const abonosData = await getAllPayments(user?.id || 0);
         setAbonos(abonosData);
 
         // Cargar notificaciones reales de la base de datos
         const { getPendingNotificationsUI } = await import("../../services/notification.service");
-        const uiNotifications = await getPendingNotificationsUI(user!.id);
+        const uiNotifications = await getPendingNotificationsUI(user?.id || 0);
         setNotifications(uiNotifications);
 
         setIsLoading(false);
@@ -164,7 +164,7 @@ export default function PrestamosScreen() {
     try {
       const { dismissNotification, getPendingNotificationsUI } = await import("../../services/notification.service");
       await dismissNotification(notificationId);
-      const updated = await getPendingNotificationsUI(user!.id);
+      const updated = await getPendingNotificationsUI(user?.id || 0);
       setNotifications(updated);
     } catch (error) {
       console.error("Error eliminando notificación:", error);
@@ -256,7 +256,7 @@ export default function PrestamosScreen() {
   // Registrar pago/abono
   const handleRegisterPayment = async (paymentData: any) => {
     try {
-      const paymentId = await createPayment({ ...paymentData, user_id: user!.id });
+      const paymentId = await createPayment({ ...paymentData, user_id: user?.id || 0 });
       const fullPayment = await getPaymentById(paymentId);
       const fullLoan = await getLoanById(paymentData.loan_id);
       const client = await getClientById(fullLoan.client_id);
@@ -320,7 +320,7 @@ export default function PrestamosScreen() {
   // Crear nuevo préstamo
   const handleCreateLoan = async (loanData: any) => {
     try {
-      const loanId = await createLoan({ ...loanData, user_id: user!.id });
+      const loanId = await createLoan({ ...loanData, user_id: user?.id || 0 });
       const fullLoan = await getLoanById(loanId);
       const client = await getClientById(loanData.client_id);
 
@@ -367,6 +367,7 @@ export default function PrestamosScreen() {
 
       <AppHeader
         userData={userData}
+        userId={user?.id}
         onNotificationsPress={() => setShowNotifications(true)}
         onProfilePress={() => router.push("/configuracion")}
         searchQuery={searchQuery}

@@ -1,6 +1,7 @@
 import { getDb } from "../database/db.js";
 import { generateFrenchAmortization, generateFlatAmortization } from "../utils/amortization.utils.js";
 import { generateAndSaveInstallments } from "./installment.service.js";
+import { PlanManager } from "./quota.service.js";
 
 function generateContractNumber() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluyendo 0, O, I, 1 por claridad
@@ -13,6 +14,11 @@ function generateContractNumber() {
 
 /* CREATE LOAN */
 export async function createLoan(data) {
+  // ── Validación de cuota ──────────────────────────────────
+  const quotaCheck = await PlanManager.canExecute(data.user_id, 'registerLoan');
+  if (!quotaCheck.allowed) throw new Error(quotaCheck.reason);
+  // ─────────────────────────────────────────────────────────
+
   // Validaciones básicas
   if (!data.user_id || !data.client_id || !data.principal_amount) {
     throw new Error("Missing required fields: user_id, client_id, principal_amount");
@@ -141,6 +147,10 @@ export async function createLoan(data) {
   } catch (error) {
     console.error("Error enviando notificación de préstamo:", error);
   }
+
+  // ── Registrar operación exitosa ──────────────────────────
+  await PlanManager.registerOperation(data.user_id, 'registerLoan');
+  // ─────────────────────────────────────────────────────────
 
   return loanId;
 }
@@ -275,12 +285,23 @@ export async function deleteLoan(id) {
 }
 
 /* VOID LOAN (soft-delete) */
-export async function voidLoan(id) {
+export async function voidLoan(id, userId) {
+  // ── Validación de cuota ──────────────────────────────────
+  if (userId) {
+    const quotaCheck = await PlanManager.canExecute(userId, 'voidLoan');
+    if (!quotaCheck.allowed) throw new Error(quotaCheck.reason);
+  }
+  // ─────────────────────────────────────────────────────────
+
   const db = await getDb();
   await db.runAsync(
     `UPDATE loans SET status = 'voided', updated_at = ?, closed_at = ? WHERE id = ?`,
     [new Date().toISOString(), new Date().toISOString(), id]
   );
+
+  // ── Registrar operación exitosa ──────────────────────────
+  if (userId) await PlanManager.registerOperation(userId, 'voidLoan');
+  // ─────────────────────────────────────────────────────────
 }
 /* GET LOANS WITH FILTERS */
 export async function getLoans(userId, filters = {}) {

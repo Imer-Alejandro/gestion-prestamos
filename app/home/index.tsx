@@ -144,6 +144,7 @@ export default function HomeScreen() {
       {/* Header compartido */}
       <AppHeader
         userData={userData}
+        userId={user?.id}
         onNotificationsPress={() => setShowNotifications(true)}
         onProfilePress={() => router.push("/configuracion")}
         searchQuery={searchQuery}

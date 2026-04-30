@@ -28,6 +28,8 @@ export interface User {
     email?: string;
     rnc?: string;
     currency?: string;
+    plan_type?: string;
+    plan_hash?: string;
   } | null;
 }
 

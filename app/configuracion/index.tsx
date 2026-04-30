@@ -251,6 +251,18 @@ export default function ConfiguracionScreen() {
           />
         </SettingSection>
 
+        {/* Sección: Suscripción */}
+        <SettingSection title="Suscripción">
+          <SettingItem
+            icon="card-outline"
+            title="Mi Plan"
+            description="Gestiona tu nivel de suscripción y límites"
+            onPress={() => router.push("/configuracion/plan")}
+            trailing="chevron"
+            isDivider={false}
+          />
+        </SettingSection>
+
         {/* Sección: Preferencias */}
         <SettingSection title="Preferencias">
           <SettingItem

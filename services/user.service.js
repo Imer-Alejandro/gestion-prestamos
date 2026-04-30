@@ -1,10 +1,21 @@
 import * as Crypto from "expo-crypto";
 import { getDb } from "../database/db.js";
+import { PlanManager } from "./quota.service.js";
 
 async function hashPassword(password) {
   return await Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256,
     password,
+  );
+}
+
+const PLAN_SECRET_SALT = "imer-ale-loan-mgmt-2026-secure-plan-salt";
+
+export async function generatePlanHash(userId, planType) {
+  const dataToHash = `${userId}|${planType}|${PLAN_SECRET_SALT}`;
+  return await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    dataToHash
   );
 }
 
@@ -53,10 +64,13 @@ export async function createUser(userData) {
   // Si vienen datos de la organización, guardarlos
   if (userData.organizacion) {
     const org = userData.organizacion;
+    const planType = org.plan_type || 'basic';
+    const planHash = await generatePlanHash(userId, planType);
+
     await db.runAsync(
       `INSERT INTO organizations 
-        (user_id, name, type, slogan, logo_path, address, phone, email, rnc, currency, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (user_id, name, type, slogan, logo_path, address, phone, email, rnc, currency, plan_type, plan_hash, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         org.nombre || org.name,
@@ -68,6 +82,8 @@ export async function createUser(userData) {
         org.email || null,
         org.rnc || null,
         org.currency || 'DOP',
+        planType,
+        planHash,
         new Date().toISOString(),
       ]
     );
@@ -111,6 +127,29 @@ export async function updateOrganization(userId, data) {
       userId
     ]
   );
+
+  // ── Registrar operación exitosa ──────────────────────────
+  await PlanManager.registerOperation(userId, 'updateUserData');
+  // ─────────────────────────────────────────────────────────
+}
+
+export async function updateUserPlan(userId, planType) {
+  const db = await getDb();
+  const planHash = await generatePlanHash(userId, planType);
+  
+  await db.runAsync(
+    `UPDATE organizations 
+     SET plan_type = ?, plan_hash = ?, updated_at = ?
+     WHERE user_id = ?`,
+    [planType, planHash, new Date().toISOString(), userId]
+  );
+  
+  return true;
+}
+
+export async function verifyPlanIntegrity(userId, storedPlanType, storedPlanHash) {
+  const expectedHash = await generatePlanHash(userId, storedPlanType);
+  return expectedHash === storedPlanHash;
 }
 
 export async function updateUser(id, data) {
@@ -133,6 +172,10 @@ export async function updateUser(id, data) {
      WHERE id = ?`,
     [data.full_name, data.phone, data.is_active, id],
   );
+
+  // ── Registrar operación exitosa ──────────────────────────
+  await PlanManager.registerOperation(id, 'updateUserData');
+  // ─────────────────────────────────────────────────────────
 }
 
 /* LOGIN SOLO POR CONTRASEÑA */

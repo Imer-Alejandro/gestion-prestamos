@@ -125,58 +125,58 @@ export default function LoginScreen() {
           {/* Formulario de login */}
           <View className="mb-6">
             {/* Campo de correo electrónico - Solución iOS: TextInput invisible + Text visible */}
-          <View className="mb-5">
-  <Text className="text-white/70 text-base mb-2">
-    Correo electrónico
-  </Text>
+            <View className="mb-5">
+              <Text className="text-white/70 text-base mb-2">
+                Correo electrónico
+              </Text>
 
-  <TextInput
-    value={formData.email}
-    onChangeText={(text) =>
-      setFormData({ ...formData, email: text })
-    }
-    placeholder="ejemplo@correo.com"
-    placeholderTextColor="#ffffff40"
-    keyboardType="email-address"
-    autoCapitalize="none"
-    autoComplete="email"
-    className="bg-white/10 border border-white/20 rounded-lg px-4 text-white text-lg"
-    style={{ height: 56 }}
-  />
-</View>
+              <TextInput
+                value={formData.email}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, email: text })
+                }
+                placeholder="ejemplo@correo.com"
+                placeholderTextColor="#ffffff40"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                className="bg-white/10 border border-white/20 rounded-lg px-4 text-white text-lg"
+                style={{ height: 56 }}
+              />
+            </View>
 
-           <View className="mb-5">
-  <Text className="text-white/70 text-base mb-2">
-    Contraseña
-  </Text>
+            <View className="mb-5">
+              <Text className="text-white/70 text-base mb-2">
+                Contraseña
+              </Text>
 
-  <View className="relative">
-    <TextInput
-      value={formData.password}
-      onChangeText={(text) =>
-        setFormData({ ...formData, password: text })
-      }
-      placeholder="Ingrese su contraseña"
-      placeholderTextColor="#ffffff40"
-      secureTextEntry={!showPassword}
-      className="bg-white/10 border border-white/20 rounded-lg px-4 text-white text-lg pr-12"
-      style={{ height: 56 }}
-      onSubmitEditing={handleLogin}
-    />
+              <View className="relative">
+                <TextInput
+                  value={formData.password}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, password: text })
+                  }
+                  placeholder="Ingrese su contraseña"
+                  placeholderTextColor="#ffffff40"
+                  secureTextEntry={!showPassword}
+                  className="bg-white/10 border border-white/20 rounded-lg px-4 text-white text-lg pr-12"
+                  style={{ height: 56 }}
+                  onSubmitEditing={handleLogin}
+                />
 
-    <TouchableOpacity
-      onPress={() => setShowPassword(!showPassword)}
-      className="absolute right-4"
-      style={{ top: 16 }}
-    >
-      <Ionicons
-        name={showPassword ? "eye-off-outline" : "eye-outline"}
-        size={24}
-        color="#ffffff90"
-      />
-    </TouchableOpacity>
-  </View>
-</View>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  className="absolute right-4"
+                  style={{ top: 16 }}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={24}
+                    color="#ffffff90"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
 
             {/* Checkbox para guardar inicio de sesión */}
             <TouchableOpacity
@@ -184,9 +184,8 @@ export default function LoginScreen() {
               className="flex-row items-center mb-8"
             >
               <View
-                className={`w-5 h-5 rounded border-2 border-white/40 mr-2.5 items-center justify-center ${
-                  rememberSession ? "bg-white/20" : "bg-transparent"
-                }`}
+                className={`w-5 h-5 rounded border-2 border-white/40 mr-2.5 items-center justify-center ${rememberSession ? "bg-white/20" : "bg-transparent"
+                  }`}
               >
                 {rememberSession && (
                   <Ionicons name="checkmark" size={14} color="#ffffff" />
@@ -201,9 +200,8 @@ export default function LoginScreen() {
             <TouchableOpacity
               onPress={handleLogin}
               disabled={isLoading}
-              className={`bg-white/90 rounded-lg py-4 items-center mb-5 ${
-                isLoading ? "opacity-50" : "opacity-100"
-              }`}
+              className={`bg-white/90 rounded-lg py-4 items-center mb-5 ${isLoading ? "opacity-50" : "opacity-100"
+                }`}
               activeOpacity={0.8}
             >
               <Text className="text-[#13678A] font-semibold text-lg">

@@ -273,6 +273,23 @@ export async function initializeDatabase() {
 
     CREATE INDEX IF NOT EXISTS idx_org_user
     ON organizations(user_id);
+
+    -------------------------------------------------------
+    -- QUOTA USAGE (Plan Control)
+    -------------------------------------------------------
+    CREATE TABLE IF NOT EXISTS quota_usage (
+      id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id                  INTEGER NOT NULL UNIQUE,
+      cycle_start_date         TEXT    NOT NULL,
+      total_clients            INTEGER DEFAULT 0,
+      operations_this_month    INTEGER DEFAULT 0,
+      invoices_this_month      INTEGER DEFAULT 0,
+      historical_operations    INTEGER DEFAULT 0,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_quota_user
+    ON quota_usage(user_id);
     `);
 
       async function ensureColumns(tableName, expectedColumns) {
@@ -347,7 +364,18 @@ export async function initializeDatabase() {
         { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
       ]);
 
+      await ensureColumns('organizations', [
+        { name: 'plan_type', type: 'TEXT', defaultValue: "'basic'" },
+        { name: 'plan_hash', type: 'TEXT', defaultValue: "''" },
+      ]);
 
+      await ensureColumns('quota_usage', [
+        { name: 'cycle_start_date', type: 'TEXT', defaultValue: "''" },
+        { name: 'total_clients', type: 'INTEGER', defaultValue: 0 },
+        { name: 'operations_this_month', type: 'INTEGER', defaultValue: 0 },
+        { name: 'invoices_this_month', type: 'INTEGER', defaultValue: 0 },
+        { name: 'historical_operations', type: 'INTEGER', defaultValue: 0 },
+      ]);
 
       console.log("✅ Database initialized successfully");
     } catch (error) {

@@ -1,6 +1,12 @@
 import { getDb } from "../database/db.js";
+import { PlanManager } from "./quota.service.js";
 
 export async function createClient(data) {
+  // ── Validación de cuota ──────────────────────────────────
+  const quotaCheck = await PlanManager.canExecute(data.user_id, 'registerClient');
+  if (!quotaCheck.allowed) throw new Error(quotaCheck.reason);
+  // ─────────────────────────────────────────────────────────
+
   const db = await getDb();
 
   // Validar si el email ya existe
@@ -76,6 +82,10 @@ export async function createClient(data) {
       new Date().toISOString(),
     ],
   );
+
+  // ── Registrar operación exitosa ──────────────────────────
+  await PlanManager.registerOperation(data.user_id, 'registerClient');
+  // ─────────────────────────────────────────────────────────
 
   return result.lastInsertRowId;
 }
@@ -246,6 +256,11 @@ export async function getClientById(id) {
 
 /* UPDATE CLIENT */
 export async function updateClient(id, data) {
+  // ── Validación de cuota ──────────────────────────────────
+  const quotaCheck = await PlanManager.canExecute(data.user_id, 'editClient');
+  if (!quotaCheck.allowed) throw new Error(quotaCheck.reason);
+  // ─────────────────────────────────────────────────────────
+
   const db = await getDb();
 
   // Validar si el documento ya existe (excluyendo este cliente)
@@ -341,11 +356,24 @@ export async function updateClient(id, data) {
       id,
     ],
   );
+
+  // ── Registrar operación exitosa ──────────────────────────
+  await PlanManager.registerOperation(data.user_id, 'editClient');
+  // ─────────────────────────────────────────────────────────
 }
 
 
 /* SOFT DELETE */
-export async function deactivateClient(id) {
+export async function deactivateClient(id, userId) {
+  // ── Validación de cuota ──────────────────────────────────
+  const quotaCheck = await PlanManager.canExecute(userId, 'deactivateClient');
+  if (!quotaCheck.allowed) throw new Error(quotaCheck.reason);
+  // ─────────────────────────────────────────────────────────
+
   const db = await getDb();
   await db.runAsync(`UPDATE clients SET is_active = 0 WHERE id = ?`, [id]);
+
+  // ── Registrar operación exitosa ──────────────────────────
+  await PlanManager.registerOperation(userId, 'deactivateClient');
+  // ─────────────────────────────────────────────────────────
 }

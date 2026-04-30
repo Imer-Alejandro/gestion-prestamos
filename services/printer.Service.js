@@ -1,6 +1,7 @@
 import {
   BluetoothEscposPrinter,
 } from "react-native-bluetooth-escpos-printer";
+import { PlanManager } from "./quota.service.js";
 
 // Ancho lógico para impresoras térmicas de 58mm (aprox. 32 caracteres por línea).
 const PAPER_WIDTH = 32;
@@ -189,11 +190,21 @@ const printFooter = async (invoice, options = {}) => {
 };
 
 // Servicio principal para imprimir facturas de cobro.
+// Recibe userId para el control de cuota (opcional: si no se pasa, no valida).
 export const printInvoice = async (invoice, options = {}) => {
+  const userId = options.userId || invoice?.userId || null;
+
   try {
     if (!invoice || typeof invoice !== "object") {
       throw new Error("Los datos de la factura son inválidos.");
     }
+
+    // ── Validación de cuota ──────────────────────────────────
+    if (userId) {
+      const quotaCheck = await PlanManager.canExecute(userId, 'printInvoice');
+      if (!quotaCheck.allowed) throw new Error(quotaCheck.reason);
+    }
+    // ─────────────────────────────────────────────────────────
 
     await printHeader(invoice, options);
     await printInvoiceMeta(invoice);
@@ -201,9 +212,38 @@ export const printInvoice = async (invoice, options = {}) => {
     await printTotals(invoice);
     await printFooter(invoice, options);
 
+    // ── Registrar operación exitosa ──────────────────────────
+    if (userId) await PlanManager.registerOperation(userId, 'printInvoice');
+    // ─────────────────────────────────────────────────────────
+
     return { success: true };
   } catch (error) {
     console.log("Error al imprimir factura:", error);
+    return { success: false, error };
+  }
+};
+
+// Imprime estado de cuenta — suma como operación pero NO como comprobante.
+export const printStatusReport = async (data, options = {}) => {
+  const userId = options.userId || data?.userId || null;
+
+  try {
+    if (userId) {
+      const quotaCheck = await PlanManager.canExecute(userId, 'printStatus');
+      if (!quotaCheck.allowed) throw new Error(quotaCheck.reason);
+    }
+
+    // Aqui va la lógica de impresión del estado (puedes reusar printHeader, etc.)
+    // Por ahora se delega a printInvoice para no duplicar código de impresora.
+    const result = await printInvoice(data, { ...options, userId: null }); // no doble conteo
+
+    if (result.success && userId) {
+      await PlanManager.registerOperation(userId, 'printStatus');
+    }
+
+    return result;
+  } catch (error) {
+    console.log("Error al imprimir estado:", error);
     return { success: false, error };
   }
 };

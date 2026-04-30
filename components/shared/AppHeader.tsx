@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-
 import {
   Text,
   TextInput,
@@ -7,6 +6,9 @@ import {
   View,
   Image
 } from "react-native";
+import { useState } from "react";
+import UsageIndicator from "./UsageIndicator";
+import UsageModal from "./UsageModal";
 
 interface AppHeaderProps {
   userData: {
@@ -14,6 +16,7 @@ interface AppHeaderProps {
     role: string;
     avatarUrl?: string;
   };
+  userId?: number;
   onNotificationsPress: () => void;
   onProfilePress: () => void;
   searchQuery: string;
@@ -28,6 +31,7 @@ interface AppHeaderProps {
  */
 export default function AppHeader({
   userData,
+  userId,
   onNotificationsPress,
   onProfilePress,
   searchQuery,
@@ -35,7 +39,10 @@ export default function AppHeader({
   onSearchSubmit,
   hasNotifications = true,
 }: AppHeaderProps) {
+  const [showUsageModal, setShowUsageModal] = useState(false);
+
   return (
+    <>
     <View 
       className="bg-[#13678A] px-6 pt-16 pb-6 rounded-b-3xl"
       style={{
@@ -70,8 +77,17 @@ export default function AppHeader({
           </View>
         </TouchableOpacity>
 
-        {/* Iconos de notificación */}
-        <View className="flex-row gap-3">
+        {/* Iconos de la derecha: uso del plan + notificaciones */}
+        <View className="flex-row gap-3 items-center">
+          {/* Indicador de uso del plan */}
+          {userId !== undefined && (
+            <UsageIndicator
+              userId={userId}
+              onPress={() => setShowUsageModal(true)}
+            />
+          )}
+
+          {/* Notificaciones */}
           <TouchableOpacity
             onPress={onNotificationsPress}
             className="w-10 h-10 bg-white/10 rounded-full items-center justify-center"
@@ -107,5 +123,14 @@ export default function AppHeader({
         </View>
       </View>
     </View>
+
+    {userId !== undefined && (
+      <UsageModal
+        visible={showUsageModal}
+        onClose={() => setShowUsageModal(false)}
+        userId={userId}
+      />
+    )}
+    </>
   );
 }

@@ -5,10 +5,17 @@ import {
   refreshInstallmentMora,
   getInstallmentById
 } from "./installment.service.js";
+import { PlanManager } from "./quota.service.js";
 
 
 /* CREATE PAYMENT (Chronological Installment Distribution) */
 export async function createPayment(data) {
+  // ── Validación de cuota ──────────────────────────────────
+  const actionType = data.replace_payment_id ? 'editPayment' : 'registerPayment';
+  const quotaCheck = await PlanManager.canExecute(data.user_id, actionType);
+  if (!quotaCheck.allowed) throw new Error(quotaCheck.reason);
+  // ─────────────────────────────────────────────────────────
+
   const db = await getDb();
 
   // Si es una edición, anular el pago previo primero de forma atómica
@@ -118,6 +125,10 @@ export async function createPayment(data) {
     console.error("Error enviando notificación de pago:", error);
   }
 
+  // ── Registrar operación exitosa ──────────────────────────
+  await PlanManager.registerOperation(data.user_id, actionType);
+  // ─────────────────────────────────────────────────────────
+
   return result.lastInsertRowId;
 }
 
@@ -154,8 +165,15 @@ export async function getAllPayments(userId) {
 
 
 /* VOID PAYMENT (With reversal) */
-export async function voidPayment(paymentId) {
+export async function voidPayment(paymentId, userId = null) {
   const db = await getDb();
+
+  // ── Validación de cuota (solo cuando es anulación manual, no interna) ──
+  if (userId) {
+    const quotaCheck = await PlanManager.canExecute(userId, 'deletePayment');
+    if (!quotaCheck.allowed) throw new Error(quotaCheck.reason);
+  }
+  // ─────────────────────────────────────────────────────────
 
   // 1. Obtener datos del pago
   const payment = await db.getFirstAsync(`SELECT * FROM payments WHERE id = ?`, [paymentId]);
@@ -215,6 +233,10 @@ export async function voidPayment(paymentId) {
     `UPDATE payments SET status = 'voided', updated_at = ? WHERE id = ?`,
     [new Date().toISOString(), paymentId]
   );
+
+  // ── Registrar operación exitosa ──────────────────────────
+  if (userId) await PlanManager.registerOperation(userId, 'deletePayment');
+  // ─────────────────────────────────────────────────────────
 
   return { success: true };
 }

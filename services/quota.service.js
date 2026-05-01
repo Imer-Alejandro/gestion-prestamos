@@ -22,8 +22,20 @@ export const PLAN_DEFINITIONS = {
     maxOpsMonth: 120,
     maxInvoicesMonth: 50,
   },
-  // Agrega aquí futuros planes sin cambiar la lógica:
-  // premium: { id: 'premium', name: 'Plan Premium', maxClients: 100, maxOpsMonth: 500, maxInvoicesMonth: 200 },
+  standard: {
+    id: 'standard',
+    name: 'Plan Estándar',
+    maxClients: 150,
+    maxOpsMonth: 600,
+    maxInvoicesMonth: 200,
+  },
+  enterprise: {
+    id: 'enterprise',
+    name: 'Plan Empresarial',
+    maxClients: 99999, // Ilimitado
+    maxOpsMonth: 99999,
+    maxInvoicesMonth: 99999,
+  },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -39,9 +51,9 @@ const ACTION_TYPES = {
   registerPayment: { isOperation: true,  isInvoice: false, isClient: false },
   editPayment:     { isOperation: true,  isInvoice: false, isClient: false },
   deletePayment:   { isOperation: true,  isInvoice: false, isClient: false },
-  printInvoice:    { isOperation: true,  isInvoice: true,  isClient: false },
-  printStatus:     { isOperation: true,  isInvoice: false, isClient: false },
-  updateUserData:  { isOperation: true,  isInvoice: false, isClient: false },
+  generateReceipt: { isOperation: true, isInvoice: true,  isClient: false },
+  generateReport:  { isOperation: true, isInvoice: true,  isClient: false },
+  updateUserData:  { isOperation: true, isInvoice: false, isClient: false },
 };
 
 // Umbrales de alerta (porcentaje de operaciones mensuales)
@@ -65,7 +77,7 @@ const StorageService = {
     if (!quota) {
       const now = new Date().toISOString();
       await db.runAsync(
-        `INSERT INTO quota_usage (user_id, cycle_start_date, total_clients, operations_this_month, invoices_this_month, historical_operations)
+        `INSERT OR IGNORE INTO quota_usage (user_id, cycle_start_date, total_clients, operations_this_month, invoices_this_month, historical_operations)
          VALUES (?, ?, 0, 0, 0, 0)`,
         [userId, now]
       );
@@ -298,8 +310,12 @@ export const PlanManager = {
       quota        = await QuotaService.checkAndResetCycle(userId, quota);
 
       const actionDef = ACTION_TYPES[actionType];
-      if (!actionDef) return;
+      if (!actionDef) {
+        console.warn(`[PlanManager] Action type not found: ${actionType}`);
+        return;
+      }
 
+      console.log(`[PlanManager] Registering ${actionType} for user ${userId}`);
       const updated = { ...quota };
       if (actionDef.isOperation) {
         updated.operations_this_month += 1;
@@ -307,12 +323,14 @@ export const PlanManager = {
       }
       if (actionDef.isInvoice) {
         updated.invoices_this_month += 1;
+        console.log(`[PlanManager] Incremented invoices_this_month to ${updated.invoices_this_month} for user ${userId}`);
       }
       if (actionDef.isClient) {
         updated.total_clients += 1;
       }
 
       await StorageService.saveQuota(userId, updated);
+      console.log(`[PlanManager] Quota saved successfully for user ${userId}`);
 
       // Verificar y emitir alertas de umbral
       if (actionDef.isOperation) {

@@ -57,13 +57,13 @@ export default function UsageIndicator({ userId, onPress }: UsageIndicatorProps)
     const stats = await PlanManager.getUsageStats(userId) as UsageStats | null;
     if (!stats) return;
 
-    const opsPct = stats.ops.pct;
-    setPct(opsPct);
+    const averagePct = Math.round((stats.ops.pct + stats.invoices.pct + stats.clients.pct) / 3);
+    setPct(averagePct);
     setStatus(stats.status);
 
     // Animar el aro
     Animated.timing(animVal, {
-      toValue: opsPct / 100,
+      toValue: averagePct / 100,
       duration: 800,
       useNativeDriver: false,
     }).start();

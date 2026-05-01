@@ -22,6 +22,7 @@ import { SvgXml } from "react-native-svg";
 import { ConfirmationModal } from "./ConfirmationModal";
 import { getLoanById } from "../../services/loan.service";
 import { generatePaymentReceipt, generateClientStatusReport } from "../../services/pdf.service";
+import { PlanManager } from "../../services/quota.service";
 
 interface ClientDetailsModalProps {
   visible: boolean;
@@ -200,13 +201,24 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
   const handleGenerateReceipt = async () => {
     if (!lastOperationData) return;
     try {
+      // Validar cuota antes de proceder
+      if (user?.id) {
+        const check = await PlanManager.canExecute(user.id, 'generateReceipt');
+        if (!check.allowed) {
+          Alert.alert("Límite Alcanzado", check.reason || undefined);
+          return;
+        }
+      }
+
       setIsGeneratingReceipt(true);
       await generatePaymentReceipt(
         lastOperationData.payment,
         lastOperationData.loan,
         lastOperationData.client,
+        user?.id,
         user?.organization || undefined
       );
+      if (user?.id) await PlanManager.registerOperation(user.id, 'generateReceipt');
     } catch (error) {
       console.error("Error generating receipt:", error);
       Alert.alert("Error", "No se pudo generar el comprobante en PDF.");
@@ -218,9 +230,19 @@ export default function ClientDetailsModal({ visible, client, onClose, onRefresh
   const handleGenerateStatusReport = async () => {
     if (!clientData) return;
     try {
+      // Validar cuota antes de proceder
+      if (user?.id) {
+        const check = await PlanManager.canExecute(user.id, 'generateReport');
+        if (!check.allowed) {
+          Alert.alert("Límite Alcanzado", check.reason || undefined);
+          return;
+        }
+      }
+
       setIsGeneratingStatus(true);
       const activeLoans = loans.filter((l) => l.status === "active");
-      await generateClientStatusReport(clientData, activeLoans, user?.organization || undefined);
+      await generateClientStatusReport(clientData, activeLoans, user?.id, user?.organization || undefined);
+      if (user?.id) await PlanManager.registerOperation(user.id, 'generateReport');
       setShowStatusConfirmation(false);
     } catch (error) {
       console.error("Error generating status report:", error);

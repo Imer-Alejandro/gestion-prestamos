@@ -1,6 +1,7 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
+import { PlanManager } from './quota.service';
 
 interface BusinessInfo {
   name: string;
@@ -191,7 +192,7 @@ const getCommonStyles = () => `
   }
 `;
 
-export const generateLoanReceipt = async (loan: any, client: any, business = DEFAULT_BUSINESS) => {
+export const generateLoanReceipt = async (loan: any, client: any, userId?: number, business = DEFAULT_BUSINESS) => {
   const logoBase64 = business.logo_path ? await getBase64Image(business.logo_path) : null;
   
   const html = `
@@ -280,7 +281,7 @@ export const generateLoanReceipt = async (loan: any, client: any, business = DEF
   await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
 };
 
-export const generatePaymentReceipt = async (payment: any, loan: any, client: any, business = DEFAULT_BUSINESS) => {
+export const generatePaymentReceipt = async (payment: any, loan: any, client: any, userId?: number, business = DEFAULT_BUSINESS) => {
   const logoBase64 = business.logo_path ? await getBase64Image(business.logo_path) : null;
 
   const html = `
@@ -346,10 +347,14 @@ export const generatePaymentReceipt = async (payment: any, loan: any, client: an
   `;
 
   const { uri } = await Print.printToFileAsync({ html });
+  if (userId) {
+    console.log(`[PDFService] Registering receipt for user ${userId}`);
+    await PlanManager.registerOperation(userId, 'generateReceipt');
+  }
   await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
 };
 
-export const generateClientStatusReport = async (client: any, loans: any[], business = DEFAULT_BUSINESS) => {
+export const generateClientStatusReport = async (client: any, loans: any[], userId?: number, business = DEFAULT_BUSINESS) => {
   const logoBase64 = business.logo_path ? await getBase64Image(business.logo_path) : null;
   const totalBalance = loans.reduce((sum, loan) => sum + (loan.current_balance || 0), 0);
   
@@ -467,5 +472,6 @@ export const generateClientStatusReport = async (client: any, loans: any[], busi
   `;
 
   const { uri } = await Print.printToFileAsync({ html });
+  if (userId) await PlanManager.registerOperation(userId, 'generateReport');
   await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
 };

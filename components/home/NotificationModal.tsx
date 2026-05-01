@@ -72,7 +72,7 @@ export default function NotificationModal({
   return (
     <Modal visible={visible} animationType="none" transparent onRequestClose={onClose}>
       <View className="flex-1">
-        <BlurView intensity={30} tint="dark" style={{ flex: 1 }}>
+        <BlurView intensity={30} tint="light" style={{ flex: 1 }}>
           <TouchableOpacity className="flex-1" activeOpacity={1} onPress={onClose} />
 
           <Animated.View

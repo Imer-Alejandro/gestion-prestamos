@@ -25,6 +25,7 @@ import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
 import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
 import { ConfirmationModal } from "../../components/shared/ConfirmationModal";
 import { generateLoanReceipt, generatePaymentReceipt } from "../../services/pdf.service";
+import { PlanManager } from "../../services/quota.service";
 import { getLoanById } from "../../services/loan.service";
 import { getPaymentById } from "../../services/payment.service";
 
@@ -283,19 +284,34 @@ export default function PrestamosScreen() {
     if (!confirmationConfig) return;
     try {
       setIsGeneratingReceipt(true);
+      
+      // Validar cuota antes de proceder
+      if (user?.id) {
+        const check = await PlanManager.canExecute(user.id, 'generateReceipt');
+        if (!check.allowed) {
+          Alert.alert("Límite Alcanzado", check.reason || undefined);
+          setIsGeneratingReceipt(false);
+          return;
+        }
+      }
+
       if (confirmationConfig.type === 'loan') {
         await generateLoanReceipt(
           confirmationConfig.data.loan,
           confirmationConfig.data.client,
+          user?.id,
           user?.organization || undefined
         );
+        if (user?.id) await PlanManager.registerOperation(user.id, 'generateReceipt');
       } else {
         await generatePaymentReceipt(
           confirmationConfig.data.payment,
           confirmationConfig.data.loan,
           confirmationConfig.data.client,
+          user?.id,
           user?.organization || undefined
         );
+        if (user?.id) await PlanManager.registerOperation(user.id, 'generateReceipt');
       }
     } catch (error) {
       console.error("Error generating receipt:", error);

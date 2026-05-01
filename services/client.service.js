@@ -178,6 +178,22 @@ export async function getClients(userId) {
   return clientsWithFinancialInfo;
 }
 
+/**
+ * Obtiene solo los clientes que tienen préstamos activos.
+ * Útil para la selección de clientes al registrar abonos.
+ */
+export async function getClientsWithActiveLoans(userId) {
+  const db = await getDb();
+  const clients = await db.getAllAsync(
+    `SELECT DISTINCT c.* FROM clients c
+     JOIN loans l ON c.id = l.client_id
+     WHERE c.user_id = ? AND c.is_active = 1 AND l.status = 'active'
+     ORDER BY c.first_name ASC`,
+    [userId],
+  );
+  return clients;
+}
+
 /* GET CLIENT BY ID WITH FINANCIAL INFO */
 export async function getClientById(id) {
   const db = await getDb();

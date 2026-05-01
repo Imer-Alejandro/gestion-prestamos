@@ -9,13 +9,14 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
-import { getClients, getClientById } from "../../services/client.service";
+import { getClients, getClientById, getClientsWithActiveLoans } from "../../services/client.service";
 import { createLoan, getLoansByClient, getLoanById } from "../../services/loan.service";
 import { createPayment, getPaymentById } from "../../services/payment.service";
 import { NuevoPrestamoModal } from "../prestamos_abonos/NuevoPrestamoModal";
 import { RegistroAbonoModal } from "../prestamos_abonos/RegistroAbonoModal";
 import { ConfirmationModal } from "./ConfirmationModal";
 import { generateLoanReceipt, generatePaymentReceipt } from "../../services/pdf.service";
+import { PlanManager } from "../../services/quota.service";
 
 interface QuickActionFABProps {
   onRefresh?: () => void;
@@ -52,10 +53,12 @@ export const QuickActionFAB: React.FC<QuickActionFABProps> = ({ onRefresh }) => 
   const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
 
   // Cargador de clientes
-  const loadClients = async () => {
+  const loadClients = async (onlyWithActiveLoans = false) => {
     if (!user?.id) return;
     try {
-      const data = await getClients(user.id);
+      const data = onlyWithActiveLoans 
+        ? await getClientsWithActiveLoans(user.id)
+        : await getClients(user.id);
       setClients(data);
     } catch (error) {
       console.error("Error cargando clientes:", error);
@@ -63,13 +66,13 @@ export const QuickActionFAB: React.FC<QuickActionFABProps> = ({ onRefresh }) => 
   };
 
   const handleNuevoAbono = async () => {
-    await loadClients();
+    await loadClients(true); // Solo clientes con préstamos activos
     setShowQuickActions(false);
     setShowClientSelector(true);
   };
 
   const handleNuevoPrestamo = async () => {
-    await loadClients();
+    await loadClients(false); // Todos los clientes
     setShowQuickActions(false);
     setShowLoanModal(true);
   };
@@ -124,19 +127,34 @@ export const QuickActionFAB: React.FC<QuickActionFABProps> = ({ onRefresh }) => 
     if (!confirmationConfig) return;
     try {
       setIsGeneratingReceipt(true);
+      
+      // Validar cuota antes de proceder
+      if (user?.id) {
+        const check = await PlanManager.canExecute(user.id, 'generateReceipt');
+        if (!check.allowed) {
+          Alert.alert("Límite Alcanzado", check.reason || undefined);
+          setIsGeneratingReceipt(false);
+          return;
+        }
+      }
+
       if (confirmationConfig.type === 'loan') {
         await generateLoanReceipt(
           confirmationConfig.data.loan,
           confirmationConfig.data.client,
+          user?.id,
           user?.organization || undefined
         );
+        if (user?.id) await PlanManager.registerOperation(user.id, 'generateReceipt');
       } else {
         await generatePaymentReceipt(
           confirmationConfig.data.payment,
           confirmationConfig.data.loan,
           confirmationConfig.data.client,
+          user?.id,
           user?.organization || undefined
         );
+        if (user?.id) await PlanManager.registerOperation(user.id, 'generateReceipt');
       }
     } catch (error) {
       console.error("Error generating receipt:", error);

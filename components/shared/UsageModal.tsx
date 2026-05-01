@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { PlanManager } from '../../services/quota.service';
@@ -128,9 +129,14 @@ export default function UsageModal({ visible, onClose, userId }: UsageModalProps
 
   async function loadStats() {
     setLoading(true);
-    const s = await PlanManager.getUsageStats(userId);
-    setStats(s as UsageStats | null);
-    setLoading(false);
+    try {
+      const s = await PlanManager.getUsageStats(userId);
+      setStats(s as UsageStats | null);
+    } catch (err) {
+      console.error('Error loading usage stats:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleUpgradePress() {
@@ -149,9 +155,11 @@ export default function UsageModal({ visible, onClose, userId }: UsageModalProps
       animationType="none"
       onRequestClose={onClose}
     >
-      {/* Fondo difuminado */}
-      <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      {/* Fondo difuminado con BlurView */}
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacityAnim }]}>
+        <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </BlurView>
       </Animated.View>
 
       {/* Panel deslizante */}
@@ -167,9 +175,14 @@ export default function UsageModal({ visible, onClose, userId }: UsageModalProps
               <Text style={styles.planName}>{stats.plan.name}</Text>
             )}
           </View>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-            <Ionicons name="close" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity onPress={loadStats} style={styles.actionBtn} activeOpacity={0.7}>
+              <Ionicons name="refresh" size={20} color="#6B7280" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onClose} style={styles.actionBtn} activeOpacity={0.7}>
+              <Ionicons name="close" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -250,17 +263,22 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#1F2937',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '75%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    maxHeight: '80%',
     paddingBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
   },
   handle: {
     width: 40,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 2,
+    height: 5,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
     alignSelf: 'center',
     marginTop: 12,
     marginBottom: 4,
@@ -269,62 +287,65 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: '#F3F4F6',
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F9FAFB',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
   },
   planName: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: 13,
+    color: '#6B7280',
     marginTop: 2,
+    fontWeight: '500',
   },
-  closeBtn: {
+  actionBtn: {
     padding: 4,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 24,
+    paddingTop: 20,
     paddingBottom: 8,
-    gap: 16,
+    gap: 20,
   },
   loadingContainer: {
-    paddingVertical: 40,
+    paddingVertical: 60,
     alignItems: 'center',
   },
   loadingText: {
-    color: '#6B7280',
+    color: '#9CA3AF',
     fontSize: 14,
   },
   statusBanner: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
+    borderColor: '#F3F4F6',
+    borderRadius: 16,
+    padding: 16,
   },
   statusMessage: {
-    color: '#D1D5DB',
-    fontSize: 13,
-    lineHeight: 19,
+    color: '#4B5563',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
   },
   historicalRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingTop: 4,
+    gap: 8,
+    paddingTop: 8,
   },
   historicalText: {
-    color: '#6B7280',
-    fontSize: 12,
+    color: '#9CA3AF',
+    fontSize: 13,
   },
   historicalValue: {
-    color: '#D1D5DB',
-    fontWeight: '600',
+    color: '#4B5563',
+    fontWeight: '700',
   },
   footer: {
     paddingHorizontal: 20,
@@ -359,35 +380,37 @@ const barStyles = StyleSheet.create({
     alignItems: 'center',
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#E5E7EB',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
   },
   pct: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
   },
   track: {
-    height: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 4,
+    height: 10,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 5,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 5,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 2,
   },
   detail: {
-    fontSize: 11,
-    color: '#6B7280',
-  },
-  remaining: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#9CA3AF',
     fontWeight: '500',
+  },
+  remaining: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '600',
   },
 });

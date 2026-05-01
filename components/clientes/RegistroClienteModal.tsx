@@ -125,6 +125,22 @@ const formatCedula = (text: string) => {
   return formatted;
 };
 
+const formatPhone = (text: string) => {
+  const digits = text.replace(/\D/g, "");
+  const limited = digits.substring(0, 10);
+  let formatted = "";
+  if (limited.length > 0) {
+    formatted += limited.substring(0, 3);
+  }
+  if (limited.length > 3) {
+    formatted += "-" + limited.substring(3, 6);
+  }
+  if (limited.length > 6) {
+    formatted += "-" + limited.substring(6, 10);
+  }
+  return formatted;
+};
+
 /**
  * Modal de Registro de Cliente
  * Formulario para registrar nuevos clientes con validación
@@ -305,8 +321,14 @@ export default function RegistroClienteModal({
     } else if (formData.tipoDocumento === "Cédula" && formData.numeroDocumento.length < 13) {
       newErrors.numeroDocumento = "La cédula debe tener 11 dígitos";
     }
+    if (!formData.fechaNacimiento.trim()) {
+      newErrors.fechaNacimiento = "La fecha de nacimiento es obligatoria";
+    }
+
     if (!formData.celularWhatsapp.trim()) {
       newErrors.celularWhatsapp = "El número de celular es obligatorio";
+    } else if (formData.celularWhatsapp.length < 12) {
+      newErrors.celularWhatsapp = "El número debe tener 10 dígitos";
     }
 
     setErrors(newErrors);
@@ -521,6 +543,9 @@ export default function RegistroClienteModal({
                           {formData.fechaNacimiento || "DD/MM/AAAA"}
                         </Text>
                       </TouchableOpacity>
+                      {errors.fechaNacimiento && (
+                        <Text className="text-red-500 text-xs mt-1">{errors.fechaNacimiento}</Text>
+                      )}
 
                       {showDatePicker && (
                         <DateTimePicker
@@ -664,7 +689,8 @@ export default function RegistroClienteModal({
                     <TextInput
                       value={formData.celularWhatsapp}
                       onChangeText={(text) => {
-                        setFormData({ ...formData, celularWhatsapp: text });
+                        const formatted = formatPhone(text);
+                        setFormData({ ...formData, celularWhatsapp: formatted });
                         if (errors.celularWhatsapp) setErrors({ ...errors, celularWhatsapp: "" });
                       }}
                       placeholder="Ej: 809-555-1234"
@@ -685,9 +711,10 @@ export default function RegistroClienteModal({
                       </Text>
                       <TextInput
                         value={formData.telefonoCasa}
-                        onChangeText={(text) =>
-                          setFormData({ ...formData, telefonoCasa: text })
-                        }
+                        onChangeText={(text) => {
+                          const formatted = formatPhone(text);
+                          setFormData({ ...formData, telefonoCasa: formatted });
+                        }}
                         placeholder="Opcional"
                         keyboardType="phone-pad"
                         className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-base"
@@ -701,9 +728,10 @@ export default function RegistroClienteModal({
                       </Text>
                       <TextInput
                         value={formData.telefonoOtro}
-                        onChangeText={(text) =>
-                          setFormData({ ...formData, telefonoOtro: text })
-                        }
+                        onChangeText={(text) => {
+                          const formatted = formatPhone(text);
+                          setFormData({ ...formData, telefonoOtro: formatted });
+                        }}
                         placeholder="Opcional"
                         keyboardType="phone-pad"
                         className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-base"

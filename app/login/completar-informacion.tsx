@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import CountryPicker, { CountryCode } from "react-native-country-picker-modal";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,11 +11,19 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuth } from "../../contexts/AuthContext";
+import ValidarCorreoComponent from "../../components/login/ValidarCorreoComponent";
 
 
 export default function CompletarInformacionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { requestEmailVerification } = useAuth();
+
+  // Estado para mostrar validación de correo
+  const [showEmailValidation, setShowEmailValidation] = useState(false);
+  const [emailToValidate, setEmailToValidate] = useState("");
+  const [userIdToValidate, setUserIdToValidate] = useState(0);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -38,6 +46,7 @@ export default function CompletarInformacionScreen() {
     repetirContrasena: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
 
   const isRD = countryCode === "DO";
 
@@ -58,6 +67,7 @@ export default function CompletarInformacionScreen() {
     return emailRegex.test(email);
   };
 
+  // Primer paso: validar formulario
   const handleSubmit = async () => {
     const newErrors: Record<string, string> = {};
 
@@ -90,28 +100,63 @@ export default function CompletarInformacionScreen() {
       return;
     }
 
-    const phoneFinal = isRD
-      ? `+1${rdAreaCode}${formData.telefono.replace(/\D/g, "")}`
-      : `+${callingCode}${formData.telefono.replace(/\D/g, "")}`;
-
-    const registroParaPlan = {
-      full_name: formData.representante,
-      email: formData.correo,
-      phone: phoneFinal,
-      password: formData.nuevaContrasena,
-      org_nombre: params.nombreOrganizacion,
-      org_eslogan: params.eslogan,
-      org_logo: params.logo,
-      org_tipo: params.tipoOrganizacion,
-      org_direccion: formData.direccion,
-      org_rnc: formData.rnc,
-    };
-
-    router.push({
-      pathname: "/login/seleccion-plan",
-      params: registroParaPlan,
-    });
+    // Formulario válido - mostrar validación de correo
+    setEmailToValidate(formData.correo);
+    setUserIdToValidate(1); // Será actualizado después de crear usuario temporal
+    setShowEmailValidation(true);
   };
+
+  // Cuando valida el correo exitosamente
+  const handleEmailValidationSuccess = async () => {
+    try {
+      setIsLoading(true);
+      
+      const phoneFinal = isRD
+        ? `+1${rdAreaCode}${formData.telefono.replace(/\D/g, "")}`
+        : `+${callingCode}${formData.telefono.replace(/\D/g, "")}`;
+
+      const registroParaPlan = {
+        full_name: formData.representante,
+        email: formData.correo,
+        phone: phoneFinal,
+        password: formData.nuevaContrasena,
+        org_nombre: params.nombreOrganizacion,
+        org_eslogan: params.eslogan,
+        org_logo: params.logo,
+        org_tipo: params.tipoOrganizacion,
+        org_direccion: formData.direccion,
+        org_rnc: formData.rnc,
+      };
+
+      router.push({
+        pathname: "/login/seleccion-plan",
+        params: registroParaPlan,
+      });
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Cancelar validación y volver al formulario
+  const handleCancelValidation = () => {
+    setShowEmailValidation(false);
+  };
+
+  if (showEmailValidation) {
+    return (
+      <View className="flex-1 bg-white">
+        <ValidarCorreoComponent
+          email={emailToValidate}
+          userId={userIdToValidate}
+          fullName={formData.representante}
+          onSuccess={handleEmailValidationSuccess}
+          onCancel={handleCancelValidation}
+        />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -294,7 +339,8 @@ export default function CompletarInformacionScreen() {
           {/* BOTÓN */}
           <TouchableOpacity
             onPress={handleSubmit}
-            className="bg-white p-4 rounded-lg mt-4"
+            disabled={isLoading}
+            className={`bg-white p-4 rounded-lg mt-4 ${isLoading ? 'opacity-50' : 'opacity-100'}`}
           >
             <Text className="text-center text-[#13678A] font-bold">
               Continuar

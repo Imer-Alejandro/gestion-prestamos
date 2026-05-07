@@ -276,3 +276,26 @@ export async function changePassword(userId, currentPassword, newPassword) {
 
   return true;
 }
+
+/* RESETEAR CONTRASEÑA */
+export async function resetPassword(userId, newPassword) {
+  const db = await getDb();
+
+  // Obtener el usuario
+  const user = await db.getFirstAsync(`SELECT * FROM users WHERE id = ?`, [userId]);
+
+  if (!user) {
+    throw new Error("Usuario no encontrado");
+  }
+
+  // Hashear la nueva contraseña
+  const newPasswordHash = await hashPassword(newPassword);
+
+  // Actualizar contraseña
+  await db.runAsync(
+    `UPDATE users SET password_hash = ? WHERE id = ?`,
+    [newPasswordHash, userId]
+  );
+
+  return { success: true, message: "Contraseña actualizada correctamente" };
+}

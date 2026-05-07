@@ -1,11 +1,21 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, useSegments } from "expo-router";
+import { Alert } from "react-native";
 import {
   createUser,
   getUserById,
   loginWithEmail,
   changePassword,
+  resetPassword,
 } from "../services/user.service.js";
+import {
+  createEmailValidation,
+  verifyEmailCode,
+  createPasswordReset,
+  verifyPasswordResetCode,
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+} from "../services/email.service.js";
 import * as StorageService from "../services/storage.service";
 
 // Tipos de datos
@@ -50,6 +60,12 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   updateUserName: (newName: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  // Validación de email
+  requestEmailVerification: (userId: number, email: string) => Promise<{ code: string }>;
+  verifyEmail: (userId: number, email: string, code: string) => Promise<void>;
+  // Recuperación de contraseña
+  requestPasswordReset: (email: string, fullName: string) => Promise<{ code: string }>;
+  verifyPasswordReset: (email: string, code: string, newPassword: string) => Promise<void>;
 }
 
 // Claves para SecureStore
@@ -236,6 +252,93 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Solicitar verificación de correo electrónico
+  const requestEmailVerification = async (userId: number, email: string) => {
+    try {
+      const user = await getUserById(userId);
+      if (!user) throw new Error("Usuario no encontrado");
+
+      const result = await createEmailValidation(userId, email);
+      await sendVerificationEmail(email, user.full_name, result.code);
+      
+      // Mostrar alerta en DESARROLLO con el código
+      console.log("🔐 CÓDIGO DE VALIDACIÓN (DESARROLLO):", result.code);
+      Alert.alert(
+        "📧 Código Enviado",
+        `Tu código de validación es:\n\n${result.code}\n\n(Válido por 10 minutos)`,
+        [{ text: "OK" }]
+      );
+
+      return { code: result.code };
+    } catch (error) {
+      console.error("❌ Error solicitando verificación:", error);
+      throw error;
+    }
+  };
+
+  // Verificar código de correo electrónico
+  const verifyEmail = async (userId: number, email: string, code: string) => {
+    try {
+      await verifyEmailCode(userId, email, code);
+      // Actualizar el usuario actual si es el mismo
+      if (user?.id === userId) {
+        const updatedUser = await getUserById(userId);
+        if (updatedUser) setUser(updatedUser);
+      }
+      console.log("✅ Correo verificado correctamente");
+    } catch (error) {
+      console.error("❌ Error verificando correo:", error);
+      throw error;
+    }
+  };
+
+  // Solicitar recuperación de contraseña
+  const requestPasswordReset = async (email: string, fullName: string) => {
+    try {
+      // Obtener el usuario por email
+      const dbUser = await getUserById(0); // Necesitamos una función para obtener por email
+      // Por ahora haremos una búsqueda directa en la BD
+
+      const db = await (await import("../database/db.js")).getDb();
+      const foundUser = await db.getFirstAsync(
+        "SELECT id FROM users WHERE email = ?",
+        [email]
+      );
+
+      if (!foundUser) {
+        throw new Error("Usuario no encontrado");
+      }
+
+      const result = await createPasswordReset(foundUser.id, email);
+      await sendPasswordResetEmail(email, fullName, result.code);
+
+      // Mostrar alerta en DESARROLLO con el código
+      console.log("🔐 CÓDIGO DE RECUPERACIÓN (DESARROLLO):", result.code);
+      Alert.alert(
+        "📧 Código de Recuperación Enviado",
+        `Tu código es:\n\n${result.code}\n\n(Válido por 15 minutos)`,
+        [{ text: "OK" }]
+      );
+
+      return { code: result.code };
+    } catch (error) {
+      console.error("❌ Error solicitando reset:", error);
+      throw error;
+    }
+  };
+
+  // Verificar código y resetear contraseña
+  const verifyPasswordReset = async (email: string, code: string, newPassword: string) => {
+    try {
+      const result = await verifyPasswordResetCode(email, code);
+      await resetPassword(result.userId, newPassword);
+      console.log("✅ Contraseña resetada correctamente");
+    } catch (error) {
+      console.error("❌ Error resetando contraseña:", error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -246,6 +349,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser,
     updateUserName,
     changePassword: handleChangePassword,
+    requestEmailVerification,
+    verifyEmail,
+    requestPasswordReset,
+    verifyPasswordReset,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

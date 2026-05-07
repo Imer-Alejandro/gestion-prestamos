@@ -41,6 +41,8 @@ export async function initializeDatabase() {
       phone TEXT,
       password_hash TEXT NOT NULL,
       pin_hash TEXT,
+      email_verified INTEGER DEFAULT 0,
+      email_verified_at TEXT,
       created_at TEXT NOT NULL,
       last_login TEXT,
       is_active INTEGER DEFAULT 1
@@ -48,6 +50,52 @@ export async function initializeDatabase() {
 
     CREATE INDEX IF NOT EXISTS idx_users_active
     ON users(is_active);
+
+    -------------------------------------------------------
+    -- EMAIL VALIDATIONS
+    -------------------------------------------------------
+    CREATE TABLE IF NOT EXISTS email_validations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      email TEXT NOT NULL,
+      validation_code TEXT NOT NULL,
+      attempts INTEGER DEFAULT 0,
+      max_attempts INTEGER DEFAULT 5,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      is_used INTEGER DEFAULT 0,
+      used_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_email_validations_user
+    ON email_validations(user_id);
+
+    CREATE INDEX IF NOT EXISTS idx_email_validations_email
+    ON email_validations(email);
+
+    -------------------------------------------------------
+    -- PASSWORD RESETS
+    -------------------------------------------------------
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      email TEXT NOT NULL,
+      reset_code TEXT NOT NULL,
+      attempts INTEGER DEFAULT 0,
+      max_attempts INTEGER DEFAULT 5,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      is_used INTEGER DEFAULT 0,
+      used_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_password_resets_user
+    ON password_resets(user_id);
+
+    CREATE INDEX IF NOT EXISTS idx_password_resets_email
+    ON password_resets(email);
 
     -------------------------------------------------------
     -- CLIENTS

@@ -3,10 +3,11 @@ import { View } from "react-native";
 import ValidarCorreoComponent from "../../components/login/ValidarCorreoComponent";
 
 /**
- * Pantalla de Validación de Correo
- * Muestra el componente de validación con el email del usuario
+ * Pantalla de Validación de Correo para Organización
+ * Pantalla final del registro de organización
+ * Valida el correo mediante código OTP de 6 dígitos
  */
-export default function ValidarCorreoScreen() {
+export default function ValidarCorreoOrganizacionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -16,7 +17,7 @@ export default function ValidarCorreoScreen() {
   const fullName = params.fullName as string;
 
   const handleSuccess = () => {
-    // Redirigir al home o siguiente pantalla
+    // Redirigir al home después de validar correo
     router.replace("/home");
   };
 

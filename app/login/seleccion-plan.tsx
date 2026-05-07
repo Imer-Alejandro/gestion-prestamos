@@ -11,127 +11,7 @@ import {
   Animated,
   useWindowDimensions,
 } from "react-native";
-import { useAuth } from "../../contexts/AuthContext";
-
-const PlanCard = memo(({ item, isSelected, onSelect, scrollX, index, width, CARD_WIDTH }: any) => {
-  const selectionAnim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
-  const bounceAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.timing(selectionAnim, {
-      toValue: isSelected ? 1 : 0,
-      duration: 350,
-      useNativeDriver: false,
-    }).start();
-  }, [isSelected]);
-
-  const handlePress = () => {
-    if (item.isDevelopment) return;
-
-    // Animación de rebote (bounce)
-    Animated.sequence([
-      Animated.timing(bounceAnim, { toValue: 0.95, duration: 100, useNativeDriver: false }),
-      Animated.spring(bounceAnim, { toValue: 1, friction: 4, useNativeDriver: false }),
-    ]).start();
-
-    onSelect(item.id);
-  };
-
-  const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
-  const cardScale = scrollX.interpolate({
-    inputRange,
-    outputRange: [0.9, 1, 0.9],
-    extrapolate: "clamp",
-  });
-  const cardOpacity = scrollX.interpolate({
-    inputRange,
-    outputRange: [0.6, 1, 0.6],
-    extrapolate: "clamp",
-  });
-
-  const animatedBorderWidth = selectionAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 6],
-  });
-
-  const planColor = item.isDevelopment ? "#94a3b8" : item.color;
-
-  return (
-    <View style={{ width: width, alignItems: "center", justifyContent: "center" }}>
-      <Animated.View
-        style={{
-          width: CARD_WIDTH + 12,
-          height: 500, // Ajustado para 10 características
-          padding: 6,
-          borderRadius: 30,
-          borderWidth: animatedBorderWidth,
-          borderColor: 'rgba(255, 255, 255, 0.9)',
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: isSelected ? 0.2 : 0,
-          shadowRadius: 20,
-          elevation: isSelected ? 15 : 0,
-          opacity: cardOpacity,
-          transform: [{ scale: cardScale }, { scale: bounceAnim }],
-        }}
-      >
-        <View style={{ flex: 1, backgroundColor: 'white', borderRadius: 24, overflow: 'hidden', opacity: item.isDevelopment ? 0.7 : 1 }}>
-          <TouchableOpacity activeOpacity={1} onPress={handlePress} className="flex-1 p-8">
-            <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[3px]">PLAN</Text>
-              {item.isPopular && (
-                <View className="bg-orange-500 px-3 py-1 rounded-lg">
-                  <Text className="text-white text-[8px] font-black">POPULAR</Text>
-                </View>
-              )}
-              {item.isDevelopment && (
-                <View className="bg-gray-200 px-3 py-1 rounded-lg">
-                  <Text className="text-gray-500 text-[8px] font-black">PRÓXIMAMENTE</Text>
-                </View>
-              )}
-            </View>
-
-            <Text className="text-3xl font-black mb-1" style={{ color: planColor }}>{item.name}</Text>
-            <View className="flex-row items-baseline mb-4">
-              <Text className={`${item.isDevelopment ? 'text-gray-400' : 'text-gray-900'} text-3xl font-black`}>{item.price}</Text>
-              {item.id === 'standard' && <Text className="text-gray-500 text-sm font-bold ml-1">/ mes</Text>}
-            </View>
-
-            <View className="h-[2px] w-10 mb-4" style={{ backgroundColor: item.isDevelopment ? '#f1f5f9' : '#f3f4f6' }} />
-
-            <View className="gap-y-3">
-              {item.features.map((feature: any, idx: number) => (
-                <View key={idx} className="flex-row items-center">
-                  <View className={`${feature.negative ? 'bg-red-50' : 'bg-gray-50'} rounded-full p-1 mr-3`}>
-                    <Ionicons
-                      name={feature.negative ? "close" : "checkmark"}
-                      size={12}
-                      color={feature.negative ? "#ef4444" : planColor}
-                    />
-                  </View>
-                  <Text
-                    className={`${feature.negative ? 'text-red-400' : 'text-gray-700'} text-[13px] font-bold flex-1`}
-                    numberOfLines={1}
-                  >
-                    {feature.text}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            {isSelected && (
-              <View className="absolute bottom-6 right-6 bg-[#13678A] rounded-full p-2 shadow-lg">
-                <Ionicons name="checkmark" size={20} color="white" />
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-    </View>
-  );
-});
-
-export default function SeleccionPlanScreen() {
+import { useAuth } from "../../contexts/AuthContext";export default function SeleccionPlanScreen() {
   const router = useRouter();
   const { register } = useAuth();
   const params = useLocalSearchParams();
@@ -253,35 +133,8 @@ export default function SeleccionPlanScreen() {
       </View>
 
       <View style={{ flex: 1, justifyContent: "center" }}>
-        <Animated.FlatList
-          ref={flatListRef}
-          data={plans}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-            { useNativeDriver: false }
-          )}
-          scrollEventThrottle={16}
-          renderItem={({ item, index }) => (
-            <PlanCard
-              item={item}
-              index={index}
-              isSelected={selectedPlan === item.id}
-              onSelect={setSelectedPlan}
-              scrollX={scrollX}
-              width={width}
-              CARD_WIDTH={CARD_WIDTH}
-            />
-          )}
-          getItemLayout={(_, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
-        />
+       
+       
 
         <View className="flex-row justify-center mt-[-10] mb-8 gap-2">
           {plans.map((_, i) => {

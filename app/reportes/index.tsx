@@ -10,41 +10,27 @@ import {
   Dimensions,
   InteractionManager
 } from "react-native";
-import { Svg, Rect, Circle } from "react-native-svg";
+import { Svg, Rect, Circle, Line } from "react-native-svg";
 import AppHeader from "../../components/shared/AppHeader";
-import Skeleton from "../../components/shared/Skeleton";
 import NotificationModal from "../../components/home/NotificationModal";
 import SearchResultsOverlay from "../../components/shared/SearchResultsOverlay";
 import ClientDetailsModal from "../../components/shared/ClientDetailsModal";
 import { getClients } from "../../services/client.service";
 import { QuickActionFAB } from "../../components/shared/QuickActionFAB";
-import {
-  formatCurrencyReportes,
-  mockEstadisticasPrestamos,
-  mockEstadisticasGanancias,
-  mockHistorialOperaciones,
-  mockComparacionPeriodos,
-  type EstadisticaMensual,
-} from "../../data/reportesData";
-import { mockNotifications } from "../../data/homeData";
 import { useAuth } from "../../contexts/AuthContext";
 
 const { width: screenWidth } = Dimensions.get("window");
 const chartWidth = screenWidth - 80;
 const chartHeight = 150;
 
-/**
- * Pantalla de Reportes y Consultas
- * Muestra estadísticas, gráficos y reportes financieros
- */
 export default function ReportesScreen() {
   const router = useRouter();
-  const { user } = useAuth(); // 👈 Acceder al usuario logueado
-  const insets = useSafeAreaInsets(); // Obtiene el espacio seguro de Android/iOS
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
-  const [activeTab, setActiveTab] = useState<"prestamos" | "ganancias" | "clientes" | "empleados">("prestamos");
-  const [showFiltros, setShowFiltros] = useState(false);
+  const [activeTab, setActiveTab] = useState<"prestamos" | "ganancias" | "clientes">("prestamos");
+  const [timePeriod, setTimePeriod] = useState<"MENSUAL" | "TRIMESTRAL" | "ANUAL">("MENSUAL");
 
   // Estados de busqueda global
   const [clients, setClients] = useState<any[]>([]);
@@ -53,16 +39,13 @@ export default function ReportesScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
 
-
   useEffect(() => {
-    // Diferir la carga inicial
     InteractionManager.runAfterInteractions(async () => {
       try {
         if (user?.id) {
           const clientsData = await getClients(user.id);
           setClients(clientsData);
-          
-          // Cargar notificaciones reales
+
           const { getPendingNotificationsUI } = await import("../../services/notification.service");
           const uiNotifications = await getPendingNotificationsUI(user.id);
           setNotifications(uiNotifications);
@@ -81,27 +64,6 @@ export default function ReportesScreen() {
     avatar: null,
   };
 
-  // Calcular monto total según el tab activo
-  const calcularMontoTotal = () => {
-    if (activeTab === "prestamos") {
-      return 127560.0;
-    } else if (activeTab === "ganancias") {
-      return 34780.0;
-    }
-    return 0;
-  };
-
-  // Obtener estadísticas según el tab activo
-  const obtenerEstadisticas = (): EstadisticaMensual[] => {
-    if (activeTab === "prestamos") {
-      return mockEstadisticasPrestamos;
-    } else if (activeTab === "ganancias") {
-      return mockEstadisticasGanancias;
-    }
-    return [];
-  };
-
-  // Maneja la eliminación de notificaciones de forma persistente
   const handleDeleteNotification = async (notificationId: string) => {
     try {
       const { dismissNotification, getPendingNotificationsUI } = await import("../../services/notification.service");
@@ -113,7 +75,6 @@ export default function ReportesScreen() {
     }
   };
 
-  // Manejar búsqueda de clientes
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);
     setIsSearchActive(text.length > 0);
@@ -129,134 +90,10 @@ export default function ReportesScreen() {
     setSelectedClient(client);
   };
 
-  // Filtrar clientes para el overlay
   const filteredClients = clients.filter(c =>
     (c.first_name + ' ' + c.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.document_number && c.document_number.includes(searchQuery))
   );
-
-  // Renderizar gráfico de barras
-  const renderBarChart = (data: EstadisticaMensual[]) => {
-    const maxValue = Math.max(...data.map(d => d.valor));
-    const barWidth = (chartWidth / data.length) - 10;
-    const padding = 2;
-
-    return (
-      <View className="bg-white rounded-xl p-4 mb-4">
-        <View className="mb-4">
-          <Text className="text-gray-500 text-xs mb-1">
-            Monto total de los préstamos
-          </Text>
-          <Text className="text-gray-900 text-2xl font-bold">
-            ${formatCurrencyReportes(calcularMontoTotal())}
-          </Text>
-        </View>
-
-        <Svg width={chartWidth} height={chartHeight}>
-          {data.map((item, index) => {
-            const barHeight = (item.valor / maxValue) * (chartHeight - 30);
-            const x = index * (barWidth + 10) + padding;
-            const y = chartHeight - barHeight - 20;
-
-            return (
-              <Rect
-                key={index}
-                x={x}
-                y={y}
-                width={barWidth}
-                height={barHeight}
-                fill="#3B82F6"
-                rx={4}
-              />
-            );
-          })}
-        </Svg>
-
-        {/* Labels de meses */}
-        <View className="flex-row justify-between mt-2">
-          {data.map((item, index) => (
-            <Text key={index} className="text-gray-400 text-xs">
-              {item.mes}
-            </Text>
-          ))}
-        </View>
-      </View>
-    );
-  };
-
-  // Renderizar gráfico circular (donut)
-  const renderDonutChart = (gananciaNeta: number, gananciaPorMora: number, periodo: string) => {
-    const size = 100;
-    const strokeWidth = 15;
-    const radius = (size - strokeWidth) / 2;
-    const circumference = 2 * Math.PI * radius;
-
-    const total = gananciaNeta + gananciaPorMora;
-    const netaPercentage = (gananciaNeta / total) * 100;
-    const moraPercentage = (gananciaPorMora / total) * 100;
-
-    return (
-      <View className="flex-1 bg-white rounded-xl p-4 items-center">
-        <Text className="text-gray-700 text-sm font-medium mb-3">
-          {periodo}
-        </Text>
-
-        <View className="relative items-center justify-center mb-3">
-          <Svg width={size} height={size}>
-            {/* Círculo de fondo */}
-            <Circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              stroke="#E5E7EB"
-              strokeWidth={strokeWidth}
-              fill="none"
-            />
-
-            {/* Ganancia neta (verde) */}
-            <Circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              stroke="#10B981"
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeDasharray={`${(netaPercentage / 100) * circumference} ${circumference}`}
-              strokeDashoffset={0}
-              rotation="-90"
-              origin={`${size / 2}, ${size / 2}`}
-            />
-
-            {/* Ganancia por mora (rojo) */}
-            <Circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              stroke="#EF4444"
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeDasharray={`${(moraPercentage / 100) * circumference} ${circumference}`}
-              strokeDashoffset={-((netaPercentage / 100) * circumference)}
-              rotation="-90"
-              origin={`${size / 2}, ${size / 2}`}
-            />
-          </Svg>
-        </View>
-
-        {/* Leyenda */}
-        <View className="w-full">
-          <View className="flex-row items-center mb-1">
-            <View className="w-3 h-3 bg-green-500 rounded-sm mr-2" />
-            <Text className="text-gray-600 text-xs">ganancia neta</Text>
-          </View>
-          <View className="flex-row items-center">
-            <View className="w-3 h-3 bg-red-500 rounded-sm mr-2" />
-            <Text className="text-gray-600 text-xs">ganancia por mora</Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -283,190 +120,408 @@ export default function ReportesScreen() {
 
       {/* Tabs horizontales */}
       <View className="px-4 mt-4 mb-4">
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 24 }}
-        >
-          <TouchableOpacity
-            onPress={() => setActiveTab("prestamos")}
-            className="pb-2"
-            activeOpacity={0.7}
-          >
-            <Text
-              className={`text-sm font-medium ${activeTab === "prestamos" ? "text-gray-900" : "text-gray-500"
-                }`}
-            >
-              préstamos
-            </Text>
-            {activeTab === "prestamos" && (
-              <View className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveTab("ganancias")}
-            className="pb-2"
-            activeOpacity={0.7}
-          >
-            <Text
-              className={`text-sm font-medium ${activeTab === "ganancias" ? "text-gray-900" : "text-gray-500"
-                }`}
-            >
-              ganancias
-            </Text>
-            {activeTab === "ganancias" && (
-              <View className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveTab("clientes")}
-            className="pb-2"
-            activeOpacity={0.7}
-          >
-            <Text
-              className={`text-sm font-medium ${activeTab === "clientes" ? "text-gray-900" : "text-gray-500"
-                }`}
-            >
-              clientes
-            </Text>
-            {activeTab === "clientes" && (
-              <View className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveTab("empleados")}
-            className="pb-2"
-            activeOpacity={0.7}
-          >
-            <Text
-              className={`text-sm font-medium ${activeTab === "empleados" ? "text-gray-900" : "text-gray-500"
-                }`}
-            >
-              empleados
-            </Text>
-            {activeTab === "empleados" && (
-              <View className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
-            )}
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      {/* Contenido */}
-      <ScrollView className="flex-1 px-4 mt-3" showsVerticalScrollIndicator={false}>
-        {/* Estadísticas con gráfico de barras */}
-        <View className="mb-4">
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-gray-600 text-xs font-medium">
-              {activeTab === "prestamos" ? "Estadísticas de préstamos" :
-                activeTab === "ganancias" ? "Estadísticas de ganancias" :
-                  `Estadísticas de ${activeTab}`}
-            </Text>
+        <View className="flex-row gap-3">
+          {["prestamos", "ganancias", "clientes"].map((tab) => (
             <TouchableOpacity
-              onPress={() => setShowFiltros(!showFiltros)}
-              className="w-8 h-8 items-center justify-center"
+              key={tab}
+              onPress={() => setActiveTab(tab as any)}
+              className={`px-4 py-2 rounded-full ${activeTab === tab ? "bg-[#13678A]" : "bg-transparent border border-gray-300"}`}
               activeOpacity={0.7}
             >
-              <Ionicons name="options-outline" size={20} color="#6B7280" />
+              <Text
+                className={`text-sm font-medium capitalize ${activeTab === tab ? "text-white" : "text-gray-600"}`}
+              >
+                {tab}
+              </Text>
             </TouchableOpacity>
-          </View>
+          ))}
+        </View>
+      </View>
 
-          {isLoading ? (
-            <Skeleton.Rect height={220} borderRadius={20} />
-          ) : (
-            renderBarChart(obtenerEstadisticas())
-          )}
+      {/* Contenido Principal */}
+      <ScrollView className="flex-1 px-4 mt-4" showsVerticalScrollIndicator={false}>
+        {/* Título y descripción según tab */}
+        <View className="mb-4">
+          <Text className="text-gray-900 text-xl font-bold mb-1">
+            {activeTab === "prestamos" && "Estado de cartera financiera"}
+            {activeTab === "ganancias" && "Estado de resultados financieros"}
+            {activeTab === "clientes" && "Análisis de clientes"}
+          </Text>
+          <Text className="text-gray-500 text-xs">
+            {activeTab === "prestamos" && "Análisis detallado de colocación y riesgos"}
+            {activeTab === "ganancias" && "Seguimiento detallado de ingresos y rentabilidad"}
+            {activeTab === "clientes" && "Visualización detallada del crecimiento de la base de usuarios"}
+          </Text>
         </View>
 
-        {/* Historial de operaciones */}
-        {activeTab === "prestamos" && (
-          <View className="mb-4">
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-gray-700 text-sm font-medium">
-                Historial de operaciones
+        {/* Botones de período */}
+        <View className="flex-row gap-2 mb-4">
+          {["MENSUAL", "TRIMESTRAL", "ANUAL"].map((period) => (
+            <TouchableOpacity
+              key={period}
+              onPress={() => setTimePeriod(period as any)}
+              className={`px-3 py-2 rounded-md ${timePeriod === period ? "bg-gray-800" : "bg-gray-200"}`}
+              activeOpacity={0.7}
+            >
+              <Text className={`text-xs font-medium ${timePeriod === period ? "text-white" : "text-gray-600"}`}>
+                {period}
               </Text>
-              <View className="flex-row items-center">
-                <Text className="text-gray-500 text-xs mr-2">enero 2025</Text>
-                <TouchableOpacity
-                  className="w-10 h-10 items-center justify-center"
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="options-outline" size={24} color="#374151" />
-                </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity className="ml-auto px-3 py-2 rounded-md bg-gray-100">
+            <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+          </TouchableOpacity>
+        </View>
+
+        {/* SECCIÓN PRESTAMOS */}
+        {activeTab === "prestamos" && (
+          <>
+            {/* Total Prestado */}
+            <View className="bg-[#13678A] rounded-xl p-4 mb-4">
+              <Text className="text-white text-xs font-medium mb-2">TOTAL PRESTADO</Text>
+              <Text className="text-white text-3xl font-bold mb-1">2,384,000.00</Text>
+              <Text className="text-blue-100 text-xs">+23% Vigente anterior</Text>
+            </View>
+
+            {/* Intereses Proyectados */}
+            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+              <Text className="text-gray-700 text-xs font-medium mb-1">INTERESES PROYECTADOS</Text>
+              <Text className="text-gray-900 text-2xl font-bold">165,400.00</Text>
+              <Text className="text-gray-500 text-xs mt-1">Basado en cartera proyecta 0.3%</Text>
+            </View>
+
+            {/* Distribución por Estatus */}
+            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100 items-center">
+              <Text className="text-gray-700 text-xs font-medium mb-3">DISTRIBUCIÓN POR ESTATUS</Text>
+              <Text className="text-gray-900 text-4xl font-bold mb-2">314</Text>
+              <Text className="text-gray-500 text-xs mb-4">Total de préstamos</Text>
+              <View className="w-full">
+                <View className="flex-row items-center mb-2">
+                  <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                  <Text className="text-gray-600 text-xs flex-1">activos</Text>
+                  <Text className="text-gray-700 text-xs font-medium">68%</Text>
+                </View>
+                <View className="flex-row items-center mb-2">
+                  <View className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
+                  <Text className="text-gray-600 text-xs flex-1">pagados</Text>
+                  <Text className="text-gray-700 text-xs font-medium">27%</Text>
+                </View>
+                <View className="flex-row items-center">
+                  <View className="w-2 h-2 bg-red-500 rounded-full mr-2" />
+                  <Text className="text-gray-600 text-xs flex-1">mora</Text>
+                  <Text className="text-gray-700 text-xs font-medium">5%</Text>
+                </View>
               </View>
             </View>
 
-            {isLoading ? (
-               <View className="gap-3">
-               {[1, 2, 3].map(i => (
-                 <Skeleton.Rect key={i} height={80} borderRadius={16} />
-               ))}
-             </View>
-            ) : (
-              mockHistorialOperaciones.map((operacion) => (
-                <View
-                  key={operacion.id}
-                  className="bg-white rounded-xl p-4 mb-3 flex-row items-center shadow-sm"
-                  style={{
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 2,
-                    elevation: 1,
-                  }}
-                >
-                  <View className="w-10 h-10 bg-[#13678A] rounded-lg items-center justify-center mr-3">
-                    <Ionicons name="cash-outline" size={20} color="white" />
-                  </View>
+            {/* Gráfico de barras */}
+            <View className="bg-[#13678A] rounded-xl p-4 mb-4">
+              <Text className="text-white text-xs font-medium mb-3">DISTRIBUCIÓN DEL VOLUMEN DE PRÉSTAMOS</Text>
+              <Svg width={chartWidth} height={120}>
+                {[85, 120, 95, 110, 105, 130].map((height, i) => (
+                  <Rect
+                    key={i}
+                    x={i * (chartWidth / 6) + 5}
+                    y={120 - height}
+                    width={chartWidth / 6 - 10}
+                    height={height}
+                    fill="#E0F2FE"
+                    rx={3}
+                  />
+                ))}
+              </Svg>
+              <View className="flex-row justify-between mt-2">
+                {["ENE", "FEB", "MAR", "ABR", "MAY", "JUN"].map((mes, i) => (
+                  <Text key={i} className="text-white text-xs">
+                    {mes}
+                  </Text>
+                ))}
+              </View>
+            </View>
 
-                  <View className="flex-1">
-                    <Text className="text-[#13678A] text-base font-bold mb-1">
-                      {formatCurrencyReportes(operacion.monto)}
-                    </Text>
-                    <Text className="text-gray-500 text-xs">
-                      {operacion.descripcion}
-                    </Text>
-                  </View>
-
-                  <Text className="text-gray-400 text-xs">
-                    fecha de pago{"\n"}{operacion.fecha}
+            {/* Comparativa entre periodos */}
+            <View className="bg-white rounded-xl p-4 mb-6 border border-gray-100">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-gray-900 text-sm font-bold">Comparativa entre periodos</Text>
+                <Ionicons name="options-outline" size={20} color="#6B7280" />
+              </View>
+              <View className="flex-row gap-2 mb-4">
+                <TouchableOpacity className="px-3 py-2 bg-blue-600 rounded-md">
+                  <Text className="text-white text-xs font-medium">PERIODO #1</Text>
+                </TouchableOpacity>
+                <TouchableOpacity className="px-3 py-2 bg-gray-200 rounded-md">
+                  <Text className="text-gray-700 text-xs font-medium">PERIODO #2</Text>
+                </TouchableOpacity>
+              </View>
+              <Text className="text-gray-700 text-xs font-medium mb-3">ENERO</Text>
+              {[
+                { label: "clientes totales", value: "14" },
+                { label: "préstamos", value: "112" },
+                { label: "préstamos saldados", value: "68" },
+                { label: "préstamos vencidos", value: "22" },
+              ].map((item, i) => (
+                <View key={i} className="flex-row justify-between items-center mb-3 pb-3 border-b border-gray-100">
+                  <Text className="text-gray-600 text-xs">{item.label}</Text>
+                  <Text className="text-blue-600 text-xs font-medium">{item.value}</Text>
+                </View>
+              ))}
+              {["promedio de pagos", "tasa promedio de intereses", "ganancias estimadas", "pérdidas estimadas"].map((item, i) => (
+                <View key={i + 4} className="flex-row justify-between items-center mb-3 pb-3 border-b border-gray-100">
+                  <Text className="text-gray-600 text-xs">{item}</Text>
+                  <Text className={`text-xs font-medium ${i < 2 ? "text-gray-600" : i === 2 ? "text-green-600" : "text-red-600"}`}>
+                    {["86%", "5%", "461,900.00", "32,240.00"][i]}
                   </Text>
                 </View>
-              ))
-            )}
-          </View>
+              ))}
+            </View>
+          </>
         )}
 
-        {/* Comparación entre periodo */}
-        <View className="mb-4">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-gray-700 text-sm font-medium">
-              Comparación entre periodo
-            </Text>
-            <TouchableOpacity
-              className="w-10 h-10 items-center justify-center"
-              activeOpacity={0.7}
-            >
-              <Ionicons name="options-outline" size={24} color="#374151" />
-            </TouchableOpacity>
-          </View>
+        {/* SECCIÓN GANANCIAS */}
+        {activeTab === "ganancias" && (
+          <>
+            {/* Utilidad Neta */}
+            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+              <Text className="text-gray-700 text-xs font-medium mb-1">UTILIDAD NETA</Text>
+              <Text className="text-gray-900 text-3xl font-bold">165,400.00</Text>
+              <Text className="text-green-600 text-xs mt-1">+52 de período anterior</Text>
+            </View>
 
-          <View className="flex-row gap-3">
-            {mockComparacionPeriodos.map((comparacion, index) => (
-              <View key={index} className="flex-1">
-                {renderDonutChart(
-                  comparacion.gananciaNeta,
-                  comparacion.gananciaPorMora,
-                  comparacion.periodo
-                )}
+            {/* Retorno de Inversión */}
+            <View className="bg-[#13678A] rounded-xl p-4 mb-4">
+              <Text className="text-white text-xs font-medium mb-1">RETORNO DE INVERSIÓN</Text>
+              <Text className="text-white text-3xl font-bold">22.8%</Text>
+              <Text className="text-blue-100 text-xs mt-1">Mejor 50%</Text>
+            </View>
+
+            {/* Eficiencia Operativa */}
+            <View className="bg-[#13678A] rounded-xl p-4 mb-4">
+              <Text className="text-white text-xs font-medium mb-1">EFICIENCIA OPERATIVA</Text>
+              <Text className="text-white text-3xl font-bold">82.8%</Text>
+            </View>
+
+            {/* Gráfico Ganancias vs Proyecciones */}
+            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+              <Text className="text-gray-900 text-xs font-medium mb-3">GANANCIAS VS PROYECCIONES</Text>
+              <Svg width={chartWidth} height={120}>
+                {[65, 90, 75, 95, 85, 110].map((height, i) => (
+                  <Rect
+                    key={i}
+                    x={i * (chartWidth / 6) + 5}
+                    y={120 - height}
+                    width={(chartWidth / 6 - 10) / 2 - 2}
+                    height={height}
+                    fill="#60A5FA"
+                    rx={2}
+                  />
+                ))}
+                {[75, 100, 85, 105, 95, 120].map((height, i) => (
+                  <Rect
+                    key={`dark-${i}`}
+                    x={i * (chartWidth / 6) + 5 + (chartWidth / 6 - 10) / 2 + 2}
+                    y={120 - height}
+                    width={(chartWidth / 6 - 10) / 2 - 2}
+                    height={height}
+                    fill="#1E40AF"
+                    rx={2}
+                  />
+                ))}
+              </Svg>
+              <View className="flex-row justify-between mt-2">
+                {["ENE", "FEB", "MAR", "ABR", "MAY", "JUN"].map((mes, i) => (
+                  <Text key={i} className="text-gray-600 text-xs">
+                    {mes}
+                  </Text>
+                ))}
               </View>
-            ))}
-          </View>
-        </View>
+            </View>
 
-        {/* Espaciador para el bottom bar */}
+            {/* Embudo de Cobro */}
+            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+              <Text className="text-gray-900 text-xs font-medium mb-4">EMBUDO DE COBRO</Text>
+              <Svg width={chartWidth} height={100}>
+                <Line x1="10" y1="10" x2={chartWidth - 10} y2="10" stroke="#E5E7EB" strokeWidth="1" />
+                <Line x1="10" y1="10" x2={chartWidth - 10} y2="10" stroke="#3B82F6" strokeWidth="2" strokeDasharray="5,5" />
+              </Svg>
+            </View>
+
+            {/* Comparativa entre periodos */}
+            <View className="bg-white rounded-xl p-4 mb-6 border border-gray-100">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-gray-900 text-sm font-bold">Comparativa entre periodos</Text>
+                <Ionicons name="options-outline" size={20} color="#6B7280" />
+              </View>
+              <View className="flex-row gap-2 mb-4">
+                <TouchableOpacity className="px-3 py-2 bg-blue-600 rounded-md">
+                  <Text className="text-white text-xs font-medium">PERIODO #1</Text>
+                </TouchableOpacity>
+                <TouchableOpacity className="px-3 py-2 bg-gray-200 rounded-md">
+                  <Text className="text-gray-700 text-xs font-medium">PERIODO #2</Text>
+                </TouchableOpacity>
+              </View>
+              <Text className="text-gray-700 text-xs font-medium mb-3">ENERO</Text>
+              {[
+                { label: "Total cobrado", value: "178,900.00" },
+                { label: "Interés real cobrado", value: "+112%" },
+                { label: "Mora cobrada", value: "+68%" },
+                { label: "Capital recuperado", value: "+243,200.00" },
+              ].map((item, i) => (
+                <View key={i} className="flex-row justify-between items-center mb-3 pb-3 border-b border-gray-100">
+                  <Text className="text-gray-600 text-xs">{item.label}</Text>
+                  <Text className={`text-xs font-medium ${item.value.startsWith("+") ? "text-green-600" : "text-gray-900"}`}>
+                    {item.value}
+                  </Text>
+                </View>
+              ))}
+              {[
+                { label: "Intereses proyectados generados", value: "+46%" },
+                { label: "Pérdidas por asuaciones", value: "-5%" },
+                { label: "ROI del período", value: "461,900.00" },
+                { label: "Ganancias brutas", value: "32,240.00" },
+              ].map((item, i) => (
+                <View key={i + 4} className="flex-row justify-between items-center mb-3 pb-3 border-b border-gray-100">
+                  <Text className="text-gray-600 text-xs">{item.label}</Text>
+                  <Text className={`text-xs font-medium ${item.value.startsWith("+") ? "text-green-600" : item.value.startsWith("-") ? "text-red-600" : "text-gray-900"}`}>
+                    {item.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* SECCIÓN CLIENTES */}
+        {activeTab === "clientes" && (
+          <>
+            {/* Nuevos Clientes */}
+            <View className="bg-[#13678A] rounded-xl p-4 mb-4">
+              <Text className="text-white text-xs font-medium mb-2">NUEVOS CLIENTES</Text>
+              <Text className="text-white text-3xl font-bold">37</Text>
+              <Text className="text-blue-100 text-xs">+1.65 % período anterior</Text>
+            </View>
+
+            {/* Tasa de Retención */}
+            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+              <Text className="text-gray-700 text-xs font-medium mb-1">TASA DE RETENCIÓN</Text>
+              <Text className="text-gray-900 text-2xl font-bold">89.2%</Text>
+              <Text className="text-blue-500 text-xs mt-1 font-medium">OPTIMO</Text>
+            </View>
+
+            {/* Segmentación de Clientes */}
+            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+              <Text className="text-gray-900 text-xs font-medium mb-3">SEGMENTACIÓN DE CLIENTES</Text>
+              <Svg width={chartWidth} height={100}>
+                <Line x1="10" y1="10" x2={chartWidth - 10} y2="10" stroke="#E5E7EB" strokeWidth="1" />
+              </Svg>
+            </View>
+
+            {/* Representación del Volumen */}
+            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+              <Text className="text-gray-900 text-xs font-medium mb-3">REPRESENTACIÓN DEL VOLUMEN</Text>
+              <Svg width={chartWidth} height={100}>
+                {[80, 110, 90, 105, 95, 125].map((height, i) => (
+                  <Rect
+                    key={i}
+                    x={i * (chartWidth / 6) + 5}
+                    y={100 - height}
+                    width={chartWidth / 6 - 10}
+                    height={height}
+                    fill="#E0F2FE"
+                    rx={3}
+                  />
+                ))}
+              </Svg>
+              <View className="flex-row justify-between mt-2">
+                {["ENE", "FEB", "MAR", "ABR", "MAY", "JUN"].map((mes, i) => (
+                  <Text key={i} className="text-gray-600 text-xs">
+                    {mes}
+                  </Text>
+                ))}
+              </View>
+            </View>
+
+            {/* Distribución de Calidad Crediticia */}
+            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100 items-center">
+              <Text className="text-gray-700 text-xs font-medium mb-3">DISTRIBUCIÓN DE CALIDAD CREDITICIA</Text>
+              <Text className="text-gray-900 text-4xl font-bold mb-2">314</Text>
+              <Text className="text-gray-500 text-xs mb-4">PUNTOS</Text>
+              <View className="w-full">
+                <View className="flex-row items-center mb-2">
+                  <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                  <Text className="text-gray-600 text-xs flex-1">activos</Text>
+                  <Text className="text-gray-700 text-xs font-medium">68%</Text>
+                </View>
+                <View className="flex-row items-center mb-2">
+                  <View className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
+                  <Text className="text-gray-600 text-xs flex-1">pagados</Text>
+                  <Text className="text-gray-700 text-xs font-medium">27%</Text>
+                </View>
+                <View className="flex-row items-center">
+                  <View className="w-2 h-2 bg-red-500 rounded-full mr-2" />
+                  <Text className="text-gray-600 text-xs flex-1">mora</Text>
+                  <Text className="text-gray-700 text-xs font-medium">5%</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Concentración Geográfica */}
+            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+              <Text className="text-gray-700 text-xs font-medium mb-3">CONCENTRACIÓN GEOGRÁFICA</Text>
+              {[
+                { location: "Higüey", percentage: "68%" },
+                { location: "El Almirante", percentage: "27%" },
+                { location: "Villa mella", percentage: "5%" },
+              ].map((item, i) => (
+                <View key={i} className="flex-row justify-between items-center mb-2 pb-2 border-b border-gray-100">
+                  <Text className="text-gray-600 text-xs">{item.location}</Text>
+                  <Text className="text-gray-700 text-xs font-medium">{item.percentage}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Comparativa entre periodos */}
+            <View className="bg-white rounded-xl p-4 mb-6 border border-gray-100">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-gray-900 text-sm font-bold">Comparativa entre periodos</Text>
+                <Ionicons name="options-outline" size={20} color="#6B7280" />
+              </View>
+              <View className="flex-row gap-2 mb-4">
+                <TouchableOpacity className="px-3 py-2 bg-blue-600 rounded-md">
+                  <Text className="text-white text-xs font-medium">PERIODO #1</Text>
+                </TouchableOpacity>
+                <TouchableOpacity className="px-3 py-2 bg-gray-200 rounded-md">
+                  <Text className="text-gray-700 text-xs font-medium">PERIODO #2</Text>
+                </TouchableOpacity>
+              </View>
+              <Text className="text-gray-700 text-xs font-medium mb-3">ENERO</Text>
+              {[
+                { label: "Concentración demográfica", value: "Villa mella" },
+                { label: "Incremento del período", value: "+112%" },
+                { label: "Calidad crediticia", value: "+68%" },
+                { label: "Segmento destacado", value: "Milloniar 18 / 20" },
+              ].map((item, i) => (
+                <View key={i} className="flex-row justify-between items-center mb-3 pb-3 border-b border-gray-100">
+                  <Text className="text-gray-600 text-xs">{item.label}</Text>
+                  <Text className={`text-xs font-medium ${item.value.includes("+") ? "text-green-600" : "text-blue-600"}`}>
+                    {item.value}
+                  </Text>
+                </View>
+              ))}
+              {[
+                { label: "Cuotas en mora", value: "26%" },
+                { label: "Tasa de retención", value: "+5%" },
+              ].map((item, i) => (
+                <View key={i + 4} className="flex-row justify-between items-center mb-3 pb-3 border-b border-gray-100">
+                  <Text className="text-gray-600 text-xs">{item.label}</Text>
+                  <Text className={`text-xs font-medium ${item.value.includes("+") ? "text-green-600" : "text-gray-900"}`}>
+                    {item.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
         <View className="h-24" />
       </ScrollView>
 

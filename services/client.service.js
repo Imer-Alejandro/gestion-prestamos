@@ -108,7 +108,7 @@ export async function getClients(userId) {
     clients.map(async (client) => {
       // Obtener todos los préstamos activos del cliente
       const loans = await db.getAllAsync(
-        `SELECT * FROM loans WHERE client_id = ? AND status != 'closed'`,
+        `SELECT * FROM loans WHERE client_id = ? AND status NOT IN ('closed', 'voided')`,
         [client.id]
       );
 
@@ -125,7 +125,7 @@ export async function getClients(userId) {
 
         totalDebt += principalAmount;
         totalPaid += paidAmount;
-        pendingDebt += (principalAmount - paidAmount);
+        pendingDebt += (loan.current_balance || 0);
 
         // Verificar estado de mora
         if (loan.due_date && loan.status === 'active') {
@@ -187,7 +187,7 @@ export async function getClientsWithActiveLoans(userId) {
   const clients = await db.getAllAsync(
     `SELECT DISTINCT c.* FROM clients c
      JOIN loans l ON c.id = l.client_id
-     WHERE c.user_id = ? AND c.is_active = 1 AND l.status = 'active'
+     WHERE c.user_id = ? AND c.is_active = 1 AND l.status IN ('active', 'overdue')
      ORDER BY c.first_name ASC`,
     [userId],
   );
@@ -220,7 +220,7 @@ export async function getClientById(id) {
 
     totalDebt += principalAmount;
     totalPaid += paidAmount;
-    pendingDebt += loan.current_balance || 0;
+    pendingDebt += (loan.current_balance || 0);
 
     // Verificar estado de mora
     if (loan.due_date && loan.status === 'active') {

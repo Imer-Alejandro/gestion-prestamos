@@ -6,7 +6,6 @@
     "esModuleInterop": true,
     "strict": true,
     "target": "esnext",
-    "module": "esnext",
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true

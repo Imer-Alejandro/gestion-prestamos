@@ -535,8 +535,13 @@ export default function PrestamosScreen() {
                   <Skeleton.Rect key={i} height={180} borderRadius={22} style={{ marginHorizontal: 0, marginVertical: 10 }} />
                 ))}
               </View>
-            ) : (
+            ) : filteredLoans.length > 0 ? (
               filteredLoans.map(renderPrestamoCard)
+            ) : (
+              <View className="items-center justify-center py-20 opacity-40">
+                <Ionicons name="document-text-outline" size={64} color="#9CA3AF" />
+                <Text className="text-gray-500 text-lg font-medium mt-4">No hay préstamos registrados</Text>
+              </View>
             )}
           </>
         ) : (
@@ -548,8 +553,13 @@ export default function PrestamosScreen() {
                   <Skeleton.Rect key={i} height={120} borderRadius={20} style={{ marginHorizontal: 0, marginVertical: 6 }} />
                 ))}
               </View>
-            ) : (
+            ) : abonos.length > 0 ? (
               abonos.map(renderAbonoCard)
+            ) : (
+              <View className="items-center justify-center py-20 opacity-40">
+                <Ionicons name="receipt-outline" size={64} color="#9CA3AF" />
+                <Text className="text-gray-500 text-lg font-medium mt-4">No hay abonos registrados</Text>
+              </View>
             )}
           </View>
         )}

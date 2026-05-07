@@ -27,7 +27,7 @@ export default function NotificationModal({
   onClose,
   onDeleteNotification,
 }: NotificationModalProps) {
-  const translateY = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current; 
 
   useEffect(() => {
     if (visible) {

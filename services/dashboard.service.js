@@ -36,7 +36,7 @@ export async function getDailyDashboardData(userId) {
 
   // 4. Conteo de Préstamos Activos
   const activeLoansCount = await db.getFirstAsync(
-    `SELECT COUNT(*) as count FROM loans WHERE user_id = ? AND status IN ('active', 'mora')`,
+    `SELECT COUNT(*) as count FROM loans WHERE user_id = ? AND status IN ('active', 'overdue')`,
     [userId]
   );
 

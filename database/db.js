@@ -3,18 +3,34 @@ import * as SQLite from "expo-sqlite";
 let db = null;
 let initPromise = null;
 
+let dbPromise = null;
+
 export async function getDatabase() {
-  if (!db) {
-    db = await SQLite.openDatabaseAsync("loan_manager.db");
-    // Optimizaciones de concurrencia
-    await db.execAsync(`
-      PRAGMA journal_mode = WAL;
-      PRAGMA foreign_keys = ON;
-      PRAGMA synchronous = NORMAL;
-      PRAGMA busy_timeout = 5000;
-    `);
-  }
-  return db;
+  if (db) return db;
+  
+  if (dbPromise) return dbPromise;
+
+  dbPromise = (async () => {
+    try {
+      const database = await SQLite.openDatabaseAsync("loan_manager.db");
+      
+      // Optimizaciones de concurrencia
+      await database.execAsync(`
+        PRAGMA journal_mode = WAL;
+        PRAGMA foreign_keys = ON;
+        PRAGMA synchronous = NORMAL;
+        PRAGMA busy_timeout = 5000;
+      `);
+      
+      db = database; // Solo asignamos a 'db' cuando está totalmente lista
+      return db;
+    } catch (error) {
+      dbPromise = null;
+      throw error;
+    }
+  })();
+
+  return dbPromise;
 }
 
 // Alias para compatibilidad

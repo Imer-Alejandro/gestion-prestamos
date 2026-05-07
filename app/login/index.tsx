@@ -27,37 +27,6 @@ export default function LoginScreen() {
     password: "",
   });
 
-  // 👀 VER DATOS DE LA BASE DE DATOS
-  useEffect(() => {
-    const verDatosDB = async () => {
-      try {
-        const db = await getDb();
-        const usuarios = await db.getAllAsync("SELECT * FROM users");
-        console.log("========================================");
-        console.log("👥 USUARIOS EN BASE DE DATOS:");
-        console.log("========================================");
-        usuarios.forEach((user: any) => {
-          console.log(`\n📋 Usuario #${user.id}:`);
-          console.log(`   Nombre: ${user.full_name}`);
-          console.log(`   Email: ${user.email}`);
-          console.log(`   Teléfono: ${user.phone}`);
-          console.log(`   Activo: ${user.is_active ? "Sí" : "No"}`);
-          console.log(`   Creado: ${user.created_at}`);
-          console.log(`   Último login: ${user.last_login || "Nunca"}`);
-          console.log(
-            `   Password Hash: ${user.password_hash.substring(0, 20)}...`,
-          );
-        });
-        console.log("\n========================================");
-        console.log(`Total de usuarios: ${usuarios.length}`);
-        console.log("========================================\n");
-      } catch (error) {
-        console.error("❌ Error al leer BD:", error);
-      }
-    };
-    verDatosDB();
-  }, []);
-
   // Maneja el inicio de sesión con email y contraseña
   const handleLogin = async () => {
     // Validaciones básicas

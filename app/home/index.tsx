@@ -113,7 +113,7 @@ export default function HomeScreen() {
 
   const filteredClients = clients.filter(c =>
     (c.first_name + ' ' + c.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.document_number.includes(searchQuery)
+    (c.document_number && c.document_number.includes(searchQuery))
   );
 
   const handleResultPress = (client: any) => {
@@ -297,9 +297,18 @@ export default function HomeScreen() {
                     <Text className="text-[#14688A] font-bold text-base">
                       ${item.amount}
                     </Text>
-                    <View className="bg-blue-50 px-2 py-0.5 rounded-md mt-1">
-                      <Text className="text-[#14688A] text-[9px] font-black uppercase">COBRAR</Text>
-                    </View>
+                    {(() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      const itemDate = item.due_date.split('T')[0];
+                      const isOverdue = itemDate < today;
+                      return (
+                        <View className={`${isOverdue ? 'bg-red-50' : 'bg-blue-50'} px-2 py-0.5 rounded-md mt-1`}>
+                          <Text className={`${isOverdue ? 'text-red-600' : 'text-[#14688A]'} text-[9px] font-black uppercase`}>
+                            {isOverdue ? 'VENCIDO' : 'HOY'}
+                          </Text>
+                        </View>
+                      );
+                    })()}
                   </View>
                 </TouchableOpacity>
               ))}

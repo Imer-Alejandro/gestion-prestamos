@@ -4,7 +4,15 @@ import { getDb } from "../database/db.js";
 export async function getDailyDashboardData(userId) {
   const db = await getDb();
   
-  const todayStr = new Date().toISOString().split("T")[0];
+  // Helper para obtener fecha YYYY-MM-DD en zona horaria local
+  const getLocalTodayStr = () => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(now.getTime() - offset).toISOString();
+    return localISOTime.split("T")[0];
+  };
+
+  const todayStr = getLocalTodayStr();
   const datePattern = `${todayStr}%`;
 
   // 1. Capital en la Calle (Saldo total pendiente de préstamos activos/mora)
@@ -19,18 +27,22 @@ export async function getDailyDashboardData(userId) {
     [userId, datePattern]
   );
 
-  // 3. Agenda del Día (Cuotas que vencen hoy y no han sido pagadas)
+  // 3. Agenda del Día (Cuotas que vencen hoy O están atrasadas y no han sido pagadas)
   const agendaResult = await db.getAllAsync(
     `SELECT 
       li.id,
       li.scheduled_amount as amount,
       li.status,
+      li.due_date,
       c.first_name || ' ' || c.last_name as clientName,
       l.id as loanId
      FROM loan_installments li
      JOIN loans l ON li.loan_id = l.id
      JOIN clients c ON l.client_id = c.id
-     WHERE l.user_id = ? AND li.due_date = ? AND li.status IN ('pending', 'partial', 'overdue')`,
+     WHERE l.user_id = ? 
+       AND date(li.due_date) <= ? 
+       AND li.status IN ('pending', 'partial', 'overdue')
+     ORDER BY li.due_date ASC`,
     [userId, todayStr]
   );
 

@@ -345,12 +345,12 @@ export default function ReportesScreen() {
                   </Text>
                   <View className="flex-row items-center mt-1">
                     <Ionicons
-                      name={reportData.comparative.growth >= 0 ? "trending-up" : "trending-down"}
+                      name={(reportData?.comparative?.growth || 0) >= 0 ? "trending-up" : "trending-down"}
                       size={14}
-                      color={reportData.comparative.growth >= 0 ? "#86efac" : "#fca5a5"}
+                      color={(reportData?.comparative?.growth || 0) >= 0 ? "#86efac" : "#fca5a5"}
                     />
-                    <Text className={`text-xs font-medium ml-1 ${reportData.comparative.growth >= 0 ? "text-green-300" : "text-red-300"}`}>
-                      {reportData.comparative.growth >= 0 ? "+" : ""}{reportData.comparative.growth.toFixed(1)}% vs anterior
+                    <Text className={`text-xs font-medium ml-1 ${(reportData?.comparative?.growth || 0) >= 0 ? "text-green-300" : "text-red-300"}`}>
+                      {(reportData?.comparative?.growth || 0) >= 0 ? "+" : ""}{(reportData?.comparative?.growth || 0).toFixed(1)}% vs anterior
                     </Text>
                   </View>
                 </View>
@@ -404,16 +404,16 @@ export default function ReportesScreen() {
                   <View className="flex-1 bg-white rounded-[24px] p-5 shadow-sm border border-gray-100/50">
                     <Text className="text-gray-400 text-[10px] font-bold tracking-wider mb-2">INTERÉS PROYECTADO</Text>
                     <Text className="text-gray-800 text-xl font-black mb-1">
-                      ${((reportData.metrics?.totalInterest || 0) / 1000).toFixed(1)}k
+                      ${((reportData?.metrics?.totalInterest || 0) / 1000).toFixed(1)}k
                     </Text>
                     <Text className="text-gray-400 text-[10px]">Estimado del periodo</Text>
                   </View>
 
                   <View className="flex-1 bg-white rounded-[24px] p-5 shadow-sm border border-gray-100/50">
                     <Text className="text-gray-400 text-[10px] font-bold tracking-wider mb-2">CANTIDAD OTORGADA</Text>
-                    <Text className="text-gray-800 text-xl font-black mb-1">{reportData.metrics?.totalCount || 0}</Text>
-                    <Text className={`text-[10px] font-bold ${(reportData.comparative?.countGrowth || 0) >= 0 ? "text-green-500" : "text-red-500"}`}>
-                      {(reportData.comparative?.countGrowth || 0) >= 0 ? "+" : ""}{(reportData.comparative?.countGrowth || 0).toFixed(1)}% vs ant.
+                    <Text className="text-gray-800 text-xl font-black mb-1">{reportData?.metrics?.totalCount || 0}</Text>
+                    <Text className={`text-[10px] font-bold ${(reportData?.comparative?.countGrowth || 0) >= 0 ? "text-green-500" : "text-red-500"}`}>
+                      {(reportData?.comparative?.countGrowth || 0) >= 0 ? "+" : ""}{(reportData?.comparative?.countGrowth || 0).toFixed(1)}% vs ant.
                     </Text>
                   </View>
                 </View>
@@ -424,8 +424,8 @@ export default function ReportesScreen() {
                   <View className="flex-row items-center justify-between">
                     <View className="relative items-center justify-center">
                       <PieChart
-                        data={reportData.statusDistribution && reportData.statusDistribution.length > 0 ? (
-                          reportData.statusDistribution.map((item: any, i: number) => {
+                        data={(reportData?.statusDistribution || []).length > 0 ? (
+                          (reportData?.statusDistribution || []).map((item: any, i: number) => {
                             const colors = ["#13678A", "#10B981", "#F59E0B", "#EF4444", "#9CA3AF"];
                             return {
                               value: item.percentage,
@@ -438,7 +438,7 @@ export default function ReportesScreen() {
                         innerRadius={40}
                         centerLabelComponent={() => (
                           <View className="items-center">
-                            <Text className="text-gray-900 text-lg font-black">{reportData.metrics?.totalCount || 0}</Text>
+                            <Text className="text-gray-900 text-lg font-black">{reportData?.metrics?.totalCount || 0}</Text>
                             <Text className="text-gray-400 text-[8px] font-bold uppercase">Total</Text>
                           </View>
                         )}
@@ -446,7 +446,7 @@ export default function ReportesScreen() {
                     </View>
 
                     <View className="flex-1 ml-6 gap-3">
-                      {reportData.statusDistribution.map((item: any, i: number) => {
+                      {(reportData?.statusDistribution || []).map((item: any, i: number) => {
                         const colors = ["#13678A", "#10B981", "#F59E0B", "#EF4444", "#9CA3AF"];
                         const labels: any = { active: 'Activos', completed: 'Completados', overdue: 'En Mora', voided: 'Anulados' };
                         return (
@@ -455,7 +455,7 @@ export default function ReportesScreen() {
                               <View className="w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: colors[i % colors.length] }} />
                               <Text className="text-[11px] text-gray-600 font-medium">{labels[item.status] || item.status}</Text>
                             </View>
-                            <Text className="text-[11px] text-gray-900 font-bold">{item.percentage.toFixed(0)}%</Text>
+                            <Text className="text-[11px] text-gray-900 font-bold">{(item.percentage || 0).toFixed(0)}%</Text>
                           </View>
                         );
                       })}
@@ -468,9 +468,9 @@ export default function ReportesScreen() {
                   <Text className="text-gray-800 text-sm font-bold mb-5">Diversificación de Cartera</Text>
                   <View className="flex-row items-center justify-between">
                     <View className="relative items-center justify-center">
-                      {reportData.typeDistribution && reportData.typeDistribution.length > 0 ? (
+                      {(reportData?.typeDistribution || []).length > 0 ? (
                         <PieChart
-                          data={reportData.typeDistribution.map((item: any, i: number) => {
+                          data={(reportData?.typeDistribution || []).map((item: any, i: number) => {
                             const colors = ["#13678A", "#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
                             return {
                               value: item.amount,
@@ -483,7 +483,7 @@ export default function ReportesScreen() {
                           centerLabelComponent={() => (
                             <View className="items-center">
                               <Text className="text-gray-900 text-[9px] font-black">
-                                RD${((reportData.typeDistribution.reduce((acc: any, curr: any) => acc + curr.amount, 0) || 0) / 1000).toFixed(0)}k
+                                RD${((reportData?.typeDistribution?.reduce((acc: any, curr: any) => acc + (curr.amount || 0), 0) || 0) / 1000).toFixed(0)}k
                               </Text>
                               <Text className="text-gray-400 text-[6px] font-bold uppercase">Total</Text>
                             </View>
@@ -497,18 +497,18 @@ export default function ReportesScreen() {
                     </View>
 
                     <View className="flex-1 ml-6 gap-3">
-                      {reportData.typeDistribution.map((item: any, i: number) => {
+                      {(reportData?.typeDistribution || []).map((item: any, i: number) => {
                         const colors = ["#13678A", "#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
                         const labels: any = { personal: 'Personal', vehicle: 'Vehículos', housing: 'Vivienda', business: 'Negocios' };
-                        const total = reportData.typeDistribution.reduce((acc: any, curr: any) => acc + curr.amount, 0) || 1;
-                        const percentage = (item.amount / total) * 100;
+                        const total = (reportData?.typeDistribution || []).reduce((acc: any, curr: any) => acc + (curr.amount || 0), 0) || 1;
+                        const percentage = ((item.amount || 0) / total) * 100;
                         return (
                           <View key={i} className="flex-row items-center justify-between">
                             <View className="flex-row items-center flex-1">
                               <View className="w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: colors[i % colors.length] }} />
                               <Text className="text-[10px] text-gray-600 font-medium" numberOfLines={1}>{labels[item.type] || item.type}</Text>
                             </View>
-                            <Text className="text-[10px] text-gray-900 font-black ml-2">{percentage.toFixed(0)}%</Text>
+                            <Text className="text-[10px] text-gray-900 font-black ml-2">{(percentage || 0).toFixed(0)}%</Text>
                           </View>
                         );
                       })}
@@ -525,21 +525,21 @@ export default function ReportesScreen() {
                     </View>
                   </View>
                   <View className="items-center">
-                    {reportData.timeDistribution && reportData.timeDistribution.length > 0 ? (
+                    {(reportData?.timeDistribution || []).length > 0 ? (
                       <BarChart
-                        data={reportData.timeDistribution.map((item: any) => ({
+                        data={(reportData?.timeDistribution || []).map((item: any) => ({
                           value: item.amount,
                           label: item.label,
                           frontColor: '#13678A',
                           topLabelComponent: () => (
                             <View style={{ marginBottom: 4 }}>
                               <Text className="text-[6px] font-black text-slate-500 text-center">
-                                {item.amount >= 1000 ? `${(item.amount / 1000).toFixed(0)}k` : item.amount}
+                                {(item.amount || 0) >= 1000 ? `${((item.amount || 0) / 1000).toFixed(0)}k` : (item.amount || 0)}
                               </Text>
                             </View>
                           ),
                         }))}
-                        maxValue={Math.max(...reportData.timeDistribution.map((i: any) => i.amount || 0)) * 1.3}
+                        maxValue={Math.max(...(reportData?.timeDistribution || []).map((i: any) => i.amount || 0), 1) * 1.3}
                         width={screenWidth - 130}
                         height={160}
                         barWidth={20}
@@ -581,19 +581,19 @@ export default function ReportesScreen() {
                   </View>
 
                   <View className="items-center">
-                    {reportData.arrearsAging && reportData.arrearsAging.some((b: any) => b.amount > 0) ? (
+                    {(reportData?.arrearsAging || []).some((b: any) => (b.amount || 0) > 0) ? (
                       <BarChart
-                        data={reportData.arrearsAging.map((item: any, i: number) => ({
+                        data={(reportData?.arrearsAging || []).map((item: any, i: number) => ({
                           value: item.amount,
                           label: item.label,
                           frontColor: ["#60A5FA", "#FBBF24", "#F87171", "#B91C1C"][i] || "#13678A",
                           topLabelComponent: () => (
                             <Text className="text-[7px] font-black text-slate-500 mb-1">
-                              RD${item.amount.toLocaleString()}
+                              RD${(item.amount || 0).toLocaleString()}
                             </Text>
                           ),
                         }))}
-                        maxValue={Math.max(...reportData.arrearsAging.map((i: any) => i.amount || 0)) * 1.3}
+                        maxValue={Math.max(...(reportData?.arrearsAging || []).map((i: any) => i.amount || 0), 1) * 1.3}
                         width={screenWidth - 130}
                         height={140}
                         barWidth={35}
@@ -628,20 +628,20 @@ export default function ReportesScreen() {
                   <View className="flex-row gap-6">
                     <View className="flex-1">
                       <Text className="text-gray-400 text-[9px] font-bold uppercase mb-2">Desembolsado</Text>
-                      <Text className="text-amber-600 text-lg font-black">${(reportData.flowEfficiency?.disbursed || 0).toLocaleString()}</Text>
+                      <Text className="text-amber-600 text-lg font-black">${(reportData?.flowEfficiency?.disbursed || 0).toLocaleString()}</Text>
                       <View className="h-1 bg-amber-100 rounded-full mt-2 w-full" />
                     </View>
                     <View className="flex-1">
                       <Text className="text-gray-400 text-[9px] font-bold uppercase mb-2">Recuperado</Text>
-                      <Text className="text-teal-600 text-lg font-black">${(reportData.flowEfficiency?.collectedCapital || 0).toLocaleString()}</Text>
+                      <Text className="text-teal-600 text-lg font-black">${(reportData?.flowEfficiency?.collectedCapital || 0).toLocaleString()}</Text>
                       <View className="h-1 bg-teal-100 rounded-full mt-2 w-full" />
                     </View>
                   </View>
                   <View className="mt-4 pt-4 border-t border-gray-50 flex-row justify-between items-center">
                     <Text className="text-gray-400 text-[10px]">Ratio de Retorno de Capital</Text>
                     <Text className="text-gray-800 text-xs font-bold">
-                      {reportData.flowEfficiency?.disbursed > 0
-                        ? ((reportData.flowEfficiency.collectedCapital / reportData.flowEfficiency.disbursed) * 100).toFixed(0)
+                      {(reportData?.flowEfficiency?.disbursed || 0) > 0
+                        ? (((reportData?.flowEfficiency?.collectedCapital || 0) / (reportData?.flowEfficiency?.disbursed || 1)) * 100).toFixed(0)
                         : 100}%
                     </Text>
                   </View>
@@ -666,7 +666,7 @@ export default function ReportesScreen() {
                       </View>
                       <View className="items-end">
                         <Text className="text-gray-900 text-sm font-black">${(debtor.totalDebt || 0).toLocaleString()}</Text>
-                        <Text className="text-[9px] text-slate-400">{(((debtor.totalDebt || 0) / (reportData.riskMetrics?.totalActiveBalance || 1)) * 100).toFixed(1)}% de la cartera</Text>
+                        <Text className="text-[9px] text-slate-400">{(((debtor.totalDebt || 0) / (reportData?.riskMetrics?.totalActiveBalance || 1)) * 100).toFixed(1)}% de la cartera</Text>
                       </View>
                     </View>
                   ))}
@@ -676,9 +676,9 @@ export default function ReportesScreen() {
                 <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-100/50">
                   <Text className="text-gray-800 text-sm font-bold mb-5">Comparativa vs Periodo Anterior</Text>
                   {[
-                    { label: "Monto Promedio", current: reportData.metrics.avgAmount, prev: reportData.previousMetrics.avgAmount, unit: "$" },
-                    { label: "Capital Colocado", current: reportData.metrics.totalAmount, prev: reportData.previousMetrics.totalAmount, unit: "$" },
-                    { label: "Préstamos Realizados", current: reportData.metrics.totalCount, prev: reportData.previousMetrics.totalCount, unit: "" },
+                    { label: "Monto Promedio", current: reportData?.metrics?.avgAmount || 0, prev: reportData?.previousMetrics?.avgAmount || 0, unit: "$" },
+                    { label: "Capital Colocado", current: reportData?.metrics?.totalAmount || 0, prev: reportData?.previousMetrics?.totalAmount || 0, unit: "$" },
+                    { label: "Préstamos Realizados", current: reportData?.metrics?.totalCount || 0, prev: reportData?.previousMetrics?.totalCount || 0, unit: "" },
                   ].map((item, i) => {
                     const diff = item.prev > 0 ? ((item.current - item.prev) / item.prev) * 100 : 0;
                     return (
@@ -694,7 +694,7 @@ export default function ReportesScreen() {
                           <View className="flex-row items-center">
                             <Ionicons name={diff >= 0 ? "caret-up" : "caret-down"} size={10} color={diff >= 0 ? "#10B981" : "#EF4444"} />
                             <Text className={`text-[10px] font-bold ml-1 ${diff >= 0 ? "text-green-500" : "text-red-500"}`}>
-                              {Math.abs(diff).toFixed(1)}%
+                              {Math.abs(diff || 0).toFixed(1)}%
                             </Text>
                           </View>
                         </View>
@@ -724,17 +724,17 @@ export default function ReportesScreen() {
 
                   <View className="relative z-10">
                     <Text className="text-white text-5xl font-black tracking-tighter mb-2">
-                      ${(reportData.metrics?.netProfit || 0).toLocaleString()}
+                      ${(reportData?.metrics?.netProfit || 0).toLocaleString()}
                     </Text>
                     <View className="flex-row items-center">
-                      <View className={`flex-row items-center px-2.5 py-1 rounded-full ${(reportData.comparative?.profitGrowth || 0) >= 0 ? 'bg-green-400/30' : 'bg-red-400/30'}`}>
+                      <View className={`flex-row items-center px-2.5 py-1 rounded-full ${(reportData?.comparative?.profitGrowth || 0) >= 0 ? 'bg-green-400/30' : 'bg-red-400/30'}`}>
                         <Ionicons
-                          name={(reportData.comparative?.profitGrowth || 0) >= 0 ? "arrow-up" : "arrow-down"}
+                          name={(reportData?.comparative?.profitGrowth || 0) >= 0 ? "arrow-up" : "arrow-down"}
                           size={12}
                           color="white"
                         />
                         <Text className="text-white text-[11px] font-bold ml-1">
-                          {Math.abs(reportData.comparative?.profitGrowth || 0).toFixed(1)}%
+                          {Math.abs(reportData?.comparative?.profitGrowth || 0).toFixed(1)}%
                         </Text>
                       </View>
                       <Text className="text-white/60 text-[10px] font-medium ml-2 uppercase tracking-wider">vs periodo anterior</Text>
@@ -749,7 +749,7 @@ export default function ReportesScreen() {
                       <Ionicons name="pie-chart" size={20} color="#13678A" />
                     </View>
                     <Text className="text-gray-400 text-[9px] font-black tracking-widest uppercase mb-1">ROI Est.</Text>
-                    <Text className="text-gray-900 text-2xl font-black">{(reportData.roi?.current || 0).toFixed(1)}%</Text>
+                    <Text className="text-gray-900 text-2xl font-black">{(reportData?.roi?.current || 0).toFixed(1)}%</Text>
                     <Text className="text-blue-500 text-[9px] font-bold mt-1">Rentabilidad</Text>
                   </View>
 
@@ -758,7 +758,7 @@ export default function ReportesScreen() {
                       <Ionicons name="shield-checkmark" size={20} color="#10B981" />
                     </View>
                     <Text className="text-gray-400 text-[9px] font-black tracking-widest uppercase mb-1">Eficiencia</Text>
-                    <Text className="text-gray-900 text-2xl font-black">{(reportData.efficiency?.rate || 0).toFixed(1)}%</Text>
+                    <Text className="text-gray-900 text-2xl font-black">{(reportData?.efficiency?.rate || 0).toFixed(1)}%</Text>
                     <Text className="text-teal-500 text-[9px] font-bold mt-1">Operativa</Text>
                   </View>
                 </View>
@@ -771,12 +771,12 @@ export default function ReportesScreen() {
                       <Text className="text-gray-400 text-[9px] font-medium uppercase tracking-tighter">Proceso de conversión de activos</Text>
                     </View>
                     <View className="bg-gray-50 px-2.5 py-1.5 rounded-xl">
-                      <Text className="text-[#13678A] text-[10px] font-black">{(reportData.efficiency?.rate || 0).toFixed(0)}% Eficacia</Text>
+                      <Text className="text-[#13678A] text-[10px] font-black">{(reportData?.efficiency?.rate || 0).toFixed(0)}% Eficacia</Text>
                     </View>
                   </View>
 
                   <View className="items-center py-4">
-                    {reportData.funnel?.map((item: any, i: number) => {
+                    {(reportData?.funnel || []).map((item: any, i: number) => {
                       const maxWidth = screenWidth - 100;
                       const width = maxWidth * (1 - i * 0.12);
                       return (
@@ -786,9 +786,9 @@ export default function ReportesScreen() {
                             style={{ width: width as any, backgroundColor: item.color }}
                           >
                             <Text className="text-white text-[10px] font-black uppercase flex-1">{item.label}</Text>
-                            <Text className="text-white text-xs font-black">${item.value.toLocaleString()}</Text>
+                            <Text className="text-white text-xs font-black">${(item.value || 0).toLocaleString()}</Text>
                           </View>
-                          {i < reportData.funnel.length - 1 && (
+                          {i < (reportData?.funnel || []).length - 1 && (
                             <View className="h-2 w-[1px] bg-gray-200" />
                           )}
                         </View>
@@ -817,13 +817,13 @@ export default function ReportesScreen() {
                   </View>
 
                   <View className="items-center mb-4">
-                    {reportData.projections && reportData.projections.length > 0 ? (
+                    {reportData?.projections && (reportData?.projections || []).length > 0 ? (
                       <LineChart
-                        data={reportData.projections.map((item: any) => ({
+                        data={(reportData?.projections || []).map((item: any) => ({
                           value: item.real,
                           label: item.label,
                         }))}
-                        data2={reportData.projections.map((item: any) => ({
+                        data2={(reportData?.projections || []).map((item: any) => ({
                           value: item.projected,
                         }))}
                         width={chartWidth - 100}
@@ -857,7 +857,7 @@ export default function ReportesScreen() {
                   <View className="flex-row items-center justify-between">
                     <View className="relative items-center justify-center">
                       <PieChart
-                        data={reportData.revenueSources?.map((source: any) => ({
+                        data={(reportData?.revenueSources || []).map((source: any) => ({
                           value: source.amount,
                           color: source.color,
                           label: source.label,
@@ -867,14 +867,14 @@ export default function ReportesScreen() {
                         donut
                         centerLabelComponent={() => (
                           <View className="items-center">
-                            <Text className="text-gray-900 text-[10px] font-black">${(reportData.metrics?.netProfit || 0) >= 1000 ? `${((reportData.metrics?.netProfit || 0) / 1000).toFixed(1)}k` : (reportData.metrics?.netProfit || 0)}</Text>
+                            <Text className="text-gray-900 text-[10px] font-black">${(reportData?.metrics?.netProfit || 0) >= 1000 ? `${((reportData?.metrics?.netProfit || 0) / 1000).toFixed(1)}k` : (reportData?.metrics?.netProfit || 0)}</Text>
                             <Text className="text-gray-400 text-[7px] font-bold uppercase">Utilidad</Text>
                           </View>
                         )}
                       />
                     </View>
                     <View className="flex-1 ml-6 gap-3">
-                      {reportData.revenueSources?.map((source: any, i: number) => {
+                      {(reportData.revenueSources || []).map((source: any, i: number) => {
                         const total = reportData.metrics?.netProfit || 1;
                         const perc = (source.amount / total) * 100;
                         return (
@@ -883,7 +883,7 @@ export default function ReportesScreen() {
                               <View className="w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: source.color }} />
                               <Text className="text-[10px] text-gray-600 font-medium">{source.label}</Text>
                             </View>
-                            <Text className="text-[10px] text-gray-900 font-bold">{perc.toFixed(0)}%</Text>
+                            <Text className="text-[10px] text-gray-900 font-bold">{(perc || 0).toFixed(0)}%</Text>
                           </View>
                         );
                       })}
@@ -895,10 +895,10 @@ export default function ReportesScreen() {
                 <View className="bg-white rounded-[24px] p-6 mb-10 shadow-sm border border-gray-100/50">
                   <Text className="text-gray-800 text-sm font-black mb-5">Rendimiento Operativo</Text>
                   {[
-                    { label: "Capital Recuperado", value: reportData.funnel?.[2]?.value || 0, icon: "cash-outline", color: "blue" },
-                    { label: "Intereses Cobrados", value: reportData.metrics?.interestProfit || 0, icon: "trending-up-outline", color: "green" },
-                    { label: "Mora Recaudada", value: reportData.metrics?.lateFeeProfit || 0, icon: "timer-outline", color: "red" },
-                    { label: "Total Recaudado", value: reportData.metrics?.totalCollected || 0, icon: "wallet-outline", color: "slate" },
+                    { label: "Capital Recuperado", value: reportData?.funnel?.[2]?.value || 0, icon: "cash-outline", color: "blue" },
+                    { label: "Intereses Cobrados", value: reportData?.metrics?.interestProfit || 0, icon: "trending-up-outline", color: "green" },
+                    { label: "Mora Recaudada", value: reportData?.metrics?.lateFeeProfit || 0, icon: "timer-outline", color: "red" },
+                    { label: "Total Recaudado", value: reportData?.metrics?.totalCollected || 0, icon: "wallet-outline", color: "slate" },
                   ].map((item, i) => (
                     <View key={i} className={`flex-row justify-between items-center py-4 ${i !== 3 ? 'border-b border-gray-50' : ''}`}>
                       <View className="flex-row items-center">
@@ -907,7 +907,7 @@ export default function ReportesScreen() {
                         </View>
                         <Text className="text-gray-600 text-xs font-medium">{item.label}</Text>
                       </View>
-                      <Text className="text-sm font-black text-gray-900">${item.value.toLocaleString()}</Text>
+                      <Text className="text-sm font-black text-gray-900">${(item.value || 0).toLocaleString()}</Text>
                     </View>
                   ))}
                 </View>

@@ -441,7 +441,19 @@ export async function initializeDatabase() {
         { name: 'historical_operations', type: 'INTEGER', defaultValue: 0 },
       ]);
 
-      console.log("✅ Database initialized successfully");
+      // FIX: Restaurar intereses y capital pendientes para cuotas que fueron mal inicializadas (bug de remaining=0)
+      // Solo afecta a cuotas pendientes que no han recibido pagos.
+      await database.execAsync(`
+        UPDATE loan_installments 
+        SET remaining_interest = interest_amount, 
+            remaining_capital = capital_amount 
+        WHERE status = 'pending' 
+          AND amount_paid = 0 
+          AND remaining_interest = 0 
+          AND interest_amount > 0;
+      `);
+
+      console.log("✅ Database initialized successfully and data fix applied");
     } catch (error) {
       initPromise = null;
       throw error;

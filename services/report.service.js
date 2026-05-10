@@ -35,7 +35,7 @@ export const ReportService = {
     // 5. Métricas de Riesgo y Eficiencia
     const riskMetrics = await this._getRiskMetrics(db, userId);
     const arrearsAging = await this._getArrearsAging(db, userId);
-    const topDebtors = await this._getTopDebtors(db, userId);
+    const topDebtors = await this._getTopDebtors(db, userId, start, end);
     const recoveryRate = await this._getRecoveryRate(db, userId, start, end);
     const efficiency = await this._getPortfolioEfficiency(db, userId);
     const flowEfficiency = await this._getFlowEfficiency(db, userId, start, end);
@@ -97,6 +97,15 @@ export const ReportService = {
     // 5. Distribución por Fuente de Ingreso
     const revenueSources = await this._getRevenueSources(db, userId, start, end);
 
+    // 7. Distribución por Método de Pago
+    const paymentMethods = await this._getPaymentMethodDistribution(db, userId, start, end);
+
+    // 8. Rentabilidad por Tipo de Préstamo
+    const profitByType = await this._getProfitByType(db, userId, start, end);
+
+    // 9. Top Clientes Rentables
+    const topProfitableClients = await this._getTopProfitableClients(db, userId, start, end);
+
     // 6. Comparativa de Periodos
     const comparative = {
       profitGrowth: prevMetrics.netProfit > 0 
@@ -113,9 +122,308 @@ export const ReportService = {
       funnel,
       projections,
       revenueSources,
+      paymentMethods,
+      profitByType,
+      topProfitableClients,
       comparative,
       range
     };
+  },
+
+  /**
+   * Obtiene el reporte detallado de clientes.
+   */
+  async getClientReport(userId, options) {
+    const db = await getDb();
+    const range = this._calculateDateRange(options.period, options.startDate, options.endDate);
+    
+    const start = range.start || "";
+    const end = range.end || "";
+
+    // 1. Métricas Generales
+    const metrics = await this._getClientMetrics(db, userId, start, end);
+
+    // 2. Tendencia de Adquisición (Nuevos clientes)
+    const growthTrend = await this._getClientGrowthTrend(db, userId, range);
+
+    // 3. Distribución Demográfica (Género)
+    const genderDistribution = await this._getClientGenderDistribution(db, userId, start, end);
+
+    // 4. Distribución por Ocupación
+    const occupationDistribution = await this._getClientOccupationDistribution(db, userId, start, end);
+
+    // 5. Distribución Geográfica (Provincias)
+    const geographicDistribution = await this._getClientGeographicDistribution(db, userId, start, end);
+
+    // 7. Distribución por Edad
+    const ageDistribution = await this._getClientAgeDistribution(db, userId, start, end);
+
+    // 8. Segmentación por Calidad Crediticia (A, B, C)
+    const qualitySegmentation = await this._getClientQualitySegmentation(db, userId, start, end);
+
+    // 9. Distribución de Ingresos
+    const incomeDistribution = await this._getClientIncomeDistribution(db, userId, start, end);
+
+    // 6. Top Clientes por Puntualidad (Fidelidad)
+    const topLoyalClients = await this._getTopLoyalClients(db, userId, start, end);
+
+    return {
+      metrics,
+      growthTrend,
+      genderDistribution,
+      occupationDistribution,
+      geographicDistribution,
+      ageDistribution,
+      qualitySegmentation,
+      incomeDistribution,
+      topLoyalClients,
+      range
+    };
+  },
+
+  async _getClientQualitySegmentation(db, userId, start, end) {
+    // Calculamos según la mora histórica de sus préstamos
+    const query = `
+      SELECT 
+        CASE 
+          WHEN max_late_fee IS NULL THEN 'Sin Historial'
+          WHEN max_late_fee = 0 THEN 'Clase A'
+          WHEN max_late_fee < 1000 THEN 'Clase B'
+          ELSE 'Clase C'
+        END as label,
+        COUNT(*) as count
+      FROM (
+        SELECT c.id, MAX(l.total_late_fees) as max_late_fee
+        FROM clients c
+        LEFT JOIN loans l ON c.id = l.client_id AND l.status != 'voided'
+        WHERE c.user_id = ? AND c.is_active = 1
+        AND DATE(c.created_at) BETWEEN DATE(?) AND DATE(?)
+        GROUP BY c.id
+      )
+      GROUP BY label
+    `;
+    return await db.getAllAsync(query, [userId, start, end]);
+  },
+
+  async _getClientIncomeDistribution(db, userId, start, end) {
+    const query = `
+      SELECT 
+        CASE 
+          WHEN monthly_income < 20000 THEN 'Bajo (<20k)'
+          WHEN monthly_income < 50000 THEN 'Medio (20k-50k)'
+          WHEN monthly_income < 100000 THEN 'Alto (50k-100k)'
+          ELSE 'Premium (100k+)'
+        END as label,
+        COUNT(*) as count
+      FROM clients
+      WHERE user_id = ? AND is_active = 1 AND monthly_income IS NOT NULL
+      AND DATE(created_at) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY label
+      ORDER BY MIN(monthly_income) ASC
+    `;
+    return await db.getAllAsync(query, [userId, start, end]);
+  },
+
+  /**
+   * Obtiene la lista de clientes y sus sectores para una provincia específica.
+   */
+  async getClientsByProvince(userId, province) {
+    const db = await getDb();
+    const query = `
+      SELECT *
+      FROM clients
+      WHERE user_id = ? AND province = ? AND is_active = 1
+      ORDER BY address_line ASC
+    `;
+    const rows = await db.getAllAsync(query, [userId, province]);
+    // Mapear para compatibilidad si es necesario (ej: concatenar nombre)
+    return rows.map(r => ({
+      ...r,
+      name: `${r.first_name} ${r.last_name}`
+    }));
+  },
+
+  async _getClientAgeDistribution(db, userId, start, end) {
+    const query = `
+      SELECT 
+        CASE 
+          WHEN CAST(STRFTIME('%Y', 'now') - STRFTIME('%Y', birth_date) AS INT) < 25 THEN '18-24'
+          WHEN CAST(STRFTIME('%Y', 'now') - STRFTIME('%Y', birth_date) AS INT) < 35 THEN '25-34'
+          WHEN CAST(STRFTIME('%Y', 'now') - STRFTIME('%Y', birth_date) AS INT) < 45 THEN '35-44'
+          WHEN CAST(STRFTIME('%Y', 'now') - STRFTIME('%Y', birth_date) AS INT) < 55 THEN '45-54'
+          ELSE '55+'
+        END as label,
+        COUNT(*) as count
+      FROM clients
+      WHERE user_id = ? AND is_active = 1 AND birth_date IS NOT NULL
+      AND DATE(created_at) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY label
+      ORDER BY label ASC
+    `;
+    return await db.getAllAsync(query, [userId, start, end]);
+  },
+
+  async _getClientMetrics(db, userId, start, end) {
+    const totalQuery = `SELECT COUNT(*) as total FROM clients WHERE user_id = ? AND is_active = 1`;
+    const newQuery = `SELECT COUNT(*) as newClients FROM clients WHERE user_id = ? AND DATE(created_at) BETWEEN DATE(?) AND DATE(?)`;
+    
+    // Calcular tasa de retorno (clientes con > 1 préstamo en total)
+    const loyalQuery = `
+      SELECT COUNT(*) as loyalCount FROM (
+        SELECT client_id
+        FROM loans 
+        WHERE user_id = ? AND status != 'voided'
+        GROUP BY client_id 
+        HAVING COUNT(id) > 1
+      )
+    `;
+
+    const totalRes = await db.getFirstAsync(totalQuery, [userId]);
+    const newRes = await db.getFirstAsync(newQuery, [userId, start, end]);
+    const loyalRes = await db.getFirstAsync(loyalQuery, [userId]);
+    
+    const totalClients = totalRes?.total || 0;
+    const loyalClients = loyalRes?.loyalCount || 0;
+    const retentionRate = totalClients > 0 ? (loyalClients / totalClients) * 100 : 0;
+
+    return {
+      total: totalClients,
+      newClients: newRes?.newClients || 0,
+      retentionRate: Math.round(retentionRate)
+    };
+  },
+
+  async _getClientGrowthTrend(db, userId, range) {
+    const { start, end, type } = range;
+    let groupBy = "STRFTIME('%m', created_at)";
+    
+    if (type === "monthly") groupBy = "STRFTIME('%d', created_at)";
+
+    const query = `
+      SELECT ${groupBy} as label, COUNT(*) as count
+      FROM clients
+      WHERE user_id = ? AND is_active = 1
+      AND DATE(created_at) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY label
+      ORDER BY label ASC
+    `;
+    const rows = await db.getAllAsync(query, [userId, start, end]);
+    return rows;
+  },
+
+  async _getClientGenderDistribution(db, userId, start, end) {
+    const query = `
+      SELECT gender, COUNT(*) as count
+      FROM clients
+      WHERE user_id = ? AND is_active = 1
+      AND DATE(created_at) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY gender
+    `;
+    return await db.getAllAsync(query, [userId, start, end]);
+  },
+
+  async _getClientOccupationDistribution(db, userId, start, end) {
+    const query = `
+      SELECT occupation as label, COUNT(*) as count
+      FROM clients
+      WHERE user_id = ? AND is_active = 1
+      AND DATE(created_at) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY occupation
+      ORDER BY count DESC
+      LIMIT 5
+    `;
+    return await db.getAllAsync(query, [userId, start, end]);
+  },
+
+  async _getClientGeographicDistribution(db, userId, start, end) {
+    const query = `
+      SELECT province as label, COUNT(*) as count
+      FROM clients
+      WHERE user_id = ? AND is_active = 1
+      AND DATE(created_at) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY province
+      ORDER BY count DESC
+      LIMIT 5
+    `;
+    return await db.getAllAsync(query, [userId, start, end]);
+  },
+
+  async _getTopProfitableClients(db, userId, start, end) {
+    const query = `
+      SELECT 
+        c.first_name || ' ' || c.last_name as name,
+        COUNT(p.id) as paymentCount,
+        SUM(p.interest_portion + p.late_fee_portion) as profit
+      FROM clients c
+      JOIN payments p ON c.id = (SELECT client_id FROM loans WHERE id = p.loan_id)
+      WHERE p.user_id = ? AND p.status = 'active'
+      AND DATE(p.payment_date) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY c.id
+      ORDER BY profit DESC
+      LIMIT 5
+    `;
+    return await db.getAllAsync(query, [userId, start, end]);
+  },
+
+  async _getTopLoyalClients(db, userId, start, end) {
+    // Clientes con más préstamos completados en el periodo (o activos si no hay completados)
+    const query = `
+      SELECT 
+        c.first_name || ' ' || c.last_name as name,
+        COUNT(l.id) as loanCount,
+        SUM(l.total_paid) as totalValue
+      FROM clients c
+      JOIN loans l ON c.id = l.client_id
+      WHERE c.user_id = ? AND l.status != 'voided'
+      AND DATE(l.created_at) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY c.id
+      ORDER BY loanCount DESC, totalValue DESC
+      LIMIT 5
+    `;
+    return await db.getAllAsync(query, [userId, start, end]);
+  },
+
+  async _getPaymentMethodDistribution(db, userId, start, end) {
+    const query = `
+      SELECT payment_method as method, SUM(amount) as amount, COUNT(*) as count
+      FROM payments
+      WHERE user_id = ? AND status = 'active'
+      AND DATE(payment_date) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY payment_method
+    `;
+    const rows = await db.getAllAsync(query, [userId, start, end]);
+    return rows;
+  },
+
+  async _getProfitByType(db, userId, start, end) {
+    const query = `
+      SELECT l.loan_type as type, SUM(p.interest_portion + p.late_fee_portion) as profit
+      FROM payments p
+      JOIN loans l ON p.loan_id = l.id
+      WHERE p.user_id = ? AND p.status = 'active'
+      AND DATE(p.payment_date) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY l.loan_type
+    `;
+    const rows = await db.getAllAsync(query, [userId, start, end]);
+    return rows;
+  },
+
+  async _getTopProfitableClients(db, userId, start, end) {
+    const query = `
+      SELECT 
+        c.first_name || ' ' || c.last_name as name,
+        SUM(p.interest_portion + p.late_fee_portion) as profit,
+        COUNT(p.id) as paymentCount
+      FROM payments p
+      JOIN loans l ON p.loan_id = l.id
+      JOIN clients c ON l.client_id = c.id
+      WHERE p.user_id = ? AND p.status = 'active'
+      AND DATE(p.payment_date) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY c.id
+      ORDER BY profit DESC
+      LIMIT 5
+    `;
+    return await db.getAllAsync(query, [userId, start, end]);
   },
 
   async _getBasicLoanMetrics(db, userId, start, end) {
@@ -226,7 +534,7 @@ export const ReportService = {
     };
   },
 
-  async _getTopDebtors(db, userId) {
+  async _getTopDebtors(db, userId, start, end) {
     const query = `
       SELECT 
         c.first_name, c.last_name, 
@@ -234,12 +542,14 @@ export const ReportService = {
         COUNT(l.id) as loanCount
       FROM loans l
       JOIN clients c ON l.client_id = c.id
-      WHERE l.user_id = ? AND l.status IN ('active', 'overdue')
+      WHERE l.user_id = ? AND l.status != 'voided'
+      AND DATE(l.created_at) <= DATE(?)
+      AND l.current_balance > 0
       GROUP BY c.id
       ORDER BY totalDebt DESC
-      LIMIT 3
+      LIMIT 5
     `;
-    return await db.getAllAsync(query, [userId]);
+    return await db.getAllAsync(query, [userId, end]);
   },
 
   async _getRecoveryRate(db, userId, start, end) {

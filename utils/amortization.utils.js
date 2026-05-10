@@ -87,7 +87,7 @@ export function generateFrenchAmortization({
       capital_amount: capital,
       interest_amount: interest,
       remaining_capital: Math.max(0, Math.round(saldo)),
-      remaining_interest: 0,
+      remaining_interest: interest,
       status: "pending",
     });
   }
@@ -154,7 +154,7 @@ export function generateFlatAmortization({
       capital_amount: capital,
       interest_amount: interest,
       remaining_capital: Math.max(0, Math.round(saldoCapital)),
-      remaining_interest: 0,
+      remaining_interest: interest,
       status: "pending",
     });
   }

@@ -30,6 +30,8 @@ export async function createPayment(data) {
 
   let remainingPayment = data.amount;
   let totalMoraApplied = 0;
+  let totalInterestApplied = 0;
+  let totalCapitalApplied = 0;
 
   const distributions = [];
 
@@ -50,7 +52,11 @@ export async function createPayment(data) {
     if (pendingInCuota > 0) {
       const amountToApply = Math.min(remainingPayment, pendingInCuota);
 
-      await applyPaymentToInstallment(inst.id, amountToApply);
+      const distResult = await applyPaymentToInstallment(inst.id, amountToApply);
+      
+      totalMoraApplied += distResult.lateFeePortion;
+      totalInterestApplied += distResult.interestPortion;
+      totalCapitalApplied += distResult.capitalPortion;
 
       distributions.push({
         installment_id: inst.id,
@@ -62,22 +68,28 @@ export async function createPayment(data) {
   }
 
 
-  // 3. Registrar el pago en el historial
+  // 3. Registrar el pago en el historial con el desglose para reportes
   const result = await db.runAsync(
     `INSERT INTO payments (
       loan_id, user_id,
       amount,
+      capital_portion,
+      interest_portion,
+      late_fee_portion,
       payment_method,
       reference_number,
       payment_date,
       created_at,
       status
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
     [
       data.loan_id,
       data.user_id,
       data.amount,
+      totalCapitalApplied,
+      totalInterestApplied,
+      totalMoraApplied,
       data.payment_method,
       data.reference_number || null,
       data.payment_date,

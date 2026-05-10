@@ -49,6 +49,13 @@ export default function ReportesScreen() {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
+  
+  // Estados para detalle de provincia
+  const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
+  const [provinceClients, setProvinceClients] = useState<any[]>([]);
+  const [showProvinceModal, setShowProvinceModal] = useState(false);
+  const [isProvinceLoading, setIsProvinceLoading] = useState(false);
+
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -92,8 +99,13 @@ export default function ReportesScreen() {
           startDate: customRange.start?.toISOString(),
           endDate: customRange.end?.toISOString()
         });
+      } else if (activeTab === "clientes") {
+        data = await ReportService.getClientReport(user.id, {
+          period: timePeriod,
+          startDate: customRange.start?.toISOString(),
+          endDate: customRange.end?.toISOString()
+        });
       } else {
-        // Fallback or other tabs
         data = await ReportService.getLoanReport(user.id, {
           period: timePeriod,
           startDate: customRange.start?.toISOString(),
@@ -190,6 +202,21 @@ export default function ReportesScreen() {
     setIsSearchActive(false);
     setSearchQuery("");
     setSelectedClient(client);
+  };
+
+  const handleProvincePress = async (province: string) => {
+    if (!user?.id) return;
+    setSelectedProvince(province);
+    setIsProvinceLoading(true);
+    setShowProvinceModal(true);
+    try {
+      const data = await ReportService.getClientsByProvince(user.id, province);
+      setProvinceClients(data);
+    } catch (error) {
+      console.error("Error fetching clients by province:", error);
+    } finally {
+      setIsProvinceLoading(false);
+    }
   };
 
   const filteredClients = clients.filter(c =>
@@ -860,7 +887,6 @@ export default function ReportesScreen() {
                         data={(reportData?.revenueSources || []).map((source: any) => ({
                           value: source.amount,
                           color: source.color,
-                          label: source.label,
                         })) || [{ value: 100, color: '#F1F5F9' }]}
                         radius={60}
                         innerRadius={45}
@@ -891,6 +917,100 @@ export default function ReportesScreen() {
                   </View>
                 </View>
 
+                {/* NUEVO: Métodos de Pago */}
+                <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-100/50">
+                  <Text className="text-gray-800 text-sm font-black mb-6">Distribución por Método de Pago</Text>
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1 mr-6 gap-4">
+                      {(reportData?.paymentMethods || []).map((pm: any, i: number) => {
+                        const colors = ["#13678A", "#10B981", "#3B82F6", "#F59E0B"];
+                        const labels: any = { cash: 'Efectivo', transfer: 'Transferencia', card: 'Tarjeta', other: 'Otro' };
+                        const total = (reportData?.paymentMethods || []).reduce((acc: any, curr: any) => acc + curr.amount, 0) || 1;
+                        const percentage = (pm.amount / total) * 100;
+                        return (
+                          <View key={i}>
+                            <View className="flex-row justify-between mb-1.5">
+                              <Text className="text-[10px] text-gray-500 font-bold uppercase">{labels[pm.method] || pm.method}</Text>
+                              <Text className="text-[10px] text-gray-900 font-black">{percentage.toFixed(0)}%</Text>
+                            </View>
+                            <View className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                              <View 
+                                className="h-full rounded-full" 
+                                style={{ width: `${percentage}%`, backgroundColor: colors[i % colors.length] }} 
+                              />
+                            </View>
+                          </View>
+                        );
+                      })}
+                      {(reportData?.paymentMethods || []).length === 0 && (
+                        <Text className="text-gray-300 text-xs italic">Sin datos de pagos</Text>
+                      )}
+                    </View>
+                    <View className="items-center">
+                       <Ionicons name="card" size={48} color="#E2E8F0" />
+                    </View>
+                  </View>
+                </View>
+
+                {/* NUEVO: Rentabilidad por Tipo */}
+                <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-100/50">
+                  <Text className="text-gray-800 text-sm font-black mb-6">Utilidad por Tipo de Préstamo</Text>
+                  <View className="items-center">
+                    {(reportData?.profitByType || []).length > 0 ? (
+                      <BarChart
+                        data={(reportData?.profitByType || []).map((item: any) => ({
+                          value: item.profit,
+                          label: item.type === 'personal' ? 'Pers.' : item.type === 'vehicle' ? 'Veh.' : item.type === 'business' ? 'Neg.' : 'Otros',
+                          frontColor: '#10B981',
+                        }))}
+                        width={chartWidth - 120}
+                        height={140}
+                        barWidth={30}
+                        spacing={40}
+                        noOfSections={3}
+                        xAxisThickness={0}
+                        yAxisThickness={0}
+                        hideRules
+                        yAxisLabelPrefix="$"
+                        yAxisTextStyle={{ color: '#94A3B8', fontSize: 8 }}
+                        xAxisLabelTextStyle={{ color: '#94A3B8', fontSize: 8, fontWeight: 'bold' }}
+                      />
+                    ) : (
+                      <View className="h-20 justify-center">
+                        <Text className="text-gray-300 text-xs">Sin datos de rentabilidad</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* NUEVO: Top Clientes Rentables */}
+                <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-100/50">
+                  <View className="flex-row justify-between items-center mb-5">
+                    <Text className="text-gray-800 text-sm font-black">Top Clientes Rentables</Text>
+                    <Ionicons name="trophy" size={18} color="#F59E0B" />
+                  </View>
+                  {(reportData?.topProfitableClients || []).map((client: any, i: number) => (
+                    <View key={i} className={`flex-row items-center justify-between py-3 ${i !== (reportData?.topProfitableClients?.length - 1) ? 'border-b border-gray-50' : ''}`}>
+                      <View className="flex-row items-center">
+                        <View className="w-8 h-8 bg-gray-50 rounded-full items-center justify-center mr-3">
+                          <Text className="text-gray-400 font-bold text-[10px]">{i + 1}</Text>
+                        </View>
+                        <View>
+                          <Text className="text-gray-900 text-[11px] font-bold">{client.name}</Text>
+                          <Text className="text-gray-400 text-[9px]">{client.paymentCount} pagos realizados</Text>
+                        </View>
+                      </View>
+                      <View className="items-end">
+                        <Text className="text-[#10B981] text-[11px] font-black">+${(client.profit || 0).toLocaleString()}</Text>
+                        <Text className="text-gray-400 text-[8px] font-medium uppercase">Utilidad Generada</Text>
+                      </View>
+                    </View>
+                  ))}
+                  {(reportData?.topProfitableClients || []).length === 0 && (
+                    <Text className="text-gray-300 text-xs text-center py-4">Sin datos disponibles</Text>
+                  )}
+                </View>
+
                 {/* Desglose Detallado */}
                 <View className="bg-white rounded-[24px] p-6 mb-10 shadow-sm border border-gray-100/50">
                   <Text className="text-gray-800 text-sm font-black mb-5">Rendimiento Operativo</Text>
@@ -902,7 +1022,7 @@ export default function ReportesScreen() {
                   ].map((item, i) => (
                     <View key={i} className={`flex-row justify-between items-center py-4 ${i !== 3 ? 'border-b border-gray-50' : ''}`}>
                       <View className="flex-row items-center">
-                        <View className={`w-8 h-8 rounded-xl items-center justify-center mr-3 bg-${item.color}-50`}>
+                        <View className="w-8 h-8 rounded-xl items-center justify-center mr-3 bg-gray-50">
                           <Ionicons name={item.icon as any} size={16} color={item.color === 'slate' ? '#475569' : item.color} />
                         </View>
                         <Text className="text-gray-600 text-xs font-medium">{item.label}</Text>
@@ -914,93 +1034,293 @@ export default function ReportesScreen() {
               </View>
             )}
 
-            {/* SECCIÓN CLIENTES */}
-            {activeTab === "clientes" && (
+            {activeTab === "clientes" && reportData && (
               <View className="animate-fade-in">
-                {/* Nuevos Clientes Hero - Simplificado y Reducido */}
-                <View className="bg-[#13678A] rounded-[24px] p-6 mb-4 shadow-sm relative">
-                  <View className="flex-row items-center justify-between">
-                    <View>
-                      <Text className="text-white/70 text-[10px] font-bold tracking-wider mb-1">TOTAL CLIENTES</Text>
-                      <Text className="text-white text-3xl font-black">412</Text>
+                {/* Hero Card: Total Clientes */}
+                <View className="bg-[#13678A] rounded-[32px] p-8 mb-6 shadow-xl relative overflow-hidden">
+                  <View className="absolute -right-10 -top-10 opacity-10">
+                    <Ionicons name="people" size={180} color="white" />
+                  </View>
+                  
+                  <View className="flex-row items-center justify-between mb-4 relative z-10">
+                    <Text className="text-white/80 text-[10px] font-black tracking-[2px] uppercase">BASE TOTAL DE CLIENTES</Text>
+                    <View className="bg-white/20 p-2 rounded-2xl">
+                      <Ionicons name="people-circle" size={18} color="white" />
                     </View>
-                    <View className="bg-white/20 px-3 py-1.5 rounded-xl">
-                      <Text className="text-white text-xs font-bold">+12%</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Métricas Principales (Más compactas) */}
-                <View className="flex-row gap-3 mb-4">
-                  <View className="flex-1 bg-white rounded-[20px] p-4 shadow-sm border border-gray-100">
-                    <Text className="text-gray-400 text-[9px] font-bold mb-1 uppercase">Retención</Text>
-                    <Text className="text-gray-800 text-lg font-black">89.2%</Text>
                   </View>
 
-                  <View className="flex-1 bg-white rounded-[20px] p-4 shadow-sm border border-gray-100">
-                    <Text className="text-gray-400 text-[9px] font-bold mb-1 uppercase">Morosidad</Text>
-                    <Text className="text-gray-800 text-lg font-black">5.2%</Text>
-                  </View>
-                </View>
-
-                {/* Gráfico de Tendencia (Más simple) */}
-                <View className="bg-white rounded-[20px] p-5 mb-4 shadow-sm border border-gray-100">
-                  <Text className="text-gray-800 text-xs font-bold mb-5">Tendencia de Adquisición</Text>
-                  <View className="items-center">
-                    <LineChart
-                      data={[
-                        { value: 10, label: 'Ene' }, { value: 25, label: 'Feb' },
-                        { value: 18, label: 'Mar' }, { value: 40, label: 'Abr' },
-                        { value: 35, label: 'May' }, { value: 50, label: 'Jun' }
-                      ]}
-                      width={chartWidth - 100}
-                      height={80}
-                      thickness={2}
-                      color="#13678A"
-                      noOfSections={3}
-                      hideRules
-                      hideDataPoints
-                      xAxisThickness={0}
-                      yAxisThickness={0}
-                      yAxisTextStyle={{ color: '#94A3B8', fontSize: 8 }}
-                      xAxisLabelTextStyle={{ color: '#94A3B8', fontSize: 8 }}
-                      isAnimated
-                      curved
-                    />
-                  </View>
-                </View>
-
-                {/* Calidad Crediticia (Simplificado) */}
-                <View className="bg-white rounded-[20px] p-5 mb-4 shadow-sm border border-gray-100">
-                  <Text className="text-gray-800 text-xs font-bold mb-4">Cartera por Riesgo</Text>
-                  {[
-                    { label: "Excelente", p: "65%", color: "bg-green-500" },
-                    { label: "Regular", p: "25%", color: "bg-blue-400" },
-                    { label: "Riesgo", p: "10%", color: "bg-red-400" }
-                  ].map((item, i) => (
-                    <View key={i} className="flex-row items-center mb-3">
-                      <Text className="text-gray-500 text-[10px] w-16">{item.label}</Text>
-                      <View className="flex-1 h-1 bg-gray-50 rounded-full mx-2">
-                        <View className={`h-full ${item.color} rounded-full`} style={{ width: item.p as any }} />
+                  <View className="relative z-10">
+                    <Text className="text-white text-5xl font-black tracking-tighter mb-2">
+                      {reportData?.metrics?.total || 0}
+                    </Text>
+                    <View className="flex-row items-center">
+                      <View className="bg-green-400/30 flex-row items-center px-2.5 py-1 rounded-full">
+                        <Ionicons name="add" size={12} color="white" />
+                        <Text className="text-white text-[11px] font-bold ml-1">
+                          {reportData?.metrics?.newClients || 0}
+                        </Text>
                       </View>
-                      <Text className="text-gray-800 text-[10px] font-bold w-8 text-right">{item.p}</Text>
+                      <Text className="text-white/60 text-[10px] font-medium ml-2 uppercase tracking-wider">Nuevos este periodo</Text>
                     </View>
+                  </View>
+                </View>
+
+                {/* Grid: Demografía y Retención */}
+                <View className="flex-row gap-4 mb-6">
+                   <View className="flex-1 bg-white rounded-[24px] p-5 shadow-sm border border-gray-100/50">
+                    <Text className="text-gray-400 text-[9px] font-black tracking-widest uppercase mb-4 text-center">Género</Text>
+                    <View className="items-center">
+                      <PieChart
+                        data={(reportData?.genderDistribution || []).map((item: any, i: number) => {
+                          const g = (item.gender || '').toLowerCase();
+                          return {
+                            value: item.count,
+                            color: g === 'masculino' || g === 'm' ? '#3B82F6' : g === 'femenino' || g === 'f' ? '#EC4899' : '#94A3B8',
+                          };
+                        })}
+                        radius={35}
+                        innerRadius={25}
+                        donut
+                      />
+                      <View className="flex-row gap-2 mt-4 justify-center">
+                        <View className="flex-row items-center">
+                          <View className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1" />
+                          <Text className="text-[8px] text-gray-500 font-bold">M</Text>
+                        </View>
+                        <View className="flex-row items-center">
+                          <View className="w-1.5 h-1.5 rounded-full bg-pink-500 mr-1" />
+                          <Text className="text-[8px] text-gray-500 font-bold">F</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View className="flex-1 bg-white rounded-[24px] p-5 shadow-sm border border-gray-100/50 items-center justify-center">
+                    <Ionicons name="ribbon-outline" size={24} color="#13678A" />
+                    <Text className="text-gray-400 text-[9px] font-black tracking-widest uppercase mt-2 mb-1">Fidelidad</Text>
+                    <Text className="text-gray-900 text-2xl font-black">{reportData?.metrics?.retentionRate || 0}%</Text>
+                    <Text className="text-gray-400 text-[8px] font-medium text-center">Tasa de retorno</Text>
+                  </View>
+                </View>
+
+                {/* Tendencia de Crecimiento */}
+                <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-100/50">
+                  <Text className="text-gray-800 text-sm font-black mb-6">Crecimiento de Cartera</Text>
+                  <View className="items-center">
+                    {(reportData?.growthTrend || []).length > 0 ? (
+                      <LineChart
+                        data={(reportData?.growthTrend || []).map((item: any) => ({
+                          value: item.count,
+                          label: item.label,
+                          dataPointLabelComponent: () => (
+                            <View style={{ marginBottom: 10, width: 30, marginLeft: -10 }}>
+                              <Text className="text-[8px] font-black text-[#13678A] text-center">{item.count}</Text>
+                            </View>
+                          ),
+                        }))}
+                        width={chartWidth - 100}
+                        height={100}
+                        thickness={3}
+                        color="#13678A"
+                        dataPointsColor="#13678A"
+                        noOfSections={3}
+                        hideRules
+                        yAxisThickness={0}
+                        xAxisThickness={0}
+                        yAxisTextStyle={{ color: '#94A3B8', fontSize: 8 }}
+                        xAxisLabelTextStyle={{ color: '#94A3B8', fontSize: 8, fontWeight: 'bold' }}
+                        isAnimated
+                        curved
+                        spacing={45}
+                      />
+                    ) : (
+                      <View className="h-20 justify-center">
+                        <Text className="text-gray-300 text-xs">Sin datos de tendencia</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* NUEVO: Distribución por Edad */}
+                <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-100/50">
+                  <Text className="text-gray-800 text-sm font-black mb-6">Distribución por Edad</Text>
+                  <View className="items-center">
+                    {(reportData?.ageDistribution || []).length > 0 ? (
+                      <BarChart
+                        data={(reportData?.ageDistribution || []).map((item: any, i: number) => ({
+                          value: item.count,
+                          label: item.label,
+                          frontColor: ["#60A5FA", "#34D399", "#FBBF24", "#F87171", "#818CF8"][i % 5],
+                        }))}
+                        width={chartWidth - 100}
+                        height={120}
+                        barWidth={35}
+                        spacing={15}
+                        noOfSections={3}
+                        xAxisThickness={0}
+                        yAxisThickness={0}
+                        hideRules
+                        yAxisTextStyle={{ color: '#94A3B8', fontSize: 8 }}
+                        xAxisLabelTextStyle={{ color: '#94A3B8', fontSize: 8, fontWeight: 'bold' }}
+                      />
+                    ) : (
+                      <View className="h-20 justify-center">
+                        <Text className="text-gray-300 text-xs">Sin datos demográficos</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* Perfil Laboral (Ocupaciones) */}
+                <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-100/50">
+                  <Text className="text-gray-800 text-sm font-black mb-6">Perfil por Ocupación</Text>
+                  {(reportData?.occupationDistribution || []).map((item: any, i: number) => {
+                    const total = (reportData?.occupationDistribution || []).reduce((acc: any, curr: any) => acc + curr.count, 0) || 1;
+                    const percentage = (item.count / total) * 100;
+                    return (
+                      <View key={i} className="mb-4">
+                        <View className="flex-row justify-between mb-1.5">
+                          <Text className="text-[10px] text-gray-500 font-bold uppercase">{item.label || 'Otros'}</Text>
+                          <Text className="text-[10px] text-gray-900 font-black">{item.count} Clientes</Text>
+                        </View>
+                        <View className="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
+                          <View 
+                            className="h-full bg-[#13678A] rounded-full" 
+                            style={{ width: `${percentage}%` }} 
+                          />
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* NUEVO: Segmentación por Calidad Crediticia */}
+                <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-100/50">
+                  <View className="flex-row justify-between items-center mb-6">
+                    <Text className="text-gray-800 text-sm font-black">Calidad Crediticia (A-B-C)</Text>
+                    <Ionicons name="shield-checkmark-outline" size={18} color="#10B981" />
+                  </View>
+                  <View className="flex-row items-center justify-between">
+                    <PieChart
+                      data={(reportData?.qualitySegmentation || []).map((item: any) => ({
+                        value: item.count,
+                        color: item.label === 'Clase A' ? '#10B981' : 
+                               item.label === 'Clase B' ? '#F59E0B' : 
+                               item.label === 'Clase C' ? '#EF4444' : '#94A3B8',
+                      }))}
+                      radius={45}
+                      innerRadius={30}
+                      donut
+                    />
+                    <View className="flex-1 ml-8 gap-3">
+                      {(reportData?.qualitySegmentation || []).map((item: any, i: number) => (
+                        <View key={i} className="flex-row items-center justify-between">
+                          <View className="flex-row items-center">
+                            <View className={`w-2 h-2 rounded-full mr-2 ${
+                              item.label === 'Clase A' ? 'bg-green-500' : 
+                              item.label === 'Clase B' ? 'bg-amber-500' : 
+                              item.label === 'Clase C' ? 'bg-red-500' : 'bg-slate-400'
+                            }`} />
+                            <Text className="text-gray-600 text-[10px] font-bold uppercase">{item.label}</Text>
+                          </View>
+                          <Text className="text-gray-900 text-[10px] font-black">{item.count} Clientes</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+
+                {/* NUEVO: Distribución de Ingresos */}
+                <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-100/50">
+                  <Text className="text-gray-800 text-sm font-black mb-6">Nivel Socioeconómico (Ingresos)</Text>
+                  <View className="items-center">
+                    {(reportData?.incomeDistribution || []).length > 0 ? (
+                      <BarChart
+                        data={(reportData?.incomeDistribution || []).map((item: any, i: number) => ({
+                          value: item.count,
+                          label: item.label.split(' ')[0], // Solo la primera palabra para el eje X
+                          frontColor: '#13678A',
+                          topLabelComponent: () => (
+                            <Text className="text-[8px] font-bold text-gray-400 mb-1">{item.count}</Text>
+                          )
+                        }))}
+                        width={chartWidth - 100}
+                        height={100}
+                        barWidth={40}
+                        spacing={15}
+                        noOfSections={3}
+                        xAxisThickness={0}
+                        yAxisThickness={0}
+                        hideRules
+                        yAxisTextStyle={{ color: '#94A3B8', fontSize: 8 }}
+                        xAxisLabelTextStyle={{ color: '#94A3B8', fontSize: 7, fontWeight: 'bold' }}
+                      />
+                    ) : (
+                      <View className="h-20 justify-center">
+                        <Text className="text-gray-300 text-xs">Sin datos de ingresos</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* Concentración Geográfica - Interactivo */}
+                <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-100/50">
+                  <View className="flex-row justify-between items-center mb-5">
+                    <View>
+                      <Text className="text-gray-800 text-sm font-black">Concentración Geográfica</Text>
+                      <Text className="text-gray-400 text-[9px] uppercase font-bold">Toca para ver sectores y clientes</Text>
+                    </View>
+                    <Ionicons name="map-outline" size={18} color="#13678A" />
+                  </View>
+                  {(reportData?.geographicDistribution || []).map((item: any, i: number) => (
+                    <TouchableOpacity 
+                      key={i} 
+                      onPress={() => handleProvincePress(item.label || 'No especificada')}
+                      activeOpacity={0.6}
+                      className={`flex-row justify-between items-center py-3 ${i !== (reportData?.geographicDistribution?.length - 1) ? 'border-b border-gray-50' : ''}`}
+                    >
+                      <View className="flex-row items-center">
+                        <View className="bg-blue-50 w-7 h-7 rounded-lg items-center justify-center mr-3">
+                          <Ionicons name="location-outline" size={14} color="#13678A" />
+                        </View>
+                        <Text className="text-gray-600 text-xs font-medium">{item.label || 'No especificada'}</Text>
+                      </View>
+                      <View className="flex-row items-center">
+                        <View className="bg-gray-50 px-2 py-1 rounded-md mr-2">
+                          <Text className="text-gray-900 text-[10px] font-black">{item.count} clientes</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={12} color="#CBD5E1" />
+                      </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
 
-                {/* Zonas Geográficas (Blanco y Simple) */}
-                <View className="bg-white rounded-[20px] p-5 mb-6 shadow-sm border border-gray-100">
-                  <Text className="text-gray-800 text-xs font-bold mb-4">Zonas Principales</Text>
-                  {[
-                    { label: "Higüey", p: "68%" },
-                    { label: "Bávaro", p: "22%" },
-                    { label: "Punta Cana", p: "10%" }
-                  ].map((item, i) => (
-                    <View key={i} className="flex-row justify-between mb-2">
-                      <Text className="text-gray-500 text-[11px]">{item.label}</Text>
-                      <Text className="text-gray-800 text-[11px] font-bold">{item.p}</Text>
+                {/* Top Clientes Fieles (Leadboard) */}
+                <View className="bg-white rounded-[24px] p-6 mb-10 shadow-sm border border-gray-100/50">
+                  <View className="flex-row justify-between items-center mb-5">
+                    <Text className="text-gray-800 text-sm font-black">Top Clientes Fieles</Text>
+                    <Ionicons name="star" size={18} color="#F59E0B" />
+                  </View>
+                  {(reportData?.topLoyalClients || []).map((client: any, i: number) => (
+                    <View key={i} className={`flex-row items-center justify-between py-4 ${i !== (reportData?.topLoyalClients?.length - 1) ? 'border-b border-gray-50' : ''}`}>
+                      <View className="flex-row items-center flex-1">
+                        <View className="w-9 h-9 bg-teal-50 rounded-full items-center justify-center mr-3">
+                          <Text className="text-teal-600 font-bold text-xs">{i + 1}</Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-gray-900 text-xs font-bold" numberOfLines={1}>{client.name}</Text>
+                          <Text className="text-gray-400 text-[9px] uppercase font-medium">{client.loanCount} préstamos completados</Text>
+                        </View>
+                      </View>
+                      <View className="items-end ml-2">
+                        <Text className="text-[#13678A] text-xs font-black">${(client.totalValue || 0).toLocaleString()}</Text>
+                        <Text className="text-gray-400 text-[8px] uppercase">Operado Total</Text>
+                      </View>
                     </View>
                   ))}
+                  {(reportData?.topLoyalClients || []).length === 0 && (
+                    <Text className="text-gray-300 text-xs text-center py-4 italic">No hay historial suficiente</Text>
+                  )}
                 </View>
               </View>
             )}
@@ -1060,6 +1380,70 @@ export default function ReportesScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Modal de Detalle por Provincia */}
+      <Modal
+        visible={showProvinceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowProvinceModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <View className="bg-white rounded-t-[32px] h-[70%] p-6">
+            <View className="flex-row justify-between items-center mb-6">
+              <View>
+                <Text className="text-gray-900 text-xl font-bold">{selectedProvince}</Text>
+                <Text className="text-gray-400 text-xs uppercase font-bold tracking-widest mt-1">Listado de Clientes y Sectores</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setShowProvinceModal(false)}
+                className="bg-gray-100 p-2 rounded-full"
+              >
+                <Ionicons name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {isProvinceLoading ? (
+              <View className="flex-1 items-center justify-center">
+                <Text className="text-gray-400 text-xs font-bold uppercase animate-pulse">Consultando zona...</Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+                {(provinceClients || []).length > 0 ? (
+                  (provinceClients || []).map((client: any, i: number) => (
+                    <View key={i} className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center justify-between border border-gray-100">
+                      <View className="flex-1">
+                        <Text className="text-gray-900 font-bold text-sm">{client.name}</Text>
+                        <View className="flex-row items-center mt-1.5">
+                          <Ionicons name="map" size={12} color="#13678A" />
+                          <Text className="text-gray-500 text-[10px] font-medium ml-1.5" numberOfLines={1}>{client.address_line || 'Sector no especificado'}</Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity 
+                        onPress={() => {
+                          setShowProvinceModal(false);
+                          // Pequeño delay para dejar que el modal anterior se cierre
+                          setTimeout(() => setSelectedClient(client), 300);
+                        }}
+                        className="bg-white w-10 h-10 rounded-xl items-center justify-center shadow-sm border border-gray-100 ml-3"
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="eye" size={18} color="#13678A" />
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                ) : (
+                  <View className="items-center py-20">
+                    <Ionicons name="people-outline" size={48} color="#E2E8F0" />
+                    <Text className="text-gray-400 text-xs mt-4">No hay clientes registrados en esta provincia</Text>
+                  </View>
+                )}
+                <View className="h-10" />
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal de Rango de Fechas */}
       <Modal

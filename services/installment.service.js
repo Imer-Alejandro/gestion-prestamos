@@ -70,6 +70,8 @@ export async function updateInstallmentStatus(installmentId, status) {
   );
 }
 
+import { distributePaymentToInstallment } from "../utils/payment-distribution.utils.js";
+
 /* APPLY PAYMENT TO INSTALLMENT (Internal distribution) */
 export async function applyPaymentToInstallment(installmentId, paymentAmount) {
   const db = await getDb();
@@ -78,11 +80,14 @@ export async function applyPaymentToInstallment(installmentId, paymentAmount) {
   const installment = await getInstallmentById(installmentId);
   if (!installment) throw new Error("Installment not found");
 
-  const totalDue = Math.round(installment.scheduled_amount + (installment.late_fee_accrued || 0));
-  const currentPaid = Math.round(installment.amount_paid || 0);
-  const newPaid = Math.round(currentPaid + paymentAmount);
+  // Usar la utilidad de distribución para desglosar el pago
+  // Nota: lateFeeOwed se pasa como 0 porque refreshInstallmentMora ya debió actualizar late_fee_accrued
+  const distribution = distributePaymentToInstallment(paymentAmount, installment);
 
-  // Determinar nuevo estado - Tolerancia de 1 peso para considerar pagado
+  const newPaid = Math.round((installment.amount_paid || 0) + distribution.totalDistributed);
+  const totalDue = Math.round(installment.scheduled_amount + (installment.late_fee_accrued || 0));
+
+  // Determinar nuevo estado
   let newStatus = installment.status;
   if (newPaid >= totalDue || (totalDue - newPaid) < 1) {
     newStatus = "paid";
@@ -90,15 +95,33 @@ export async function applyPaymentToInstallment(installmentId, paymentAmount) {
     newStatus = "partial";
   }
 
-  // Actualizar cuota
+  // Actualizar cuota con el desglose
   await db.runAsync(
     `UPDATE loan_installments
-     SET amount_paid = ?, status = ?, updated_at = ?
+     SET amount_paid = ?, 
+         remaining_capital = ?,
+         remaining_interest = ?,
+         remaining_late_fee = ?,
+         status = ?, 
+         updated_at = ?
      WHERE id = ?`,
-    [newPaid, newStatus, new Date().toISOString(), installmentId],
+    [
+      newPaid, 
+      distribution.remainingAmount === 0 ? Math.max(0, installment.remaining_capital - distribution.capitalPortion) : installment.remaining_capital - distribution.capitalPortion,
+      Math.max(0, installment.remaining_interest - distribution.interestPortion),
+      Math.max(0, (installment.remaining_late_fee || 0) - distribution.lateFeePortion),
+      newStatus, 
+      new Date().toISOString(), 
+      installmentId
+    ],
   );
 
-  return { previousPaid: currentPaid, newPaid, status: newStatus, overpaid: Math.max(0, newPaid - totalDue) };
+  return { 
+    ...distribution,
+    previousPaid: installment.amount_paid || 0, 
+    newPaid, 
+    status: newStatus 
+  };
 }
 
 

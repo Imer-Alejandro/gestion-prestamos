@@ -80,9 +80,10 @@ export async function createPayment(data) {
       reference_number,
       payment_date,
       created_at,
+      is_dirty,
       status
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
     [
       data.loan_id,
       data.user_id,
@@ -94,6 +95,7 @@ export async function createPayment(data) {
       data.reference_number || null,
       data.payment_date,
       new Date().toISOString(),
+      1, // is_dirty = 1
     ],
   );
 
@@ -116,7 +118,8 @@ export async function createPayment(data) {
      SET total_paid = ROUND(total_paid + ?, 2),
          current_balance = MAX(0, ROUND(current_balance - ?, 2)),
          status = CASE WHEN ROUND(current_balance - ?, 2) <= 0 THEN 'completed' ELSE status END,
-         updated_at = ?
+         updated_at = ?,
+         is_dirty = 1
      WHERE id = ?`,
     [data.amount, data.amount, data.amount, new Date().toISOString(), data.loan_id],
   );
@@ -157,8 +160,8 @@ export async function getPaymentsByLoan(loanId) {
 }
 
 
-/* GET ALL PAYMENTS FOR A USER (Only active for display) */
-export async function getAllPayments(userId) {
+/* GET ALL PAYMENTS FOR A USER (Only active for display) with Pagination */
+export async function getAllPayments(userId, limit = 20, offset = 0) {
   const db = await getDb();
   return await db.getAllAsync(
     `SELECT 
@@ -169,8 +172,9 @@ export async function getAllPayments(userId) {
     JOIN loans l ON p.loan_id = l.id
     JOIN clients c ON l.client_id = c.id
     WHERE p.user_id = ? AND p.status = 'active'
-    ORDER BY p.payment_date DESC, p.created_at DESC`,
-    [userId]
+    ORDER BY p.payment_date DESC, p.created_at DESC
+    LIMIT ? OFFSET ?`,
+    [userId, limit, offset]
   );
 }
 
@@ -219,7 +223,8 @@ export async function voidPayment(paymentId, userId = null) {
                       WHEN (MAX(0, amount_paid - ?)) <= 0 THEN 'pending' 
                       ELSE 'partial' 
                     END,
-           updated_at = ?
+           updated_at = ?,
+           is_dirty = 1
        WHERE id = ?`,
       [amountToReverse, amountToReverse, new Date().toISOString(), instId]
     );
@@ -234,7 +239,8 @@ export async function voidPayment(paymentId, userId = null) {
      SET total_paid = MAX(0, ROUND(total_paid - ?, 2)),
          current_balance = ROUND(current_balance + ?, 2),
          status = 'active', -- Siempre regresa a activo al anular un pago
-         updated_at = ?
+         updated_at = ?,
+         is_dirty = 1
      WHERE id = ?`,
     [payment.amount, payment.amount, new Date().toISOString(), payment.loan_id]
   );
@@ -242,7 +248,7 @@ export async function voidPayment(paymentId, userId = null) {
 
   // 6. Marcar pago como anulado
   await db.runAsync(
-    `UPDATE payments SET status = 'voided', updated_at = ? WHERE id = ?`,
+    `UPDATE payments SET status = 'voided', is_dirty = 1, updated_at = ? WHERE id = ?`,
     [new Date().toISOString(), paymentId]
   );
 

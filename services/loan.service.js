@@ -90,15 +90,16 @@ export async function createLoan(data) {
       status,
       total_paid,
       comments,
+      is_dirty,
       created_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.user_id,
       data.client_id,
-      initialBalance, // current_balance inicial = principal + intereses
-      totalInterest, // total_interest proyectado
-      0, // total_late_fees
+      initialBalance,
+      totalInterest,
+      0,
       contractNumber,
       data.loan_type || "personal",
       data.principal_amount,
@@ -115,8 +116,9 @@ export async function createLoan(data) {
       data.payment_frequency,
       data.grace_days || 0,
       "active",
-      0, // total_paid
-      data.comments || null, // comments
+      0,
+      data.comments || null,
+      1, // is_dirty = 1
       new Date().toISOString(),
     ],
   );
@@ -239,6 +241,8 @@ export async function updateLoan(id, data) {
 
   if (fields.length === 0) return;
 
+  fields.push("is_dirty = ?");
+  values.push(1);
   fields.push("updated_at = ?");
   values.push(new Date().toISOString());
   values.push(id);
@@ -263,7 +267,7 @@ export async function getLoansByClient(clientId) {
 export async function updateCurrentBalance(loanId, newBalance) {
   const db = await getDb();
   await db.runAsync(
-    `UPDATE loans SET current_balance = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE loans SET current_balance = ?, is_dirty = 1, updated_at = ? WHERE id = ?`,
     [newBalance, new Date().toISOString(), loanId],
   );
 }
@@ -295,7 +299,7 @@ export async function voidLoan(id, userId) {
 
   const db = await getDb();
   await db.runAsync(
-    `UPDATE loans SET status = 'voided', updated_at = ?, closed_at = ? WHERE id = ?`,
+    `UPDATE loans SET status = 'voided', is_dirty = 1, updated_at = ?, closed_at = ? WHERE id = ?`,
     [new Date().toISOString(), new Date().toISOString(), id]
   );
 
@@ -303,11 +307,11 @@ export async function voidLoan(id, userId) {
   if (userId) await PlanManager.registerOperation(userId, 'voidLoan');
   // ─────────────────────────────────────────────────────────
 }
-/* GET LOANS WITH FILTERS */
-export async function getLoans(userId, filters = {}) {
+/* GET ALL LOANS (With Filters and Pagination) */
+export async function getLoans(userId, filters = {}, limit = 20, offset = 0) {
   const db = await getDb();
-  let query = `SELECT * FROM loans WHERE user_id = ?`;
-  const params = [userId];
+  let query = `SELECT * FROM loans WHERE (user_id = ? OR created_by = ?) AND deleted_at IS NULL`;
+  const params = [userId, userId];
 
   // Siempre excluir préstamos anulados (a menos que se pida explícitamente)
   if (filters.status && filters.status !== 'all') {
@@ -328,7 +332,8 @@ export async function getLoans(userId, filters = {}) {
     params.push(filters.date);
   }
 
-  query += ` ORDER BY created_at DESC`;
+  query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+  params.push(limit, offset);
 
   return await db.getAllAsync(query, params);
 }

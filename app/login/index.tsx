@@ -180,18 +180,29 @@ export default function LoginScreen() {
           </View>
 
           {/* Links de navegación en el footer */}
-          <View className="flex-row justify-between mt-8 mb-6">
-            <TouchableOpacity onPress={() => router.push("/login/registro-organizacion")}>
-              <Text className="text-white/80 text-base underline">
-                registrarse
-              </Text>
-            </TouchableOpacity>
+          <View className="flex-col gap-y-4 mt-8 mb-6">
+            <View className="flex-row justify-between">
+              <TouchableOpacity onPress={() => router.push("/login/registro-organizacion")}>
+                <Text className="text-white/80 text-base underline">
+                  registrar empresa
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => router.push("/login/recuperar-contrasena")}
+              <TouchableOpacity
+                onPress={() => router.push("/login/recuperar-contrasena")}
+              >
+                <Text className="text-white/80 text-base underline">
+                  recuperar contraseña
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              onPress={() => router.push("/login/join-org")}
+              className="bg-white/10 border border-white/30 rounded-lg py-3 items-center"
             >
-              <Text className="text-white/80 text-base underline">
-                recuperar contraseña
+              <Text className="text-white font-medium text-base">
+                unirse a una organización
               </Text>
             </TouchableOpacity>
           </View>

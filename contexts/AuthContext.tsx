@@ -17,6 +17,9 @@ import {
   sendPasswordResetEmail,
 } from "../services/email.service.js";
 import * as StorageService from "../services/storage.service";
+import { syncService } from "../services/sync.service";
+import { auth as firebaseAuth } from "../firebaseConfig";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
 // Tipos de datos
 export interface User {
@@ -29,6 +32,7 @@ export interface User {
   last_login: string | null;
   is_active: number;
   organization?: {
+    id: number;
     name: string;
     type: string;
     slogan?: string;
@@ -40,7 +44,12 @@ export interface User {
     currency?: string;
     plan_type?: string;
     plan_hash?: string;
+    join_code?: string;
+    remote_id?: string;
   } | null;
+  role?: 'admin' | 'employee';
+  permissions?: Record<string, boolean>;
+  remote_id?: string;
 }
 
 export interface RegisterData {
@@ -66,6 +75,7 @@ interface AuthContextType {
   // Recuperación de contraseña
   requestPasswordReset: (email: string, fullName: string) => Promise<{ code: string }>;
   verifyPasswordReset: (email: string, code: string, newPassword: string) => Promise<void>;
+  joinOrganization: (joinCode: string) => Promise<void>;
 }
 
 // Claves para SecureStore
@@ -101,6 +111,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, segments, isLoading, router]);
 
+  // Manejar el inicio/parada de la sincronización
+  useEffect(() => {
+    if (user && user.organization && user.organization.plan_type !== 'basic') {
+      const orgId = user.organization.remote_id || user.organization.name || ""; 
+      const planType = user.organization.plan_type || "basic";
+      syncService.startSync(orgId, planType, user.id);
+    } else {
+      syncService.stopSync();
+    }
+  }, [user]);
+
   // Cargar sesión guardada desde SecureStore
   const loadStoredSession = async () => {
     try {
@@ -130,10 +151,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
 
-      // Llamar al service que valida email y contraseña
+      // Llamar al service que valida email y contraseña (Local SQLite)
       const userData = await loginWithEmail(email, password);
 
       if (userData) {
+        // Intentar login en Firebase para sincronización
+        try {
+          await signInWithEmailAndPassword(firebaseAuth, email, password);
+          console.log("✅ Firebase Auth exitoso");
+        } catch (firebaseError) {
+          console.warn("⚠️ Firebase Auth falló (modo offline o no registrado en nube):", firebaseError);
+        }
+
         // Guardar el ID del usuario en SecureStore
         await StorageService.setItemAsync(USER_ID_KEY, userData.id.toString());
 
@@ -155,8 +184,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
 
-      // Crear el usuario en la BD
+      // Crear el usuario en la BD (Local)
       const userId = await createUser(userData);
+
+      if (userData.email) {
+        try {
+          await createUserWithEmailAndPassword(firebaseAuth, userData.email, userData.password);
+          console.log("✅ Firebase User creado");
+        } catch (firebaseError) {
+          console.warn("⚠️ No se pudo crear usuario en Firebase:", firebaseError);
+        }
+      }
 
       // Recuperar los datos completos del usuario
       const newUser = await getUserById(userId);
@@ -186,6 +224,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Limpiar el estado
       setUser(null);
+
+      // Cerrar sesión en Firebase
+      try {
+        await signOut(firebaseAuth);
+      } catch (e) {}
 
       console.log("✅ Logout exitoso");
 
@@ -339,6 +382,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Función para unirse a una organización mediante código
+  const joinOrganization = async (joinCode: string) => {
+    try {
+      setIsLoading(true);
+      if (!user) throw new Error("Debe estar autenticado");
+
+      // Llamar a nuestra API de Next.js
+      const token = await firebaseAuth.currentUser?.getIdToken();
+      const response = await fetch("https://api.kannicash.com/v1/org/join", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ joinCode })
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Error al unirse");
+
+      // Actualizar usuario localmente con la nueva organización
+      const db = await (await import("../database/db.js")).getDb();
+      
+      // 1. Actualizar el organization_id del usuario actual
+      await db.runAsync(
+        "UPDATE users SET organization_id = (SELECT id FROM organizations WHERE user_id = ?) WHERE id = ?",
+        [user.id, user.id]
+      );
+
+      // 2. Actualizar los datos de la organización
+      await db.runAsync(
+        "UPDATE organizations SET remote_id = ?, name = ?, plan_type = ? WHERE user_id = ?",
+        [result.orgId, result.name, result.plan || 'standard', user.id]
+      );
+
+      await refreshUser();
+      Alert.alert("¡Éxito!", `Te has unido a ${result.name}`);
+    } catch (error: any) {
+      console.error("❌ Error joining org:", error);
+      Alert.alert("Error", error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -353,6 +441,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     verifyEmail,
     requestPasswordReset,
     verifyPasswordReset,
+    joinOrganization,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

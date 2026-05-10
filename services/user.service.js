@@ -299,3 +299,35 @@ export async function resetPassword(userId, newPassword) {
 
   return { success: true, message: "Contraseña actualizada correctamente" };
 }
+/* GESTIÓN DE EMPLEADOS */
+export async function getEmployees(orgId) {
+  const db = await getDb();
+  // Buscamos usuarios que tengan el mismo organization_id y sean empleados
+  return await db.getAllAsync(
+    `SELECT id, full_name, email, role, permissions, is_active, last_login 
+     FROM users 
+     WHERE organization_id = ? AND role = 'employee'`,
+    [orgId]
+  );
+}
+
+export async function updatePermissions(userId, permissions) {
+  const db = await getDb();
+  const permissionsJson = JSON.stringify(permissions);
+  
+  await db.runAsync(
+    `UPDATE users SET permissions = ?, updated_at = ? WHERE id = ?`,
+    [permissionsJson, new Date().toISOString(), userId]
+  );
+  
+  return true;
+}
+
+export async function toggleUserStatus(userId, isActive) {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE users SET is_active = ?, updated_at = ? WHERE id = ?`,
+    [isActive ? 1 : 0, new Date().toISOString(), userId]
+  );
+  return true;
+}

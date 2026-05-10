@@ -103,7 +103,8 @@ export async function applyPaymentToInstallment(installmentId, paymentAmount) {
          remaining_interest = ?,
          remaining_late_fee = ?,
          status = ?, 
-         updated_at = ?
+         updated_at = ?,
+         is_dirty = 1
      WHERE id = ?`,
     [
       newPaid, 

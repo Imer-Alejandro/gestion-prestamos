@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   View,
   Alert,
-  InteractionManager
+  InteractionManager,
+  FlatList
 } from "react-native";
 import AppHeader from "../../components/shared/AppHeader";
 import Skeleton from "../../components/shared/Skeleton";
@@ -78,10 +79,16 @@ export default function PrestamosScreen() {
   const [clients, setClients] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
+  
+  // Paginación
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const LIMIT = 20;
 
   const userData = {
     name: user?.full_name || "Usuario",
-    role: "Gestor operador",
+    role: user?.role === 'admin' ? "Administrador" : "Empleado / Gestor",
     avatar: null,
   };
 
@@ -101,15 +108,27 @@ export default function PrestamosScreen() {
   }, [user, filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
-  const loadData = useCallback(async () => {
-    // Diferir la carga hasta después de la interacción/transición
+  const loadData = useCallback(async (isInitial = true) => {
+    if (isInitial) {
+      setIsLoading(true);
+      setPage(0);
+      setHasMore(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
     InteractionManager.runAfterInteractions(async () => {
       try {
+        const offset = isInitial ? 0 : (page + 1) * LIMIT;
+        
         const [loansData, clientsData] = await Promise.all([
-          getLoans(user?.id || 0, filters),
-          getClients(user?.id || 0)
+          getLoans(user?.id || 0, filters, LIMIT, offset),
+          getClients(user?.id || 0) // No paginamos clientes aquí porque se usan para el mapeo
         ]);
 
+        if (loansData.length < LIMIT) {
+          setHasMore(false);
+        }
 
         // Transformar datos de loans al formato Prestamo
         const transformedLoans: Prestamo[] = loansData.map((loan: any) => ({
@@ -129,26 +148,38 @@ export default function PrestamosScreen() {
           fechaCreacion: loan.created_at,
         }));
 
-        setLoans(transformedLoans);
+        if (isInitial) {
+          setLoans(transformedLoans);
+        } else {
+          setLoans(prev => [...prev, ...transformedLoans]);
+          setPage(prev => prev + 1);
+        }
+
         setClients(clientsData);
 
-        // Cargar todos los abonos
-        const abonosData = await getAllPayments(user?.id || 0);
-        setAbonos(abonosData);
-
-        // Cargar notificaciones reales de la base de datos
-        const { getPendingNotificationsUI } = await import("../../services/notification.service");
-        const uiNotifications = await getPendingNotificationsUI(user?.id || 0);
-        setNotifications(uiNotifications);
+        // Cargar abonos (solo inicial por ahora o con su propia lógica)
+        if (isInitial) {
+          const abonosData = await getAllPayments(user?.id || 0, LIMIT, 0);
+          setAbonos(abonosData);
+          
+          const { getPendingNotificationsUI } = await import("../../services/notification.service");
+          const uiNotifications = await getPendingNotificationsUI(user?.id || 0);
+          setNotifications(uiNotifications);
+        } else if (activeTab === 'abonos') {
+           const abonosData = await getAllPayments(user?.id || 0, LIMIT, offset);
+           setAbonos(prev => [...prev, ...abonosData]);
+        }
 
         setIsLoading(false);
+        setIsLoadingMore(false);
       } catch (error) {
         console.error("Error cargando datos:", error);
         Alert.alert('Error', 'No se pudieron cargar los datos');
         setIsLoading(false);
+        setIsLoadingMore(false);
       }
     });
-  }, [user?.id, filters]);
+  }, [user?.id, filters, page, activeTab]);
 
   // Calcular métricas para la tarjeta de resumen
   const totalDeudasPendientes = loans.reduce(
@@ -257,6 +288,22 @@ export default function PrestamosScreen() {
   // Registrar pago/abono
   const handleRegisterPayment = async (paymentData: any) => {
     try {
+      // ── Restricción de Seguridad: Consistencia de Caja ─────
+      if (user?.role === 'employee') {
+        try {
+          const response = await fetch("https://www.google.com", { method: 'HEAD', mode: 'no-cors' });
+          if (!response.ok && response.status !== 0) throw new Error("Offline");
+        } catch (e) {
+          Alert.alert(
+            "📡 Conexión Requerida",
+            "Para registrar cobros, los empleados deben tener una conexión activa. Esto garantiza la consistencia de caja y evita duplicidad en los fondos.",
+            [{ text: "Entendido" }]
+          );
+          return;
+        }
+      }
+      // ────────────────────────────────────────────────────────
+
       const paymentId = await createPayment({ ...paymentData, user_id: user?.id || 0 });
       const fullPayment = await getPaymentById(paymentId);
       const fullLoan = await getLoanById(paymentData.loan_id);
@@ -399,174 +446,140 @@ export default function PrestamosScreen() {
         onResultPress={handleResultPress}
       />
 
-      {/* Info Card - Resumen de Préstamos (Versión Compacta) */}
-      <View
-        className="bg-[#13678A] rounded-3xl p-4 mx-4 mt-3 mb-4 overflow-hidden relative"
-        style={{
-          shadowColor: "#13678A",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.2,
-          shadowRadius: 10,
-          elevation: 5,
+      {/* Lista Principal con Paginación e Infinite Scroll */}
+      <FlatList
+        data={activeTab === "prestamos" ? loans : abonos}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => 
+          activeTab === "prestamos" 
+            ? renderPrestamoCard(item) 
+            : renderAbonoCard(item)
+        }
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        onEndReached={() => {
+          if (hasMore && !isLoadingMore && !isLoading) {
+            loadData(false);
+          }
         }}
-      >
-        {/* Elementos decorativos */}
-        <View className="absolute -right-8 -top-8 w-24 h-24 bg-white/10 rounded-full" />
-        <View className="absolute -left-10 -bottom-10 w-32 h-32 bg-black/10 rounded-full" />
-
-        <View className="flex-row items-center mb-3">
-          <View className="bg-white/20 p-1.5 rounded-lg mr-2">
-            <Ionicons name="stats-chart" size={14} color="#ffffff" />
-          </View>
-          <Text className="text-white/90 text-[10px] uppercase tracking-widest font-bold">
-            Resumen de Préstamos
-          </Text>
-        </View>
-
-        <View className="flex-row justify-between items-center bg-white/10 rounded-xl p-3 mb-3 border border-white/10">
-          <View className="items-center flex-1">
-            <Text className="text-white/80 text-[9px] uppercase font-bold mb-0.5">Total</Text>
-            <Text className="text-white text-lg font-black">{totalPrestamos}</Text>
-          </View>
-
-          <View className="w-px h-8 bg-white/20" />
-
-          <View className="items-center flex-1">
-            <Text className="text-red-200/90 text-[9px] uppercase font-bold mb-0.5">Atrasados</Text>
-            <Text className="text-red-300 text-lg font-black">{prestamosAtrasados}</Text>
-          </View>
-
-          <View className="w-px h-8 bg-white/20" />
-
-          <View className="items-center flex-1">
-            <Text className="text-green-200/90 text-[9px] uppercase font-bold mb-0.5">Al día</Text>
-            <Text className="text-green-300 text-lg font-black">{prestamosActivos}</Text>
-          </View>
-        </View>
-
-        <View className="items-center">
-          <Text className="text-white/70 text-[10px] uppercase tracking-wider font-medium">
-            Deuda Total Pendiente
-          </Text>
-          <Text className="text-white text-2xl font-black tracking-tight">
-            {formatCurrencyPrestamos(totalDeudasPendientes)}
-          </Text>
-        </View>
-      </View>
-
-      {/* Tabs de Préstamos y Abonos */}
-      <View className="flex-row px-4 mb-3">
-        <TouchableOpacity
-          onPress={() => setActiveTab("prestamos")}
-          className={`flex-1 py-3 mr-2 rounded-lg ${activeTab === "prestamos" ? "bg-white" : "bg-transparent"
-            }`}
-          activeOpacity={0.7}
-        >
-          <Text
-            className={`text-center font-semibold ${activeTab === "prestamos" ? "text-gray-900" : "text-gray-500"
-              }`}
-          >
-            Préstamos ({filteredLoans.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setActiveTab("abonos")}
-          className={`flex-1 py-3 ml-2 rounded-lg ${activeTab === "abonos" ? "bg-white" : "bg-transparent"
-            }`}
-          activeOpacity={0.7}
-        >
-          <Text
-            className={`text-center font-semibold ${activeTab === "abonos" ? "text-gray-900" : "text-gray-500"
-              }`}
-          >
-            Abonos
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Contenido */}
-      <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
-        {activeTab === "prestamos" ? (
+        onEndReachedThreshold={0.5}
+        ListHeaderComponent={
           <>
-            {/* Header de préstamos con filtros */}
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-gray-700 text-sm font-medium">
-                Préstamos - {
-                  filters.status === 'all' ? 'todos' :
-                    filters.status === 'active' ? 'activos' :
-                      filters.status === 'completed' ? 'completados' : 'en mora'
-                } ({filteredLoans.length})
-              </Text>
+            {/* Info Card - Resumen de Préstamos */}
+            <View
+              className="bg-[#13678A] rounded-3xl p-4 mx-4 mt-3 mb-4 overflow-hidden relative"
+              style={{
+                shadowColor: "#13678A",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.2,
+                shadowRadius: 10,
+                elevation: 5,
+              }}
+            >
+              <View className="absolute -right-8 -top-8 w-24 h-24 bg-white/10 rounded-full" />
+              <View className="absolute -left-10 -bottom-10 w-32 h-32 bg-black/10 rounded-full" />
 
-              <TouchableOpacity
-                onPress={() => setShowFiltros(!showFiltros)}
-                className="w-10 h-10 items-center justify-center"
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={isFiltering ? "options" : "options-outline"}
-                  size={24}
-                  color={isFiltering ? "#13678A" : "#374151"}
-                />
-                {isFiltering && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: '#EF4444',
-                      borderWidth: 1,
-                      borderColor: '#F9FAFB'
-                    }}
-                  />
-                )}
-              </TouchableOpacity>
+              <View className="flex-row items-center mb-3">
+                <View className="bg-white/20 p-1.5 rounded-lg mr-2">
+                  <Ionicons name="stats-chart" size={14} color="#ffffff" />
+                </View>
+                <Text className="text-white/90 text-[10px] uppercase tracking-widest font-bold">
+                  Resumen de Préstamos
+                </Text>
+              </View>
 
+              <View className="flex-row justify-between items-center bg-white/10 rounded-xl p-3 mb-3 border border-white/10">
+                <View className="items-center flex-1">
+                  <Text className="text-white/80 text-[9px] uppercase font-bold mb-0.5">Total</Text>
+                  <Text className="text-white text-lg font-black">{totalPrestamos}</Text>
+                </View>
+                <View className="w-px h-8 bg-white/20" />
+                <View className="items-center flex-1">
+                  <Text className="text-red-200/90 text-[9px] uppercase font-bold mb-0.5">Atrasados</Text>
+                  <Text className="text-red-300 text-lg font-black">{prestamosAtrasados}</Text>
+                </View>
+                <View className="w-px h-8 bg-white/20" />
+                <View className="items-center flex-1">
+                  <Text className="text-green-200/90 text-[9px] uppercase font-bold mb-0.5">Al día</Text>
+                  <Text className="text-green-300 text-lg font-black">{prestamosActivos}</Text>
+                </View>
+              </View>
+
+              <View className="items-center">
+                <Text className="text-white/70 text-[10px] uppercase tracking-wider font-medium">
+                  Deuda Total Pendiente
+                </Text>
+                <Text className="text-white text-2xl font-black tracking-tight">
+                  {formatCurrencyPrestamos(totalDeudasPendientes)}
+                </Text>
+              </View>
             </View>
 
-            {/* Lista de préstamos */}
-            {isLoading ? (
-              <View className="gap-2">
-                {[1, 2, 3, 4].map(i => (
-                  <Skeleton.Rect key={i} height={180} borderRadius={22} style={{ marginHorizontal: 0, marginVertical: 10 }} />
-                ))}
-              </View>
-            ) : filteredLoans.length > 0 ? (
-              filteredLoans.map(renderPrestamoCard)
-            ) : (
-              <View className="items-center justify-center py-20 opacity-40">
-                <Ionicons name="document-text-outline" size={64} color="#9CA3AF" />
-                <Text className="text-gray-500 text-lg font-medium mt-4">No hay préstamos registrados</Text>
-              </View>
-            )}
-          </>
-        ) : (
-          /* Lista de abonos */
-          <View className="pb-6">
-            {isLoading ? (
-              <View className="gap-2">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <Skeleton.Rect key={i} height={120} borderRadius={20} style={{ marginHorizontal: 0, marginVertical: 6 }} />
-                ))}
-              </View>
-            ) : abonos.length > 0 ? (
-              abonos.map(renderAbonoCard)
-            ) : (
-              <View className="items-center justify-center py-20 opacity-40">
-                <Ionicons name="receipt-outline" size={64} color="#9CA3AF" />
-                <Text className="text-gray-500 text-lg font-medium mt-4">No hay abonos registrados</Text>
-              </View>
-            )}
-          </View>
-        )}
+            {/* Tabs de Selección */}
+            <View className="flex-row px-4 mb-3">
+              <TouchableOpacity
+                onPress={() => setActiveTab("prestamos")}
+                className={`flex-1 py-3 mr-2 rounded-lg ${activeTab === "prestamos" ? "bg-white shadow-sm" : "bg-transparent"}`}
+              >
+                <Text className={`text-center font-semibold ${activeTab === "prestamos" ? "text-[#13678A]" : "text-gray-500"}`}>
+                  Préstamos ({loans.length})
+                </Text>
+              </TouchableOpacity>
 
-        {/* Espaciador para el bottom bar */}
-        <View className="h-24" />
-      </ScrollView>
+              <TouchableOpacity
+                onPress={() => setActiveTab("abonos")}
+                className={`flex-1 py-3 ml-2 rounded-lg ${activeTab === "abonos" ? "bg-white shadow-sm" : "bg-transparent"}`}
+              >
+                <Text className={`text-center font-semibold ${activeTab === "abonos" ? "text-[#13678A]" : "text-gray-500"}`}>
+                  Abonos
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Header de Listado con Filtros */}
+            <View className="flex-row items-center justify-between px-4 mb-3">
+              <Text className="text-gray-700 text-xs font-bold uppercase tracking-wider">
+                {activeTab === "prestamos" ? "Listado de Préstamos" : "Historial de Abonos"}
+              </Text>
+
+              {activeTab === "prestamos" && (
+                <TouchableOpacity
+                  onPress={() => setShowFiltros(true)}
+                  className="w-8 h-8 items-center justify-center bg-white rounded-full shadow-sm"
+                >
+                  <Ionicons name={isFiltering ? "options" : "options-outline"} size={18} color={isFiltering ? "#13678A" : "#374151"} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
+        }
+        ListFooterComponent={
+          isLoadingMore ? (
+            <View className="py-4 items-center">
+              <ActivityIndicator color="#13678A" />
+              <Text className="text-gray-400 text-xs mt-2">Cargando más...</Text>
+            </View>
+          ) : !hasMore && (loans.length > 0 || abonos.length > 0) ? (
+            <View className="py-8 items-center opacity-30">
+              <Ionicons name="checkmark-circle-outline" size={24} color="#9CA3AF" />
+              <Text className="text-gray-500 text-xs mt-1">Has llegado al final</Text>
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          !isLoading ? (
+            <View className="items-center justify-center py-20 opacity-30">
+              <Ionicons name={activeTab === "prestamos" ? "document-text-outline" : "receipt-outline"} size={64} color="#9CA3AF" />
+              <Text className="text-gray-500 text-lg font-medium mt-4">No hay registros</Text>
+            </View>
+          ) : (
+            <View className="px-4 gap-4">
+              {[1, 2, 3].map(i => <Skeleton.Rect key={i} height={150} borderRadius={20} />)}
+            </View>
+          )
+        }
+      />
+
 
       {/* Botón flotante unificado con toda la lógica de registro */}
       <QuickActionFAB onRefresh={loadData} />

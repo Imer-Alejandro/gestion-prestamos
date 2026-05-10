@@ -57,11 +57,16 @@ export async function initializeDatabase() {
       phone TEXT,
       password_hash TEXT NOT NULL,
       pin_hash TEXT,
+      role TEXT DEFAULT 'admin', -- admin | employee
+      permissions TEXT, -- JSON string
       email_verified INTEGER DEFAULT 0,
       email_verified_at TEXT,
+      organization_id INTEGER,
       created_at TEXT NOT NULL,
+      updated_at TEXT,
       last_login TEXT,
-      is_active INTEGER DEFAULT 1
+      is_active INTEGER DEFAULT 1,
+      FOREIGN KEY (organization_id) REFERENCES organizations(id)
     );
 
     CREATE INDEX IF NOT EXISTS idx_users_active
@@ -147,8 +152,12 @@ export async function initializeDatabase() {
       credit_limit REAL DEFAULT 0,
       notes TEXT,
 
+      version INTEGER DEFAULT 1,
+      created_by INTEGER,
       created_at TEXT NOT NULL,
       updated_at TEXT,
+      deleted_at TEXT,
+      remote_id TEXT,
       is_active INTEGER DEFAULT 1,
 
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
@@ -199,9 +208,12 @@ export async function initializeDatabase() {
       total_paid REAL DEFAULT 0,
       comments TEXT,
 
+      version INTEGER DEFAULT 1,
+      created_by INTEGER,
       created_at TEXT NOT NULL,
       updated_at TEXT,
-      closed_at TEXT,
+      deleted_at TEXT,
+      remote_id TEXT,
 
       FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
@@ -231,10 +243,14 @@ export async function initializeDatabase() {
       reference_number TEXT,
 
       payment_date TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT,
       status TEXT DEFAULT 'active', -- active | voided | replaced
 
+      version INTEGER DEFAULT 1,
+      created_by INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      deleted_at TEXT,
+      remote_id TEXT,
 
       FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE RESTRICT,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
@@ -287,8 +303,11 @@ export async function initializeDatabase() {
 
   status TEXT NOT NULL, -- pending | partial | paid | overdue
 
+  version INTEGER DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT,
+  deleted_at TEXT,
+  remote_id TEXT,
 
   FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
 );
@@ -330,6 +349,8 @@ export async function initializeDatabase() {
       email TEXT,
       rnc TEXT,
       currency TEXT DEFAULT 'DOP',
+      join_code TEXT,
+      remote_id TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -354,6 +375,28 @@ export async function initializeDatabase() {
 
     CREATE INDEX IF NOT EXISTS idx_quota_user
     ON quota_usage(user_id);
+
+    -------------------------------------------------------
+    -- ACTIVITY LOGS (Auditory)
+    -------------------------------------------------------
+    CREATE TABLE IF NOT EXISTS activity_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      action TEXT NOT NULL,
+      payload TEXT, -- JSON
+      timestamp TEXT NOT NULL,
+      remote_id TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    -------------------------------------------------------
+    -- SYNC METADATA
+    -------------------------------------------------------
+    CREATE TABLE IF NOT EXISTS sync_metadata (
+      table_name TEXT PRIMARY KEY,
+      last_sync_timestamp TEXT,
+      last_sync_version INTEGER DEFAULT 0
+    );
     `);
 
       async function ensureColumns(tableName, expectedColumns) {
@@ -373,7 +416,20 @@ export async function initializeDatabase() {
         }
       }
 
+      await ensureColumns('users', [
+        { name: 'role', type: 'TEXT', defaultValue: "'admin'" },
+        { name: 'permissions', type: 'TEXT', defaultValue: "NULL" },
+        { name: 'organization_id', type: 'INTEGER', defaultValue: "NULL" },
+        { name: 'updated_at', type: 'TEXT', defaultValue: "NULL" },
+      ]);
+
       await ensureColumns('loans', [
+        { name: 'version', type: 'INTEGER', defaultValue: 1 },
+        { name: 'created_by', type: 'INTEGER', defaultValue: 0 },
+        { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
+        { name: 'deleted_at', type: 'TEXT', defaultValue: "NULL" },
+        { name: 'remote_id', type: 'TEXT', defaultValue: "NULL" },
+        { name: 'is_dirty', type: 'INTEGER', defaultValue: 0 },
         { name: 'user_id', type: 'INTEGER', defaultValue: 0 },
         { name: 'client_id', type: 'INTEGER', defaultValue: 0 },
         { name: 'current_balance', type: 'REAL', defaultValue: 0 },
@@ -403,10 +459,22 @@ export async function initializeDatabase() {
       ]);
 
       await ensureColumns('clients', [
+        { name: 'version', type: 'INTEGER', defaultValue: 1 },
+        { name: 'created_by', type: 'INTEGER', defaultValue: 0 },
+        { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
+        { name: 'deleted_at', type: 'TEXT', defaultValue: "NULL" },
+        { name: 'remote_id', type: 'TEXT', defaultValue: "NULL" },
+        { name: 'is_dirty', type: 'INTEGER', defaultValue: 0 },
         { name: 'signature_svg', type: 'TEXT', defaultValue: "NULL" },
       ]);
 
       await ensureColumns('loan_installments', [
+        { name: 'version', type: 'INTEGER', defaultValue: 1 },
+        { name: 'created_at', type: 'TEXT', defaultValue: "''" },
+        { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
+        { name: 'deleted_at', type: 'TEXT', defaultValue: "NULL" },
+        { name: 'remote_id', type: 'TEXT', defaultValue: "NULL" },
+        { name: 'is_dirty', type: 'INTEGER', defaultValue: 0 },
         { name: 'loan_id', type: 'INTEGER', defaultValue: 0 },
         { name: 'installment_number', type: 'INTEGER', defaultValue: 0 },
         { name: 'due_date', type: 'TEXT', defaultValue: "''" },
@@ -424,11 +492,18 @@ export async function initializeDatabase() {
       ]);
 
       await ensureColumns('payments', [
-        { name: 'status', type: 'TEXT', defaultValue: "'active'" },
+        { name: 'version', type: 'INTEGER', defaultValue: 1 },
+        { name: 'created_by', type: 'INTEGER', defaultValue: 0 },
         { name: 'updated_at', type: 'TEXT', defaultValue: "''" },
+        { name: 'deleted_at', type: 'TEXT', defaultValue: "NULL" },
+        { name: 'remote_id', type: 'TEXT', defaultValue: "NULL" },
+        { name: 'is_dirty', type: 'INTEGER', defaultValue: 0 },
+        { name: 'status', type: 'TEXT', defaultValue: "'active'" },
       ]);
 
       await ensureColumns('organizations', [
+        { name: 'join_code', type: 'TEXT', defaultValue: "NULL" },
+        { name: 'remote_id', type: 'TEXT', defaultValue: "NULL" },
         { name: 'plan_type', type: 'TEXT', defaultValue: "'basic'" },
         { name: 'plan_hash', type: 'TEXT', defaultValue: "''" },
       ]);

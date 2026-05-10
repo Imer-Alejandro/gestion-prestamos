@@ -53,9 +53,10 @@ export async function createClient(data) {
       reference_name, reference_phone,
       credit_limit, notes,
       signature_svg,
+      is_dirty,
       created_at, is_active
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     [
       data.user_id,
       data.first_name,
@@ -79,6 +80,7 @@ export async function createClient(data) {
       data.credit_limit,
       data.notes,
       data.signature_svg || null,
+      1, // is_dirty = 1
       new Date().toISOString(),
     ],
   );
@@ -90,16 +92,17 @@ export async function createClient(data) {
   return result.lastInsertRowId;
 }
 
-/* GET ALL CLIENTS BY USER WITH FINANCIAL INFO */
-export async function getClients(userId) {
+/* GET ALL CLIENTS BY USER WITH FINANCIAL INFO (With Pagination) */
+export async function getClients(userId, limit = 20, offset = 0) {
   const db = await getDb();
 
-  // Obtener todos los clientes del usuario (más recientes primero)
+  // Obtener todos los clientes del usuario (más recientes primero) con paginación
   const clients = await db.getAllAsync(
     `SELECT * FROM clients 
      WHERE user_id = ? AND is_active = 1 
-     ORDER BY created_at DESC`,
-    [userId],
+     ORDER BY created_at DESC
+     LIMIT ? OFFSET ?`,
+    [userId, limit, offset],
   );
 
 
@@ -345,7 +348,8 @@ export async function updateClient(id, data) {
          reference_phone = ?,
          notes = ?,
          signature_svg = ?,
-         updated_at = ?
+         updated_at = ?,
+         is_dirty = 1
      WHERE id = ?`,
     [
       data.first_name,
@@ -387,7 +391,7 @@ export async function deactivateClient(id, userId) {
   // ─────────────────────────────────────────────────────────
 
   const db = await getDb();
-  await db.runAsync(`UPDATE clients SET is_active = 0 WHERE id = ?`, [id]);
+  await db.runAsync(`UPDATE clients SET is_active = 0, is_dirty = 1, updated_at = ? WHERE id = ?`, [new Date().toISOString(), id]);
 
   // ── Registrar operación exitosa ──────────────────────────
   await PlanManager.registerOperation(userId, 'deactivateClient');

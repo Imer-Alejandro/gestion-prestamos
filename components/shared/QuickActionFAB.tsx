@@ -17,6 +17,7 @@ import { RegistroAbonoModal } from "../prestamos_abonos/RegistroAbonoModal";
 import { ConfirmationModal } from "./ConfirmationModal";
 import { generateLoanReceipt, generatePaymentReceipt } from "../../services/pdf.service";
 import { PlanManager } from "../../services/quota.service";
+import PermissionGuard from "./PermissionGuard";
 
 interface QuickActionFABProps {
   onRefresh?: () => void;
@@ -204,46 +205,50 @@ export const QuickActionFAB: React.FC<QuickActionFABProps> = ({ onRefresh }) => 
             style={{ zIndex: 20 }}
           >
             {/* Botón Nuevo Abono */}
-            <TouchableOpacity
-              onPress={handleNuevoAbono}
-              className="flex-row items-center bg-white rounded-2xl pl-5 pr-2 py-2"
-              activeOpacity={0.9}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.15,
-                shadowRadius: 15,
-                elevation: 12,
-              }}
-            >
-              <Text className="text-gray-800 font-bold text-xs uppercase tracking-widest mr-3">
-                nuevo abono
-              </Text>
-              <View className="bg-teal-500 w-11 h-11 rounded-xl items-center justify-center">
-                <Ionicons name="arrow-down-outline" size={22} color="#ffffff" />
-              </View>
-            </TouchableOpacity>
+            <PermissionGuard permission="register_payment">
+              <TouchableOpacity
+                onPress={handleNuevoAbono}
+                className="flex-row items-center bg-white rounded-2xl pl-5 pr-2 py-2"
+                activeOpacity={0.9}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 15,
+                  elevation: 12,
+                }}
+              >
+                <Text className="text-gray-800 font-bold text-xs uppercase tracking-widest mr-3">
+                  nuevo abono
+                </Text>
+                <View className="bg-teal-500 w-11 h-11 rounded-xl items-center justify-center">
+                  <Ionicons name="arrow-down-outline" size={22} color="#ffffff" />
+                </View>
+              </TouchableOpacity>
+            </PermissionGuard>
 
             {/* Botón Nuevo Préstamo */}
-            <TouchableOpacity
-              onPress={handleNuevoPrestamo}
-              className="flex-row items-center bg-white rounded-2xl pl-5 pr-2 py-2"
-              activeOpacity={0.9}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.15,
-                shadowRadius: 15,
-                elevation: 12,
-              }}
-            >
-              <Text className="text-gray-800 font-bold text-xs uppercase tracking-widest mr-3">
-                nuevo préstamo
-              </Text>
-              <View className="bg-[#14688A] w-11 h-11 rounded-xl items-center justify-center">
-                <Ionicons name="add-outline" size={26} color="#ffffff" />
-              </View>
-            </TouchableOpacity>
+            <PermissionGuard permission="create_loan">
+              <TouchableOpacity
+                onPress={handleNuevoPrestamo}
+                className="flex-row items-center bg-white rounded-2xl pl-5 pr-2 py-2"
+                activeOpacity={0.9}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 15,
+                  elevation: 12,
+                }}
+              >
+                <Text className="text-gray-800 font-bold text-xs uppercase tracking-widest mr-3">
+                  nuevo préstamo
+                </Text>
+                <View className="bg-[#14688A] w-11 h-11 rounded-xl items-center justify-center">
+                  <Ionicons name="add-outline" size={26} color="#ffffff" />
+                </View>
+              </TouchableOpacity>
+            </PermissionGuard>
           </View>
         </>
       )}

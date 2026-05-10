@@ -3,12 +3,13 @@ import { Stack, useRouter } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  ScrollView,
+  FlatList,
   Text,
   TouchableOpacity,
   View,
   Alert,
   RefreshControl,
+  ActivityIndicator
 } from "react-native";
 import AppHeader from "../../components/shared/AppHeader";
 import NotificationModal from "../../components/home/NotificationModal";
@@ -40,6 +41,12 @@ export default function ClientesScreen() {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
 
+  // Paginación
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const LIMIT = 20;
+
   const userData = {
     name: user?.full_name || "Usuario",
     role: "Gestor operador",
@@ -48,27 +55,46 @@ export default function ClientesScreen() {
   const [notifications, setNotifications] = useState<any[]>([]);
 
   // Cargar clientes del usuario desde la BD
-  const loadClientes = useCallback(async () => {
+  const loadClientes = useCallback(async (isInitial = true) => {
     if (!user) return;
 
     try {
-      setIsLoading(true);
-      const clientesData = await getClients(user.id);
-      setClientes(clientesData || []);
+      if (isInitial) {
+        setIsLoading(true);
+        setPage(0);
+        setHasMore(true);
+      } else {
+        setIsLoadingMore(true);
+      }
 
-      // Cargar notificaciones reales
-      const { getPendingNotificationsUI } = await import("../../services/notification.service");
-      const uiNotifications = await getPendingNotificationsUI(user.id);
-      setNotifications(uiNotifications);
+      const offset = isInitial ? 0 : (page + 1) * LIMIT;
+      const clientesData = await getClients(user.id, LIMIT, offset);
+      
+      if (clientesData.length < LIMIT) {
+        setHasMore(false);
+      }
 
-      console.log(`✅ ${clientesData?.length || 0} clientes cargados`);
+      if (isInitial) {
+        setClientes(clientesData || []);
+        
+        // Cargar notificaciones solo al inicio
+        const { getPendingNotificationsUI } = await import("../../services/notification.service");
+        const uiNotifications = await getPendingNotificationsUI(user.id);
+        setNotifications(uiNotifications);
+      } else {
+        setClientes(prev => [...prev, ...clientesData]);
+        setPage(prev => prev + 1);
+      }
+
+      console.log(`✅ ${clientesData?.length || 0} clientes cargados (offset: ${offset})`);
     } catch (error) {
       console.error("Error cargando clientes:", error);
       Alert.alert("Error", "No se pudieron cargar los clientes");
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
-  }, [user]);
+  }, [user, page]);
 
   // Cargar clientes al montar el componente
   useEffect(() => {
@@ -305,163 +331,142 @@ export default function ClientesScreen() {
         onResultPress={handleResultPress}
       />
 
-      <ScrollView
-        className="flex-1 px-6"
+      {/* Lista Principal con FlatList para Infinite Scroll */}
+      <FlatList
+        data={clientesFiltrados}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => renderClienteCard(item)}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-      >
-        {/* Botón registrar nuevo cliente */}
-        <TouchableOpacity
-          onPress={handleNuevoCliente}
-          disabled={isLoading}
-          className={`bg-[#10B981] rounded-2xl py-4 flex-row items-center justify-center mt-6 mb-5 ${isLoading ? "opacity-50" : ""
-            }`}
-          activeOpacity={0.8}
-          style={{
-            shadowColor: "#10B981",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.25,
-            shadowRadius: 12,
-            elevation: 6,
-          }}
-        >
-          <Ionicons name="person-add" size={20} color="#ffffff" />
-          <Text className="text-white font-bold text-sm ml-2 uppercase tracking-wide">
-            Registrar Nuevo Cliente
-          </Text>
-        </TouchableOpacity>
-
-        {/* Info Card - Resumen de Cartera (Versión Compacta) */}
-        <View
-          className="bg-[#13678A] rounded-3xl p-4 mb-4 overflow-hidden relative"
-          style={{
-            shadowColor: "#13678A",
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.2,
-            shadowRadius: 10,
-            elevation: 5,
-          }}
-        >
-          {/* Decorative background elements */}
-          <View className="absolute -right-8 -top-8 w-24 h-24 bg-white/10 rounded-full" />
-          <View className="absolute -left-10 -bottom-10 w-32 h-32 bg-black/10 rounded-full" />
-
-          <View className="flex-row items-center mb-3">
-            <View className="bg-white/20 p-1.5 rounded-lg mr-2">
-              <Ionicons name="pie-chart" size={14} color="#ffffff" />
-            </View>
-            <Text className="text-white/90 text-[10px] uppercase tracking-widest font-bold">
-              Resumen de Cartera
-            </Text>
-          </View>
-
-          <View className="flex-row justify-between items-center bg-white/10 rounded-xl p-3 mb-3 border border-white/10">
-            <View className="items-center flex-1">
-              <Text className="text-white/80 text-[9px] uppercase font-bold mb-0.5">Total</Text>
-              <Text className="text-white text-lg font-black">{clientes.length}</Text>
-            </View>
-
-            <View className="w-px h-8 bg-white/20" />
-
-            <View className="items-center flex-1">
-              <Text className="text-red-200/90 text-[9px] uppercase font-bold mb-0.5">En mora</Text>
-              <Text className="text-red-300 text-lg font-black">
-                {clientes.filter(c => c.status === 'en-mora').length}
+        onEndReached={() => {
+          if (hasMore && !isLoadingMore && !isLoading && !searchQuery) {
+            loadClientes(false);
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListHeaderComponent={
+          <>
+            {/* Botón registrar nuevo cliente */}
+            <TouchableOpacity
+              onPress={handleNuevoCliente}
+              disabled={isLoading}
+              className={`bg-[#10B981] rounded-2xl py-4 flex-row items-center justify-center mt-6 mb-5 ${isLoading ? "opacity-50" : ""}`}
+              activeOpacity={0.8}
+              style={{
+                shadowColor: "#10B981",
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.25,
+                shadowRadius: 12,
+                elevation: 6,
+              }}
+            >
+              <Ionicons name="person-add" size={20} color="#ffffff" />
+              <Text className="text-white font-bold text-sm ml-2 uppercase tracking-wide">
+                Registrar Nuevo Cliente
               </Text>
-            </View>
+            </TouchableOpacity>
 
-            <View className="w-px h-8 bg-white/20" />
+            {/* Info Card - Resumen de Cartera */}
+            <View
+              className="bg-[#13678A] rounded-3xl p-4 mb-4 overflow-hidden relative"
+              style={{
+                shadowColor: "#13678A",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.2,
+                shadowRadius: 10,
+                elevation: 5,
+              }}
+            >
+              <View className="absolute -right-8 -top-8 w-24 h-24 bg-white/10 rounded-full" />
+              <View className="absolute -left-10 -bottom-10 w-32 h-32 bg-black/10 rounded-full" />
 
-            <View className="items-center flex-1">
-              <Text className="text-green-200/90 text-[9px] uppercase font-bold mb-0.5">Al día</Text>
-              <Text className="text-green-300 text-lg font-black">
-                {clientes.filter(c => c.status === 'al-dia').length}
-              </Text>
-            </View>
-          </View>
-
-          <View className="items-center">
-            <Text className="text-white/70 text-[10px] uppercase tracking-wider font-medium">
-              Crédito Activo (Pendiente)
-            </Text>
-            <Text className="text-white text-2xl font-black tracking-tight">
-              {new Intl.NumberFormat('es-DO', {
-                style: 'currency',
-                currency: 'DOP',
-              }).format(clientes.reduce((sum, c) => sum + (c.pendingDebt || 0), 0))}
-            </Text>
-          </View>
-        </View>
-
-        {/* Lista de clientes */}
-        <View className="mb-6">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-gray-800 text-lg font-bold">
-              {searchQuery.trim() || isFiltering ? "Resultados" : "Mis Clientes"}
-            </Text>
-            <View className="flex-row items-center">
-              <View className="bg-blue-100 px-3 py-1 rounded-full mr-2">
-                <Text className="text-blue-600 text-sm font-semibold">
-                  {clientesFiltrados.length}
+              <View className="flex-row items-center mb-3">
+                <View className="bg-white/20 p-1.5 rounded-lg mr-2">
+                  <Ionicons name="pie-chart" size={14} color="#ffffff" />
+                </View>
+                <Text className="text-white/90 text-[10px] uppercase tracking-widest font-bold">
+                  Resumen de Cartera
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={() => setShowFiltros(true)}
-                className="w-10 h-10 items-center justify-center"
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={isFiltering ? "options" : "options-outline"}
-                  size={24}
-                  color={isFiltering ? "#13678A" : "#374151"}
-                />
-                {isFiltering && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: '#EF4444',
-                      borderWidth: 1,
-                      borderColor: '#F9FAFB'
-                    }}
-                  />
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
 
-          {isLoading && clientes.length === 0 ? (
-            <View className="bg-white rounded-2xl p-8 items-center">
-              <Text className="text-gray-400">Cargando clientes...</Text>
+              <View className="flex-row justify-between items-center bg-white/10 rounded-xl p-3 mb-3 border border-white/10">
+                <View className="items-center flex-1">
+                  <Text className="text-white/80 text-[9px] uppercase font-bold mb-0.5">Total</Text>
+                  <Text className="text-white text-lg font-black">{clientes.length}</Text>
+                </View>
+                <View className="w-px h-8 bg-white/20" />
+                <View className="items-center flex-1">
+                  <Text className="text-red-200/90 text-[9px] uppercase font-bold mb-0.5">En mora</Text>
+                  <Text className="text-red-300 text-lg font-black">
+                    {clientes.filter(c => c.status === 'en-mora').length}
+                  </Text>
+                </View>
+                <View className="w-px h-8 bg-white/20" />
+                <View className="items-center flex-1">
+                  <Text className="text-green-200/90 text-[9px] uppercase font-bold mb-0.5">Al día</Text>
+                  <Text className="text-green-300 text-lg font-black">
+                    {clientes.filter(c => c.status === 'al-dia').length}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="items-center">
+                <Text className="text-white/70 text-[10px] uppercase tracking-wider font-medium">
+                  Crédito Activo (Pendiente)
+                </Text>
+                <Text className="text-white text-2xl font-black tracking-tight">
+                  {new Intl.NumberFormat('es-DO', {
+                    style: 'currency',
+                    currency: 'DOP',
+                  }).format(clientes.reduce((sum, c) => sum + (c.pendingDebt || 0), 0))}
+                </Text>
+              </View>
             </View>
-          ) : clientesFiltrados.length === 0 ? (
-            <View className="bg-white rounded-2xl p-8 items-center">
+
+            {/* Header de Listado con Filtros */}
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-gray-800 text-lg font-bold">
+                {searchQuery.trim() || isFiltering ? "Resultados" : "Mis Clientes"}
+              </Text>
+              <View className="flex-row items-center">
+                <View className="bg-blue-100 px-3 py-1 rounded-full mr-2">
+                  <Text className="text-blue-600 text-sm font-semibold">
+                    {clientesFiltrados.length}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowFiltros(true)} className="w-10 h-10 items-center justify-center">
+                  <Ionicons name={isFiltering ? "options" : "options-outline"} size={24} color={isFiltering ? "#13678A" : "#374151"} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </>
+        }
+        ListFooterComponent={
+          isLoadingMore ? (
+            <View className="py-4 items-center">
+              <ActivityIndicator color="#13678A" />
+            </View>
+          ) : !hasMore && clientes.length > 0 ? (
+            <View className="py-8 items-center opacity-30">
+              <Text className="text-gray-500 text-xs mt-1">No hay más clientes</Text>
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          !isLoading ? (
+            <View className="bg-white rounded-2xl p-8 items-center mt-4">
               <Ionicons name="people-outline" size={64} color="#D1D5DB" />
-              <Text className="text-gray-400 text-base mt-4">
-                {searchQuery.trim()
-                  ? "No se encontraron clientes"
-                  : "No tienes clientes registrados"}
-              </Text>
-              <Text className="text-gray-400 text-sm mt-2">
-                {searchQuery.trim()
-                  ? "Intenta con otro término de búsqueda"
-                  : "Presiona el botón verde para agregar tu primer cliente"}
+              <Text className="text-gray-400 text-base mt-4 text-center">
+                {searchQuery.trim() ? "No se encontraron clientes" : "No tienes clientes registrados"}
               </Text>
             </View>
-          ) : (
-            clientesFiltrados.map(renderClienteCard)
-          )}
-        </View>
+          ) : null
+        }
+      />
 
-        {/* Espaciador para el bottom bar */}
-        <View className="h-24" />
-      </ScrollView>
 
       {/* Bottom Navigation Bar - Respeta la barra de navegación del sistema en Android */}
       <View
